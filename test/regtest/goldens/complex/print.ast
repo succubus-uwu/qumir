@@ -1,0 +1,47 @@
+(Block:<Void>
+  (FunDecl $<main> ():<Fun () -> Void>
+    (Block:<Void>
+      (Var $z:<Named компл (struct { re: Float; im: Float; })>)
+      ($z =:<Void>
+        (Call:<Named компл (struct { re: Float; im: Float; })>
+          ($__binop_+_Named::компл_Named::компл:<Fun (Named, Named) -> Named>)
+          (Call:<Named компл (struct { re: Float; im: Float; })>
+            ($__cast_Float_Named::компл:<Fun (Float) -> Named>)
+            (3.000000:<Float>))
+          (Call:<Named компл (struct { re: Float; im: Float; })>
+            ($__imag:<Fun (Float) -> Named>)
+            (4.000000:<Float>))))
+      (Block:<Void>
+        (Call:<Void>
+          ($__unop_вывод_Named::компл:<Fun (Named) -> Void>)
+          ($z:<Named компл (struct { re: Float; im: Float; })>))
+        (Call:<Void>
+          ($output_string:<Fun (String) -> Void>)
+          ("\n":<String>)))
+      ($z =:<Void>
+        (Call:<Named компл (struct { re: Float; im: Float; })>
+          ($__binop_-_Named::компл_Named::компл:<Fun (Named, Named) -> Named>)
+          (Call:<Named компл (struct { re: Float; im: Float; })>
+            ($__cast_Float_Named::компл:<Fun (Float) -> Named>)
+            (3.000000:<Float>))
+          (Call:<Named компл (struct { re: Float; im: Float; })>
+            ($__imag:<Fun (Float) -> Named>)
+            (4.000000:<Float>))))
+      (Block:<Void>
+        (Call:<Void>
+          ($__unop_вывод_Named::компл:<Fun (Named) -> Void>)
+          ($z:<Named компл (struct { re: Float; im: Float; })>))
+        (Call:<Void>
+          ($output_string:<Fun (String) -> Void>)
+          ("\n":<String>)))
+      ($z =:<Void>
+        (Call:<Named компл (struct { re: Float; im: Float; })>
+          ($__imag:<Fun (Float) -> Named>)
+          (2.000000:<Float>)))
+      (Block:<Void>
+        (Call:<Void>
+          ($__unop_вывод_Named::компл:<Fun (Named) -> Void>)
+          ($z:<Named компл (struct { re: Float; im: Float; })>))
+        (Call:<Void>
+          ($output_string:<Fun (String) -> Void>)
+          ("\n":<String>))))))

@@ -38,6 +38,7 @@ komplex complex_from_int(int64_t n);
 komplex complex_from_imag(double im); // 2i syntax: компл(0, im)
 double  complex_to_float(komplex a);  // returns Re
 int64_t complex_to_int(komplex a);    // returns (int64_t)Re
+void    complex_print(komplex a);     // вывод z
 
 } // extern "C"
 

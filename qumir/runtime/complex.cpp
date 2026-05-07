@@ -1,4 +1,5 @@
 #include "complex.h"
+#include "io.h"
 
 #include <cmath>
 
@@ -63,6 +64,15 @@ komplex complex_from_imag(double im) {
 
 double  complex_to_float(komplex a) { return a.re; }
 int64_t complex_to_int(komplex a)   { return static_cast<int64_t>(a.re); }
+
+void complex_print(komplex a) {
+    auto& out = *GetOutputStream();
+    out << a.re;
+    if (a.im >= 0.0) {
+        out << '+';
+    }
+    out << a.im << 'i';
+}
 
 } // extern "C"
 

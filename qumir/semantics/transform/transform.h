@@ -12,7 +12,7 @@ namespace NTransform {
 
 std::expected<bool, TError> PreNameResolutionTransform(NAst::TExprPtr& expr);
 std::expected<bool, TError> PostNameResolutionTransform(NAst::TExprPtr& expr, NSemantics::TNameResolver& r);
-std::expected<bool, TError> PostTypeAnnotationTransform(NAst::TExprPtr& expr);
+std::expected<bool, TError> PostTypeAnnotationTransform(NAst::TExprPtr& expr, NSemantics::TNameResolver& r);
 
 std::expected<std::monostate, TError> Pipeline(NAst::TExprPtr& expr, NSemantics::TNameResolver& context);
 

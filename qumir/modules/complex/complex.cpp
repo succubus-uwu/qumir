@@ -286,6 +286,20 @@ ComplexModule::ComplexModule() {
             .ReturnType = intType,
             .IsOp = true,
         },
+
+        // ── Output operator ───────────────────────────────────────────────────
+        {
+            .Name = "вывод",
+            .MangledName = "complex_print",
+            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(komplex)>(complex_print)),
+            .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
+                complex_print(*reinterpret_cast<const komplex*>(args[0]));
+                return 0;
+            },
+            .ArgTypes = { complexType },
+            .ReturnType = std::make_shared<NAst::TVoidType>(),
+            .IsOp = true,
+        },
     };
 
     LiteralSuffixes_ = {

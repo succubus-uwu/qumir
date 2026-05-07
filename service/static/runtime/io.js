@@ -185,6 +185,10 @@ function nextToken() {
 // Current output file handle for redirection (managed by output_set_file/output_reset_file)
 let __outputFileHandle = null;
 
+export function __appendStdout(text) {
+  appendStdout(text);
+}
+
 function appendStdout(text) {
   // If output redirected to file, write via FILE_MANAGER
   if (__outputFileHandle !== null) {

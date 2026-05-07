@@ -1,5 +1,7 @@
 "use strict";
 
+import { __appendStdout } from './io.js';
+
 let MEMORY = null;
 
 export function __bindMemory(mem) {
@@ -95,6 +97,15 @@ export function complex_from_int(r, n) {
 
 export function complex_from_imag(r, im) {
   writeComplex(r, 0.0, Number(im));
+}
+
+export function complex_print(re, im) {
+  re = Number(re);
+  im = Number(im);
+  let s = String(re);
+  s += im >= 0 ? '+' : '-';
+  s += String(Math.abs(im)) + 'i';
+  __appendStdout(s);
 }
 
 export function complex_to_float(re, im) {

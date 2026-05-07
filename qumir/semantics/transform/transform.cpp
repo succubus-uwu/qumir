@@ -69,7 +69,7 @@ std::expected<bool, TError> PreNameResolutionTransform(NAst::TExprPtr& expr)
     return changed;
 }
 
-std::expected<bool, TError> PostTypeAnnotationTransform(NAst::TExprPtr& expr)
+std::expected<bool, TError> PostTypeAnnotationTransform(NAst::TExprPtr& expr, NSemantics::TNameResolver& context)
 {
     std::list<TError> errors;
     bool changed = TransformAst(expr, expr,
@@ -248,6 +248,20 @@ std::expected<bool, TError> PostTypeAnnotationTransform(NAst::TExprPtr& expr)
                             output->Location,
                             std::make_shared<NAst::TIdentExpr>(output->Location, "output_symbol"),
                             std::move(args));
+                    } else if (auto named = NAst::TMaybeType<NAst::TNamedType>(type)) {
+                        if (width || prec) {
+                            errors.push_back(TError(output->Location, "width and precision arguments are not applicable for named type output"));
+                            return node;
+                        }
+                        auto op = context.GetUnaryOp("вывод", type);
+                        if (!op) {
+                            errors.push_back(TError(arg.Expr->Location, "тип '" + named.Cast()->Name + "' не поддерживает вывод"));
+                            return node;
+                        }
+                        call = std::make_shared<NAst::TCallExpr>(
+                            output->Location,
+                            std::make_shared<NAst::TIdentExpr>(output->Location, op->SynthName),
+                            std::vector<NAst::TExprPtr>{ arg.Expr });
                     } else {
                         // need annotation pass to know types
                         return node;
@@ -651,7 +665,7 @@ std::expected<std::monostate, TError> Pipeline(NAst::TExprPtr& expr, NSemantics:
         if (!annotationResult) {
             return std::unexpected(annotationResult.error());
         }
-        postResult = PostTypeAnnotationTransform(expr);
+        postResult = PostTypeAnnotationTransform(expr, r);
         if (!postResult) {
             return std::unexpected(postResult.error());
         }
