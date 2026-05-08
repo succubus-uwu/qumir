@@ -57,6 +57,7 @@ function renderSidebar(active, prefix) {
       <a href="${prefix}files.html" class="${active === 'files.md' ? 'active' : ''}">Работа с файлами</a>
       <a href="${prefix}examples.html" class="${isExamplesSection ? 'active' : ''}">Библиотека примеров</a>
       <a href="${prefix}about.html" class="${active === 'about.md' ? 'active' : ''}">О проекте</a>
+      <a href="${prefix}faq.html" class="${active === 'faq.md' ? 'active' : ''}">Вопросы и ответы</a>
     </nav>
   `;
 }
