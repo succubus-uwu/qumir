@@ -34,7 +34,7 @@ private:
     std::vector<TExternalFunction> ExternalFunctions_;
     std::vector<TExternalType> ExternalTypes_;
     std::vector<TLiteralSuffix> LiteralSuffixes_;
-    std::vector<std::string> Dependencies_ = {};
+    std::vector<std::string> Dependencies_ = {"Цвета"};
 };
 
 } // namespace NRegistry

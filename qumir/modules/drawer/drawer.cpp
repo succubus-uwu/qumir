@@ -13,6 +13,7 @@ DrawerModule::DrawerModule()
     auto floatType = std::make_shared<NAst::TFloatType>();
     auto voidType = std::make_shared<NAst::TVoidType>();
     auto stringType = std::make_shared<NAst::TStringType>();
+    auto colorType = std::make_shared<NAst::TNamedType>("цвет", integerType);
 
     std::vector<TExternalFunction> functions = {
         {
@@ -45,7 +46,7 @@ DrawerModule::DrawerModule()
                 drawer_set_color(static_cast<int64_t>(args[0]));
                 return 0;
             },
-            .ArgTypes = { integerType },
+            .ArgTypes = { colorType },
             .ReturnType = voidType,
         },
         {
