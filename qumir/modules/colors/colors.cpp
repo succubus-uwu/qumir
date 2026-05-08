@@ -35,7 +35,7 @@ ColorsModule::ColorsModule() {
         // ── Color constants ───────────────────────────────────────────────────
         {
             .Name = "прозрачный",
-            .MangledName = "painter_transparent",
+            .MangledName = "color_transparent",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(color_transparent)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_transparent());
@@ -45,7 +45,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "белый",
-            .MangledName = "painter_white",
+            .MangledName = "color_white",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(color_white)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_white());
@@ -55,7 +55,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "чёрный",
-            .MangledName = "painter_black",
+            .MangledName = "color_black",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(color_black)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_black());
@@ -65,7 +65,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "черный",
-            .MangledName = "painter_black",
+            .MangledName = "color_black",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(color_black)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_black());
@@ -75,7 +75,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "серый",
-            .MangledName = "painter_gray",
+            .MangledName = "color_gray",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(color_gray)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_gray());
@@ -85,7 +85,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "фиолетовый",
-            .MangledName = "painter_purple",
+            .MangledName = "color_purple",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(color_purple)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_purple());
@@ -95,7 +95,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "синий",
-            .MangledName = "painter_blue",
+            .MangledName = "color_blue",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(color_blue)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_blue());
@@ -105,7 +105,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "голубой",
-            .MangledName = "painter_cyan",
+            .MangledName = "color_cyan",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(color_cyan)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_cyan());
@@ -115,7 +115,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "зелёный",
-            .MangledName = "painter_green",
+            .MangledName = "color_green",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(color_green)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_green());
@@ -125,7 +125,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "зеленый",
-            .MangledName = "painter_green",
+            .MangledName = "color_green",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(color_green)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_green());
@@ -135,7 +135,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "жёлтый",
-            .MangledName = "painter_yellow",
+            .MangledName = "color_yellow",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(color_yellow)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_yellow());
@@ -145,7 +145,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "желтый",
-            .MangledName = "painter_yellow",
+            .MangledName = "color_yellow",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(color_yellow)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_yellow());
@@ -155,7 +155,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "оранжевый",
-            .MangledName = "painter_orange",
+            .MangledName = "color_orange",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(color_orange)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_orange());
@@ -165,7 +165,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "красный",
-            .MangledName = "painter_red",
+            .MangledName = "color_red",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(color_red)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_red());
@@ -177,7 +177,7 @@ ColorsModule::ColorsModule() {
         // ── Color construction ────────────────────────────────────────────────
         {
             .Name = "RGB",
-            .MangledName = "painter_rgb",
+            .MangledName = "color_rgb",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(int64_t,int64_t,int64_t)>(color_rgb)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_rgb(args[0], args[1], args[2]));
@@ -187,7 +187,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "RGBA",
-            .MangledName = "painter_rgba",
+            .MangledName = "color_rgba",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(int64_t,int64_t,int64_t,int64_t)>(color_rgba)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_rgba(args[0], args[1], args[2], args[3]));
@@ -197,7 +197,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "CMYK",
-            .MangledName = "painter_cmyk",
+            .MangledName = "color_cmyk",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(int64_t,int64_t,int64_t,int64_t)>(color_cmyk)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_cmyk(args[0], args[1], args[2], args[3]));
@@ -207,7 +207,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "CMYKA",
-            .MangledName = "painter_cmyka",
+            .MangledName = "color_cmyka",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(int64_t,int64_t,int64_t,int64_t,int64_t)>(color_cmyka)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_cmyka(args[0], args[1], args[2], args[3], args[4]));
@@ -217,7 +217,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "HSL",
-            .MangledName = "painter_hsl",
+            .MangledName = "color_hsl",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(int64_t,int64_t,int64_t)>(color_hsl)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_hsl(args[0], args[1], args[2]));
@@ -227,7 +227,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "HSLA",
-            .MangledName = "painter_hsla",
+            .MangledName = "color_hsla",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(int64_t,int64_t,int64_t,int64_t)>(color_hsla)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_hsla(args[0], args[1], args[2], args[3]));
@@ -237,7 +237,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "HSV",
-            .MangledName = "painter_hsv",
+            .MangledName = "color_hsv",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(int64_t,int64_t,int64_t)>(color_hsv)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_hsv(args[0], args[1], args[2]));
@@ -247,7 +247,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "HSVA",
-            .MangledName = "painter_hsva",
+            .MangledName = "color_hsva",
             .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(int64_t,int64_t,int64_t,int64_t)>(color_hsva)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(color_hsva(args[0], args[1], args[2], args[3]));
@@ -259,7 +259,7 @@ ColorsModule::ColorsModule() {
         // ── Color decomposition ───────────────────────────────────────────────
         {
             .Name = "разложить в RGB",
-            .MangledName = "painter_decompose_rgb",
+            .MangledName = "color_decompose_rgb",
             .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t,int64_t*,int64_t*,int64_t*)>(color_decompose_rgb)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 color_decompose_rgb(args[0],
@@ -273,7 +273,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "разложить в CMYK",
-            .MangledName = "painter_decompose_cmyk",
+            .MangledName = "color_decompose_cmyk",
             .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t,int64_t*,int64_t*,int64_t*,int64_t*)>(color_decompose_cmyk)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 color_decompose_cmyk(args[0],
@@ -288,7 +288,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "разложить в HSL",
-            .MangledName = "painter_decompose_hsl",
+            .MangledName = "color_decompose_hsl",
             .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t,int64_t*,int64_t*,int64_t*)>(color_decompose_hsl)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 color_decompose_hsl(args[0],
@@ -302,7 +302,7 @@ ColorsModule::ColorsModule() {
         },
         {
             .Name = "разложить в HSV",
-            .MangledName = "painter_decompose_hsv",
+            .MangledName = "color_decompose_hsv",
             .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t,int64_t*,int64_t*,int64_t*)>(color_decompose_hsv)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 color_decompose_hsv(args[0],
