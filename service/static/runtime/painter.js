@@ -19,6 +19,11 @@ let canvas = null;
 let ctx = null;
 let dpr = 1;
 
+// Last draw() geometry — exposed via __getDrawGeometry() for ruler display in app.js
+let currentOx = 0;
+let currentOy = 0;
+let currentScale = 1;
+
 let rafScheduled = false;
 
 const state = {
@@ -115,6 +120,7 @@ function draw() {
   const ox = (cssW - dw) / 2;
   const oy = (cssH - dh) / 2;
   ctx.drawImage(offscreen, ox, oy, dw, dh);
+  currentOx = ox; currentOy = oy; currentScale = scale;
 }
 
 function fitCanvas() {
@@ -201,6 +207,17 @@ function floodFill(imageData, startX, startY, fr, fg, fb, fa) {
 }
 
 // ── Public helpers ────────────────────────────────────────────────────────────
+
+export function __getDrawGeometry() {
+  return { ox: currentOx, oy: currentOy, scale: currentScale,
+           sheetW: state.sheetW, sheetH: state.sheetH };
+}
+
+export function __getPixelColor(sx, sy) {
+  if (!offCtx || sx < 0 || sy < 0 || sx >= state.sheetW || sy >= state.sheetH) return null;
+  const px = offCtx.getImageData(sx, sy, 1, 1).data;
+  return '#' + [px[0], px[1], px[2]].map(v => v.toString(16).padStart(2, '0').toUpperCase()).join('');
+}
 
 export function __bindMemory(mem)          { MEMORY = mem; }
 export function __bindStringRuntime(env)   { stringRuntime = env; }

@@ -17,6 +17,10 @@ let __robotCanvas = null;
 let __drawerModule = null;
 let __drawerCanvas = null;
 let __painterModule = null;
+let __painterUI = null;
+let __painterRulerX = null;
+let __painterRulerY = null;
+let __painterStatus = null;
 let __painterCanvas = null;
 let __ioBound = false;
 const IO_PANE_COOKIE = 'q_io_pane';
@@ -1703,6 +1707,90 @@ function hideDrawerUI() {
   hideOutputPane();
 }
 
+// ── Painter ruler helpers ─────────────────────────────────────────────────────
+
+const PAINTER_RULER_H = 18;  // height of X ruler (horizontal strip)
+const PAINTER_RULER_W = 36;  // width of Y ruler (vertical strip, needs room for 4-digit labels)
+
+function painterNiceStep(x) {
+  if (x <= 0) return 1;
+  const exp = Math.pow(10, Math.floor(Math.log10(x)));
+  const f = x / exp;
+  if (f < 1.5) return exp;
+  if (f < 3.5) return 2 * exp;
+  if (f < 7.5) return 5 * exp;
+  return 10 * exp;
+}
+
+function drawPainterRulerX(cnv, geo, cursorSX) {
+  const w = cnv.offsetWidth, h = PAINTER_RULER_H;
+  if (w <= 0) return;
+  cnv.width = w; cnv.height = h;
+  const rc = cnv.getContext('2d');
+  rc.fillStyle = '#252526';
+  rc.fillRect(0, 0, w, h);
+  if (geo && geo.scale > 0) {
+    const step = painterNiceStep(60 / geo.scale);
+    const start = Math.ceil(-geo.ox / geo.scale / step) * step;
+    rc.strokeStyle = '#555'; rc.fillStyle = '#888';
+    rc.font = '9px monospace'; rc.textBaseline = 'top';
+    for (let sx = start; sx <= geo.sheetW + step; sx += step) {
+      const cx = Math.round(geo.ox + sx * geo.scale) + 0.5;
+      if (cx < 0 || cx > w) continue;
+      rc.beginPath(); rc.moveTo(cx, h - 5); rc.lineTo(cx, h); rc.stroke();
+      rc.textAlign = 'center';
+      if (sx >= 0) rc.fillText(String(sx), cx, 1);
+    }
+    if (cursorSX >= 0) {
+      const cx = Math.round(geo.ox + cursorSX * geo.scale) + 0.5;
+      if (cx >= 0 && cx <= w) {
+        rc.strokeStyle = 'rgba(255,200,0,0.85)'; rc.lineWidth = 1;
+        rc.beginPath(); rc.moveTo(cx, 0); rc.lineTo(cx, h); rc.stroke();
+      }
+    }
+  }
+  rc.strokeStyle = '#383838'; rc.lineWidth = 1;
+  rc.strokeRect(0.5, 0.5, w - 1, h - 1);
+}
+
+function drawPainterRulerY(cnv, geo, cursorSY) {
+  const w = PAINTER_RULER_W, h = cnv.offsetHeight;
+  if (h <= 0) return;
+  cnv.width = w; cnv.height = h;
+  const rc = cnv.getContext('2d');
+  rc.fillStyle = '#252526';
+  rc.fillRect(0, 0, w, h);
+  if (geo && geo.scale > 0) {
+    const step = painterNiceStep(60 / geo.scale);
+    const start = Math.ceil(-geo.oy / geo.scale / step) * step;
+    rc.strokeStyle = '#555'; rc.fillStyle = '#888';
+    rc.font = '9px monospace'; rc.textAlign = 'right'; rc.textBaseline = 'middle';
+    for (let sy = start; sy <= geo.sheetH + step; sy += step) {
+      const cy = Math.round(geo.oy + sy * geo.scale) + 0.5;
+      if (cy < 0 || cy > h) continue;
+      rc.beginPath(); rc.moveTo(w - 5, cy); rc.lineTo(w, cy); rc.stroke();
+      if (sy >= 0) rc.fillText(String(sy), w - 6, cy);
+    }
+    if (cursorSY >= 0) {
+      const cy = Math.round(geo.oy + cursorSY * geo.scale) + 0.5;
+      if (cy >= 0 && cy <= h) {
+        rc.strokeStyle = 'rgba(255,200,0,0.85)'; rc.lineWidth = 1;
+        rc.beginPath(); rc.moveTo(0, cy); rc.lineTo(w, cy); rc.stroke();
+      }
+    }
+  }
+  rc.strokeStyle = '#383838'; rc.lineWidth = 1;
+  rc.strokeRect(0.5, 0.5, w - 1, h - 1);
+}
+
+function updatePainterRulers(cursorSX, cursorSY) {
+  if (!__painterModule || !__painterRulerX || !__painterRulerY) return;
+  const geo = typeof __painterModule.__getDrawGeometry === 'function'
+    ? __painterModule.__getDrawGeometry() : null;
+  drawPainterRulerX(__painterRulerX, geo, cursorSX);
+  drawPainterRulerY(__painterRulerY, geo, cursorSY);
+}
+
 function ensurePainterUI() {
   showOutputPane();
   const out = document.getElementById('output');
@@ -1743,22 +1831,111 @@ function ensurePainterUI() {
   __turtleToggle.querySelectorAll('input[name="q-out-mode"]').forEach(r => { r.checked = (r.value === targetMode); });
 
   if (!__painterCanvas) {
+    // Wrapper: flex column, takes all remaining pane space
+    const ui = document.createElement('div');
+    ui.id = 'painter-ui';
+    ui.style.display = 'none';
+    ui.style.flex = '1';
+    ui.style.minHeight = '0';
+    ui.style.flexDirection = 'column';
+
+    // Top row: corner + X ruler
+    const topRow = document.createElement('div');
+    topRow.style.display = 'flex';
+    topRow.style.flexShrink = '0';
+
+    const corner = document.createElement('div');
+    corner.style.width = PAINTER_RULER_W + 'px';
+    corner.style.height = PAINTER_RULER_H + 'px';
+    corner.style.flexShrink = '0';
+    corner.style.background = '#252526';
+    corner.style.borderRight = '1px solid #383838';
+    corner.style.borderBottom = '1px solid #383838';
+    corner.style.boxSizing = 'border-box';
+
+    const rulerX = document.createElement('canvas');
+    rulerX.id = 'painter-ruler-x';
+    rulerX.style.flex = '1';
+    rulerX.style.height = PAINTER_RULER_H + 'px';
+    rulerX.style.display = 'block';
+    rulerX.style.minWidth = '0';
+
+    topRow.appendChild(corner);
+    topRow.appendChild(rulerX);
+    __painterRulerX = rulerX;
+
+    // Mid row: Y ruler + main canvas
+    const midRow = document.createElement('div');
+    midRow.style.display = 'flex';
+    midRow.style.flex = '1';
+    midRow.style.minHeight = '0';
+
+    const rulerY = document.createElement('canvas');
+    rulerY.id = 'painter-ruler-y';
+    rulerY.style.width = PAINTER_RULER_W + 'px';
+    rulerY.style.flexShrink = '0';
+    rulerY.style.display = 'block';
+
     const cnv = document.createElement('canvas');
     cnv.id = 'painter-canvas';
-    cnv.style.display = 'none';
-    cnv.style.width = '100%';
     cnv.style.flex = '1';
     cnv.style.minHeight = '0';
+    cnv.style.minWidth = '0';
     cnv.style.background = '#1b1b1b';
-    cnv.style.border = '1px solid #2b2b2b44';
-    cnv.style.borderRadius = '4px';
-    out.parentNode.insertBefore(cnv, out.nextSibling);
+    cnv.style.borderRadius = '0 4px 4px 0';
+
+    midRow.appendChild(rulerY);
+    midRow.appendChild(cnv);
+    __painterRulerY = rulerY;
     __painterCanvas = cnv;
+
+    // Status bar
+    const status = document.createElement('div');
+    status.id = 'painter-status';
+    status.style.flexShrink = '0';
+    status.style.height = '18px';
+    status.style.lineHeight = '18px';
+    status.style.background = '#252526';
+    status.style.borderTop = '1px solid #383838';
+    status.style.padding = '0 6px';
+    status.style.fontSize = '11px';
+    status.style.fontFamily = 'monospace';
+    status.style.color = '#aaa';
+    status.style.boxSizing = 'border-box';
+    __painterStatus = status;
+
+    ui.appendChild(topRow);
+    ui.appendChild(midRow);
+    ui.appendChild(status);
+    __painterUI = ui;
+
+    out.parentNode.insertBefore(ui, out.nextSibling);
+
+    cnv.addEventListener('mousemove', (e) => {
+      if (!__painterModule) return;
+      const geo = typeof __painterModule.__getDrawGeometry === 'function'
+        ? __painterModule.__getDrawGeometry() : null;
+      if (!geo) return;
+      const sx = Math.floor((e.offsetX - geo.ox) / geo.scale);
+      const sy = Math.floor((e.offsetY - geo.oy) / geo.scale);
+      updatePainterRulers(sx, sy);
+      if (__painterStatus) {
+        const hex = typeof __painterModule.__getPixelColor === 'function'
+          ? __painterModule.__getPixelColor(sx, sy) : null;
+        __painterStatus.textContent = hex
+          ? `x: ${sx}  y: ${sy}  ${hex}`
+          : (sx >= 0 && sy >= 0 ? `x: ${sx}  y: ${sy}` : '');
+      }
+    });
+    cnv.addEventListener('mouseleave', () => {
+      updatePainterRulers(-1, -1);
+      if (__painterStatus) __painterStatus.textContent = '';
+    });
   }
 }
 
 function hidePainterUI() {
-  if (__painterCanvas) __painterCanvas.style.display = 'none';
+  if (__painterUI) __painterUI.style.display = 'none';
   if (__turtleToggle) __turtleToggle.style.display = 'none';
   const out = document.getElementById('output');
   if (out) out.style.display = '';
@@ -1927,7 +2104,7 @@ function setCompilerOutputMode(mode) {
   if (__turtleCanvas)  __turtleCanvas.style.display  = 'none';
   if (__robotCanvas)   __robotCanvas.style.display    = 'none';
   if (__drawerCanvas)  __drawerCanvas.style.display   = 'none';
-  if (__painterCanvas) __painterCanvas.style.display  = 'none';
+  if (__painterUI)     __painterUI.style.display      = 'none';
 
   if (__compilerOutputMode === 'turtle') {
     if (out) out.style.display = 'none';
@@ -1943,8 +2120,9 @@ function setCompilerOutputMode(mode) {
     try { if (__drawerModule && typeof __drawerModule.__onCanvasShown === 'function') __drawerModule.__onCanvasShown(); } catch {}
   } else if (__compilerOutputMode === 'painter') {
     if (out) out.style.display = 'none';
-    if (__painterCanvas) __painterCanvas.style.display = 'block';
+    if (__painterUI) __painterUI.style.display = 'flex';
     try { if (__painterModule && typeof __painterModule.__onCanvasShown === 'function') __painterModule.__onCanvasShown(); } catch {}
+    updatePainterRulers(-1, -1);
   } else {
     if (out) out.style.display = '';
   }
