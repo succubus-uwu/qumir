@@ -1440,8 +1440,9 @@ function ensureTurtleUI() {
     cnv.id = 'turtle-canvas';
     cnv.style.display = 'none';
     cnv.style.width = '100%';
-    cnv.style.height = '100%';
-    cnv.style.background = '#fff';
+    cnv.style.flex = '1';
+    cnv.style.minHeight = '0';
+    cnv.style.background = '#1b1b1b';
     cnv.style.border = '1px solid #2b2b2b44';
     cnv.style.borderRadius = '4px';
     out.parentNode.insertBefore(cnv, out.nextSibling);
@@ -1606,8 +1607,9 @@ function ensureRobotUI() {
     cnv.id = 'robot-canvas';
     cnv.style.display = 'none';
     cnv.style.width = '100%';
-    cnv.style.height = '100%';
-    cnv.style.background = '#fff';
+    cnv.style.flex = '1';
+    cnv.style.minHeight = '0';
+    cnv.style.background = '#1b1b1b';
     cnv.style.border = '1px solid #2b2b2b44';
     cnv.style.borderRadius = '4px';
     out.parentNode.insertBefore(cnv, out.nextSibling);
@@ -1682,8 +1684,9 @@ function ensureDrawerUI() {
     cnv.id = 'drawer-canvas';
     cnv.style.display = 'none';
     cnv.style.width = '100%';
-    cnv.style.height = '100%';
-    cnv.style.background = '#fff';
+    cnv.style.flex = '1';
+    cnv.style.minHeight = '0';
+    cnv.style.background = '#1b1b1b';
     cnv.style.border = '1px solid #2b2b2b44';
     cnv.style.borderRadius = '4px';
     out.parentNode.insertBefore(cnv, out.nextSibling);
@@ -1744,8 +1747,9 @@ function ensurePainterUI() {
     cnv.id = 'painter-canvas';
     cnv.style.display = 'none';
     cnv.style.width = '100%';
-    cnv.style.height = '100%';
-    cnv.style.background = '#fff';
+    cnv.style.flex = '1';
+    cnv.style.minHeight = '0';
+    cnv.style.background = '#1b1b1b';
     cnv.style.border = '1px solid #2b2b2b44';
     cnv.style.borderRadius = '4px';
     out.parentNode.insertBefore(cnv, out.nextSibling);
@@ -1927,19 +1931,19 @@ function setCompilerOutputMode(mode) {
 
   if (__compilerOutputMode === 'turtle') {
     if (out) out.style.display = 'none';
-    if (__turtleCanvas) __turtleCanvas.style.display = '';
+    if (__turtleCanvas) __turtleCanvas.style.display = 'block';
     try { if (__turtleModule && typeof __turtleModule.__onCanvasShown === 'function') __turtleModule.__onCanvasShown(); } catch {}
   } else if (__compilerOutputMode === 'robot') {
     if (out) out.style.display = 'none';
-    if (__robotCanvas) __robotCanvas.style.display = '';
+    if (__robotCanvas) __robotCanvas.style.display = 'block';
     renderRobotField();
   } else if (__compilerOutputMode === 'drawer') {
     if (out) out.style.display = 'none';
-    if (__drawerCanvas) __drawerCanvas.style.display = '';
+    if (__drawerCanvas) __drawerCanvas.style.display = 'block';
     try { if (__drawerModule && typeof __drawerModule.__onCanvasShown === 'function') __drawerModule.__onCanvasShown(); } catch {}
   } else if (__compilerOutputMode === 'painter') {
     if (out) out.style.display = 'none';
-    if (__painterCanvas) __painterCanvas.style.display = '';
+    if (__painterCanvas) __painterCanvas.style.display = 'block';
     try { if (__painterModule && typeof __painterModule.__onCanvasShown === 'function') __painterModule.__onCanvasShown(); } catch {}
   } else {
     if (out) out.style.display = '';
