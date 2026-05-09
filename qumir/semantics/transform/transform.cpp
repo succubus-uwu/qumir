@@ -5,7 +5,7 @@
 #include <qumir/semantics/type_annotation/type_annotation.h>
 #include <qumir/semantics/definite_assignment/definite_assignment.h>
 
-#include <iostream>
+#include <algorithm>
 #include <limits>
 #include <sstream>
 
@@ -74,7 +74,33 @@ std::expected<bool, TError> PostTypeAnnotationTransform(NAst::TExprPtr& expr, NS
     std::list<TError> errors;
     bool changed = TransformAst(expr, expr,
         [&](const NAst::TExprPtr& node) -> NAst::TExprPtr {
-            // Transform string element assignment: s[i] = 'c' => s = str_replace_sym(s, 'c', i)
+            // Inline substitution: replace TCallExpr to functions with InlineFactory with their AST.
+        // Args must be annotated (Type set) so the factory receives typed expressions.
+        // The loop then re-runs type annotation on the replacement.
+        if (auto maybeCall = NAst::TMaybeNode<NAst::TCallExpr>(node)) {
+            auto call = maybeCall.Cast();
+            if (call->Type) { // only inline already-annotated calls
+                if (auto maybeIdent = NAst::TMaybeNode<NAst::TIdentExpr>(call->Callee)) {
+                    auto symId = context.Lookup(maybeIdent.Cast()->Name, NSemantics::TScopeId{0});
+                    if (symId) {
+                        auto symNode = context.GetSymbolNode(NSemantics::TSymbolId{symId->Id});
+                        if (auto maybeFunDecl = NAst::TMaybeNode<NAst::TFunDecl>(symNode)) {
+                            auto funDecl = maybeFunDecl.Cast();
+                            if (funDecl->InlineFactory) {
+                                bool argsReady = std::all_of(call->Args.begin(), call->Args.end(),
+                                    [](const NAst::TExprPtr& a){ return a && a->Type; });
+                                if (argsReady) {
+                                    return (*funDecl->InlineFactory)(call->Args);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return node;
+        }
+
+        // Transform string element assignment: s[i] = 'c' => s = str_replace_sym(s, 'c', i)
             if (auto maybeArrayAssign = NAst::TMaybeNode<NAst::TArrayAssignExpr>(node)) {
                 auto arrayAssign = maybeArrayAssign.Cast();
                 auto unrefType = UnwrapReferenceType(arrayAssign->Value->Type);

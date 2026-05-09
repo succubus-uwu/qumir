@@ -183,11 +183,6 @@ TExprPtr InsertImplicitCastIfNeeded(TExprPtr expr, TTypePtr toType, NSemantics::
     }
 
     if (auto synthName = ctx->GetCast(expr->Type, toType)) {
-        // If the cast function has an inline factory, apply it directly so the
-        // result is proper AST (not a pre-typed TCallExpr that bypasses annotation).
-        if (auto replacement = TryInlineByName(*synthName, {expr}, *ctx, NSemantics::TScopeId{0})) {
-            return replacement;
-        }
         auto callee = std::make_shared<TIdentExpr>(expr->Location, *synthName);
         callee->Type = std::make_shared<TFunctionType>(
             std::vector<TTypePtr>{expr->Type}, toType);
@@ -200,18 +195,15 @@ TExprPtr InsertImplicitCastIfNeeded(TExprPtr expr, TTypePtr toType, NSemantics::
     return MakeCast(std::move(expr), std::move(toType));
 }
 
-// Always re-annotates the inline replacement so all children get proper types/FieldIndex,
-// even if the top-level Type is already set (e.g. TCastExpr sets Type in its constructor).
+// Annotates expr if its Type is not yet set (i.e. came from an inline factory replacement).
 TTask AnnotateIfNeeded(TExprPtr expr, NSemantics::TNameResolver& ctx, NSemantics::TScopeId scopeId) {
+    if (expr->Type) co_return expr;
     co_return co_await DoAnnotate(expr, ctx, scopeId);
 }
 
 TExprPtr MakeModuleOpCall(const std::string& synthName, std::vector<TExprPtr> args,
     TTypePtr returnType, TLocation loc, NSemantics::TNameResolver& ctx)
 {
-    if (auto replacement = TryInlineByName(synthName, args, ctx, NSemantics::TScopeId{0})) {
-        return replacement;
-    }
     auto callee = std::make_shared<TIdentExpr>(loc, synthName);
     std::vector<TTypePtr> argTypes;
     for (auto& a : args) argTypes.push_back(a->Type);
@@ -667,11 +659,6 @@ TTask AnnotateCall(std::shared_ptr<TCallExpr> call, NSemantics::TNameResolver& c
         }
         call->Type = maybeFunType.Cast()->ReturnType;
 
-        if (auto maybeIdent = TMaybeNode<TIdentExpr>(call->Callee)) {
-            if (auto replacement = TryInlineByName(maybeIdent.Cast()->Name, call->Args, context, scopeId)) {
-                co_return co_await AnnotateIfNeeded(replacement, context, scopeId);
-            }
-        }
     } else {
         call->Type = call->Callee->Type;
     }

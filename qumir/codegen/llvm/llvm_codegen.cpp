@@ -726,7 +726,22 @@ llvm::Value* TLLVMCodeGen::LowerInstr(const NIR::TInstr& instr, NIR::TModule& mo
             // TInstr: Dest = result ptr, Operands[0] = size imm (raw IR layout, not compiled VM layout)
             int64_t sizeBytes = instr.Operands[0].Imm.Value;
             auto* allocaTy = llvm::ArrayType::get(llvm::Type::getInt8Ty(ctx), sizeBytes);
+
+            // WebAssembly lowers alloca at its instruction site into stack-pointer
+            // movement. If salloc is emitted in a loop, O0 grows the stack on every
+            // iteration. Place these fixed-size temporaries in the entry block so
+            // each IR temporary has one stack slot per function invocation.
+            llvm::IRBuilderBase::InsertPoint savedIp = irb->saveIP();
+            auto* entry = &CurFun->LFun->getEntryBlock();
+            auto insertBefore = entry->getFirstNonPHIOrDbgOrAlloca();
+            if (insertBefore != entry->end()) {
+                irb->SetInsertPoint(entry, insertBefore);
+            } else {
+                irb->SetInsertPoint(entry);
+            }
             auto* alloca = irb->CreateAlloca(allocaTy, nullptr, "salloc");
+            irb->restoreIP(savedIp);
+
             irb->CreateMemSet(alloca,
                 llvm::ConstantInt::get(llvm::Type::getInt8Ty(ctx), 0),
                 llvm::ConstantInt::get(i64, sizeBytes, false),
