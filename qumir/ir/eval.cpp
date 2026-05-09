@@ -114,7 +114,8 @@ std::optional<std::string> TInterpreter::DoEval(TFunction& function, std::vector
 
     std::optional<std::string> result;
     std::optional<int64_t> retVal;
-    auto materializeStructTmp = [&](const TExecFunc* exec, int32_t tmpIdx, const void* src) -> std::optional<int64_t> {
+    auto materializeStructTmp = [&](const TFrame& targetFrame, int32_t tmpIdx, const void* src) -> std::optional<int64_t> {
+        const TExecFunc* exec = targetFrame.Exec;
         if (!exec || tmpIdx < 0 || tmpIdx >= (int32_t)exec->TmpTypeIds.size()) {
             return std::nullopt;
         }
@@ -122,15 +123,21 @@ std::optional<std::string> TInterpreter::DoEval(TFunction& function, std::vector
         if (typeId < 0 || Module.Types.GetKind(typeId) != EKind::Struct) {
             return std::nullopt;
         }
-        const size_t size = static_cast<size_t>(Module.Types.SizeInBytes(typeId));
-        Runtime.StructTemps.emplace_back(size);
-        auto& temp = Runtime.StructTemps.back();
-        if (src) {
-            std::memcpy(temp.data(), src, size);
-        } else {
-            std::memset(temp.data(), 0, size);
+        if (tmpIdx >= (int32_t)exec->TmpFrameOffsets.size()
+            || exec->TmpFrameOffsets[tmpIdx] < 0)
+        {
+            throw std::runtime_error("struct temporary has no frame storage");
         }
-        return reinterpret_cast<int64_t>(temp.data());
+        const size_t size = static_cast<size_t>(Module.Types.SizeInBytes(typeId));
+        const size_t byteOffset = targetFrame.StackBase + exec->TmpFrameOffsets[tmpIdx];
+        assert(byteOffset + size <= Runtime.Stack.size());
+        char* temp = Runtime.Stack.data() + byteOffset;
+        if (src) {
+            std::memcpy(temp, src, size);
+        } else {
+            std::memset(temp, 0, size);
+        }
+        return reinterpret_cast<int64_t>(temp);
     };
 
     while (!callStack.empty()) {
@@ -156,14 +163,13 @@ std::optional<std::string> TInterpreter::DoEval(TFunction& function, std::vector
             break;
         }
         case EVMOp::SAlloc: {
-            // TODO: allocate on Runtime.Stack instead of StructTemps so memory is reclaimed
-            // when the function returns rather than accumulating for the entire call duration.
-            // StructTemps is safe from pointer invalidation on emplace_back because inner
-            // vectors' heap data is not moved (only ownership is transferred), but allocations
-            // inside loops will accumulate until the outermost DoEval frame exits.
-            int64_t size = instr.Operands[1].Imm.Value;
-            Runtime.StructTemps.emplace_back(static_cast<size_t>(size), char(0));
-            int64_t addr = reinterpret_cast<int64_t>(Runtime.StructTemps.back().data());
+            const size_t offset = static_cast<size_t>(instr.Operands[1].Imm.Value);
+            const size_t size = static_cast<size_t>(instr.Operands[2].Imm.Value);
+            const size_t byteOffset = frame.StackBase + offset;
+            assert(byteOffset + size <= Runtime.Stack.size());
+            char* addrPtr = Runtime.Stack.data() + byteOffset;
+            std::memset(addrPtr, 0, size);
+            int64_t addr = reinterpret_cast<int64_t>(addrPtr);
             Runtime.Regs[instr.Operands[0].Tmp.Idx] = addr;
             break;
         }
@@ -430,7 +436,7 @@ std::optional<std::string> TInterpreter::DoEval(TFunction& function, std::vector
             void* addr = reinterpret_cast<void*>(instr.Operands[1].Imm.Value);
             TPacked func = reinterpret_cast<TPacked>(addr);
             const int32_t dstTmp = instr.Operands[0].Tmp.Idx;
-            auto structDst = materializeStructTmp(frame.Exec, dstTmp, nullptr);
+            auto structDst = materializeStructTmp(frame, dstTmp, nullptr);
             if (structDst) {
                 Runtime.Args.insert(Runtime.Args.begin(), *structDst);
             }
@@ -507,7 +513,7 @@ std::optional<std::string> TInterpreter::DoEval(TFunction& function, std::vector
                 std::optional<int64_t> materializedRet;
                 if (retVal.has_value()) {
                     materializedRet = materializeStructTmp(
-                        callerFrame.Exec, link.CallerDst, reinterpret_cast<const void*>(*retVal));
+                        callerFrame, link.CallerDst, reinterpret_cast<const void*>(*retVal));
                 }
 
                 Runtime.Stack.resize(base);

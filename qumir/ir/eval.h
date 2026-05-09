@@ -4,7 +4,6 @@
 #include "vmcompiler.h"
 
 #include <cstdint>
-#include <deque>
 #include <ostream>
 #include <vector>
 
@@ -17,7 +16,6 @@ struct TRuntime {
     std::vector<int64_t> Args; // call arguments, will be copied on stack on call, TODO: remove
     std::vector<int64_t> Regs;
     std::vector<int64_t> SavedRegs;
-    std::deque<std::vector<char>> StructTemps; // backing storage for VM packed struct values
 };
 
 struct TExecFunc;

@@ -53,15 +53,46 @@ void TVMCompiler::CompileUltraLow(const TFunction& function, TExecFunc& funcOut)
         labelToLastPC[block.Label.Idx] = code.size() - 1;
     }
 
-    // Compute byte offset for each local variable (IR var index → byte offset in frame)
+    // Compute byte offset for each local variable and address-backed temporary.
+    // VM pointers must refer to memory owned by the current call frame; allocating
+    // per instruction would make struct-heavy loops grow runtime-owned buffers.
     std::vector<int> localByteOffsets;
     {
         int offset = 0;
+        auto alignTo8 = [](int value) {
+            return (value + 7) & ~7;
+        };
         for (int typeId : function.LocalTypes) {
+            offset = alignTo8(offset);
             localByteOffsets.push_back(offset);
             offset += Module.Types.SizeInBytes(typeId);
         }
-        funcOut.NumLocals = offset; // frame size in bytes
+
+        funcOut.TmpFrameOffsets.assign(function.TmpTypes.size(), -1);
+        for (int tmpIdx = 0; tmpIdx < (int)function.TmpTypes.size(); ++tmpIdx) {
+            const int typeId = function.TmpTypes[tmpIdx];
+            if (typeId >= 0 && Module.Types.GetKind(typeId) == EKind::Struct) {
+                offset = alignTo8(offset);
+                funcOut.TmpFrameOffsets[tmpIdx] = offset;
+                offset += Module.Types.SizeInBytes(typeId);
+            }
+        }
+
+        for (const auto& block : function.Blocks) {
+            for (const auto& instr : block.Instrs) {
+                if (instr.Op != "salloc"_op || instr.Dest.Idx < 0 || instr.OperandCount != 1) {
+                    continue;
+                }
+                offset = alignTo8(offset);
+                if (instr.Dest.Idx >= (int)funcOut.TmpFrameOffsets.size()) {
+                    funcOut.TmpFrameOffsets.resize(instr.Dest.Idx + 1, -1);
+                }
+                funcOut.TmpFrameOffsets[instr.Dest.Idx] = offset;
+                offset += static_cast<int>(instr.Operands[0].Imm.Value);
+            }
+        }
+
+        funcOut.NumLocals = alignTo8(offset); // frame size in bytes
     }
 
     // Populate ArgByteOffsets and ArgTypeIds for eval
@@ -161,6 +192,14 @@ void TVMCompiler::CompileUltraLow(const TFunction& function, TExecFunc& funcOut)
             case "salloc"_op: {
                 require(ins, 1, 1);
                 out.Op = EVMOp::SAlloc;
+                const int tmpIdx = ins.Dest.Idx;
+                if (tmpIdx < 0 || tmpIdx >= (int)funcOut.TmpFrameOffsets.size()
+                    || funcOut.TmpFrameOffsets[tmpIdx] < 0)
+                {
+                    throw std::runtime_error("salloc temporary has no frame storage");
+                }
+                out.Operands[1] = TUntypedImm{funcOut.TmpFrameOffsets[tmpIdx]};
+                out.Operands[2] = TUntypedImm{ins.Operands[0].Imm.Value};
                 break;
             }
             case "ste"_op: {

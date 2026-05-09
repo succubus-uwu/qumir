@@ -73,7 +73,7 @@ enum class EVMOp : uint8_t {
     Lea, // load effective address (a = &i)
     Copy,        // copy(dst_ptr, src, size_bytes_imm); src may be a pointer or packed value
     StructStore, // struct_store(dst_local, src_tmp, size_imm) — memcpy from Tmp into Local frame slot
-    SAlloc,      // salloc(dst_tmp, size_imm) — allocate zeroed bytes, return pointer (lives for call duration)
+    SAlloc,      // salloc(dst_tmp, frame_offset_imm, size_imm) — zero frame storage and return its address
 };
 
 std::ostream& operator<<(std::ostream& os, EVMOp op);

@@ -15,6 +15,7 @@ struct TExecFunc {
     std::vector<int> ArgByteOffsets; // byte offset of each argument local in the frame
     std::vector<int> ArgTypeIds;     // IR typeId of each argument (eval uses SizeInBytes to handle struct)
     std::vector<int> TmpTypeIds;     // IR typeId of each tmp (eval uses it for VM-only packed ABI)
+    std::vector<int> TmpFrameOffsets; // optional frame storage for address-backed tmp values
 };
 
 class TVMCompiler {
