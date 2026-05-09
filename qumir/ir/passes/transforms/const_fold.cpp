@@ -1,5 +1,7 @@
 #include "const_fold.h"
 
+#include <bit>
+#include <type_traits>
 #include <unordered_map>
 
 namespace NQumir {
@@ -69,18 +71,47 @@ void ConstFold(TFunction& function, TModule& module) {
             if (v2 == 0) return std::nullopt;
             return v1 / v2;
         }
+        if constexpr (std::is_integral_v<decltype(v1)>) {
+            if (op == "&"_op) return v1 & v2;
+            if (op == "|"_op) return v1 | v2;
+            if (op == "xor"_op) return v1 ^ v2;
+            if (op == "<<"_op) {
+                auto lhs = static_cast<uint64_t>(v1);
+                auto shift = static_cast<uint64_t>(v2) & 63;
+                return static_cast<decltype(v1)>(lhs << shift);
+            }
+            if (op == ">>"_op) {
+                auto shift = static_cast<uint64_t>(v2) & 63;
+                return static_cast<decltype(v1)>(v1 >> shift);
+            }
+        }
         return std::nullopt;
     };
 
     auto processInstr = [&](TInstr& instr) -> bool {
         auto& op = instr.Op;
         if (!(op == "+"_op || op == "-"_op ||
-            op == "*"_op || op == "/"_op))
+            op == "*"_op || op == "/"_op ||
+            op == "&"_op || op == "|"_op || op == "xor"_op ||
+            op == "<<"_op || op == ">>"_op || op == "~"_op))
         {
             return false;
         }
 
         auto destTypeId = function.GetType(instr.Dest);
+
+        if (op == "~"_op) {
+            if (instr.OperandCount != 1 || instr.Operands[0].Type != TOperand::EType::Imm) {
+                return false;
+            }
+            if (!module.Types.IsInteger(instr.Operands[0].Imm.TypeId)) {
+                return false;
+            }
+            auto v = std::bit_cast<int64_t>(~static_cast<uint64_t>(instr.Operands[0].Imm.Value));
+            replaceTmpWithOp(instr.Dest, TImm{v, destTypeId});
+            instr.Clear();
+            return true;
+        }
 
         if (instr.Operands[0].Type == TOperand::EType::Imm &&
             instr.Operands[1].Type == TOperand::EType::Imm)

@@ -10,6 +10,7 @@
 #include <qumir/ir/builder.h>
 #include <qumir/ir/lowering/lower_ast.h>
 #include <qumir/ir/eval.h>
+#include <qumir/ir/passes/transforms/pipeline.h>
 #include <qumir/codegen/llvm/llvm_codegen.h>
 #include <qumir/codegen/llvm/llvm_runner.h>
 
@@ -23,6 +24,7 @@ namespace {
 struct TRunResult {
     std::string output;
     std::string error;
+    std::string ir;
     bool ok() const { return error.empty(); }
 };
 
@@ -35,7 +37,8 @@ TRunResult RunWithInjection(
     const std::string& src,
     size_t insertAt,
     std::vector<TExprPtr> injected,
-    EBackend backend = EBackend::VM)
+    EBackend backend = EBackend::VM,
+    bool optimizeIr = false)
 {
     NSemantics::TNameResolver resolver;
     auto sysMod = std::make_shared<NRegistry::SystemModule>();
@@ -81,6 +84,14 @@ TRunResult RunWithInjection(
 
     auto* mainFun = module.GetEntryPoint();
     if (!mainFun) return {{}, "no main function"};
+    if (optimizeIr) {
+        NIR::NPasses::Pipeline(module);
+        mainFun = module.GetEntryPoint();
+        if (!mainFun) return {{}, "no main function after optimization"};
+    }
+
+    std::ostringstream ir;
+    module.Print(ir);
 
     std::ostringstream out;
     NRuntime::SetOutputStream(&out);
@@ -103,10 +114,10 @@ TRunResult RunWithInjection(
         }
     } catch (const std::exception& e) {
         NRuntime::SetOutputStream(nullptr);
-        return {{}, std::string("runtime error: ") + e.what()};
+        return {{}, std::string("runtime error: ") + e.what(), ir.str()};
     }
     NRuntime::SetOutputStream(nullptr);
-    return {out.str(), {}};
+    return {out.str(), {}, ir.str()};
 }
 
 TExprPtr num(int64_t value) {
@@ -129,9 +140,9 @@ TExprPtr assignX(TExprPtr value) {
     return std::make_shared<TAssignExpr>(TLocation{}, "x", std::move(value));
 }
 
-TRunResult RunBitExpr(TExprPtr expr, EBackend backend = EBackend::VM) {
+TRunResult RunBitExpr(TExprPtr expr, EBackend backend = EBackend::VM, bool optimizeIr = false) {
     const std::string src = "алг\nнач\n  цел x\n  вывод x, нс\nкон\n";
-    return RunWithInjection(src, 1, {assignX(std::move(expr))}, backend);
+    return RunWithInjection(src, 1, {assignX(std::move(expr))}, backend, optimizeIr);
 }
 
 } // namespace
@@ -181,6 +192,23 @@ TEST(BitOps, LLVMExecutesBinaryOps) {
 
 TEST(BitOps, LLVMExecutesUnaryBitNot) {
     ExpectUnaryBitNot(EBackend::LLVM);
+}
+
+TEST(BitOps, ConstFoldEliminatesLiteralBitOps) {
+    auto expr = binary("xor",
+        binary("|",
+            binary("&", num(6), num(3)),
+            binary("<<", num(1), num(8))),
+        unary("~", num(0)));
+
+    auto result = RunBitExpr(std::move(expr), EBackend::VM, true);
+    ASSERT_TRUE(result.ok()) << result.error;
+    EXPECT_EQ(result.output, "-259\n");
+    EXPECT_EQ(result.ir.find(" & "), std::string::npos) << result.ir;
+    EXPECT_EQ(result.ir.find(" | "), std::string::npos) << result.ir;
+    EXPECT_EQ(result.ir.find(" xor "), std::string::npos) << result.ir;
+    EXPECT_EQ(result.ir.find(" << "), std::string::npos) << result.ir;
+    EXPECT_EQ(result.ir.find(" ~ "), std::string::npos) << result.ir;
 }
 
 TEST(BitOps, TypeRejectsNonIntegerOperands) {
