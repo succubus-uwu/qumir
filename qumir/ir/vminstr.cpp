@@ -7,12 +7,19 @@ std::ostream& operator<<(std::ostream& os, EVMOp op) {
     switch (op) {
     case EVMOp::INeg: return os << "INeg";
     case EVMOp::INot: return os << "INot";
+    case EVMOp::IBitNot: return os << "IBitNot";
     case EVMOp::IAdd: return os << "IAdd";
     case EVMOp::ISub: return os << "ISub";
     case EVMOp::IMulS: return os << "IMulS";
     case EVMOp::IMulU: return os << "IMulU";
     case EVMOp::IDivS: return os << "IDivS";
     case EVMOp::IDivU: return os << "IDivU";
+    case EVMOp::IAnd: return os << "IAnd";
+    case EVMOp::IOr: return os << "IOr";
+    case EVMOp::IXor: return os << "IXor";
+    case EVMOp::IShl: return os << "IShl";
+    case EVMOp::IShrS: return os << "IShrS";
+    case EVMOp::IShrU: return os << "IShrU";
     case EVMOp::ICmpLTS: return os << "ICmpLTS";
     case EVMOp::ICmpLTU: return os << "ICmpLTU";
     case EVMOp::ICmpGTS: return os << "ICmpGTS";

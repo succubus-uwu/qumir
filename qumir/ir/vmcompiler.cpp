@@ -155,6 +155,15 @@ void TVMCompiler::CompileUltraLow(const TFunction& function, TExecFunc& funcOut)
         }
     };
 
+    auto isSignedInteger = [&](int typeId) -> bool {
+        // The IR type table has unsigned kinds reserved, but source integer
+        // lowering currently produces signed integer kinds only.
+        return Module.Types.GetKind(typeId) != EKind::U8
+            && Module.Types.GetKind(typeId) != EKind::U16
+            && Module.Types.GetKind(typeId) != EKind::U32
+            && Module.Types.GetKind(typeId) != EKind::U64;
+    };
+
     auto ins2vm = [&](const TInstr& ins, TVMInstr& out) {
         int offset = 0;
         if (ins.Dest.Idx >= 0) {
@@ -255,6 +264,47 @@ void TVMCompiler::CompileUltraLow(const TFunction& function, TExecFunc& funcOut)
                 }
                 break;
             }
+            case '&'_op: {
+                require(ins, 1, 2);
+                if (Module.Types.IsFloat(typeId(out.Operands[0].Tmp))) {
+                    throw std::runtime_error("Bitwise '&' is not defined for float types");
+                }
+                out.Op = EVMOp::IAnd;
+                break;
+            }
+            case '|'_op: {
+                require(ins, 1, 2);
+                if (Module.Types.IsFloat(typeId(out.Operands[0].Tmp))) {
+                    throw std::runtime_error("Bitwise '|' is not defined for float types");
+                }
+                out.Op = EVMOp::IOr;
+                break;
+            }
+            case "xor"_op: {
+                require(ins, 1, 2);
+                if (Module.Types.IsFloat(typeId(out.Operands[0].Tmp))) {
+                    throw std::runtime_error("Bitwise 'xor' is not defined for float types");
+                }
+                out.Op = EVMOp::IXor;
+                break;
+            }
+            case "<<"_op: {
+                require(ins, 1, 2);
+                if (Module.Types.IsFloat(typeId(out.Operands[0].Tmp))) {
+                    throw std::runtime_error("Bitwise '<<' is not defined for float types");
+                }
+                out.Op = EVMOp::IShl;
+                break;
+            }
+            case ">>"_op: {
+                require(ins, 1, 2);
+                auto t = typeId(out.Operands[0].Tmp);
+                if (Module.Types.IsFloat(t)) {
+                    throw std::runtime_error("Bitwise '>>' is not defined for float types");
+                }
+                out.Op = isSignedInteger(t) ? EVMOp::IShrS : EVMOp::IShrU;
+                break;
+            }
             case '<'_op: {
                 require(ins, 1, 2);
                 auto cType = cmpType(ins);
@@ -337,6 +387,14 @@ void TVMCompiler::CompileUltraLow(const TFunction& function, TExecFunc& funcOut)
                 } else {
                     out.Op = EVMOp::INot;
                 }
+                break;
+            }
+            case '~'_op: {
+                require(ins, 1, 1);
+                if (Module.Types.IsFloat(typeId(out.Operands[0].Tmp))) {
+                    throw std::runtime_error("Bitwise '~' is not defined for float types");
+                }
+                out.Op = EVMOp::IBitNot;
                 break;
             }
             case "jmp"_op: {

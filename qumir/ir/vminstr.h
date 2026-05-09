@@ -11,12 +11,19 @@ enum class EVMOp : uint8_t {
     // integer ALU ops
     INeg, // unary -
     INot, // unary !
+    IBitNot, // unary ~
     IAdd, // +
     ISub, // -
     IMulS, // * signed
     IMulU, // * unsigned
     IDivS, // / signed
     IDivU, // / unsigned
+    IAnd, // &
+    IOr,  // |
+    IXor, // xor
+    IShl, // <<
+    IShrS, // >> signed
+    IShrU, // >> unsigned
     ICmpLTS, // < signed
     ICmpLTU, // < unsigned
     ICmpGTS, // > signed
