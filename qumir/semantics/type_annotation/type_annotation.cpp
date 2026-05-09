@@ -777,6 +777,38 @@ TTask AnnotateSlice(std::shared_ptr<TSliceExpr> sliceExpr, NSemantics::TNameReso
     co_return sliceExpr;
 }
 
+TTask AnnotateFieldAccess(std::shared_ptr<TFieldAccessExpr> fieldAccess, NSemantics::TNameResolver& context, NSemantics::TScopeId scopeId) {
+    fieldAccess->Object = co_await DoAnnotate(fieldAccess->Object, context, scopeId);
+    if (!fieldAccess->Object->Type) {
+        co_return TError(fieldAccess->Location, "Не удалось определить тип объекта в выражении обращения к полю '" + fieldAccess->FieldName + "'.");
+    }
+
+    auto objType = UnwrapNamedType(UnwrapReferenceType(fieldAccess->Object->Type));
+    auto maybeStruct = TMaybeType<TStructType>(objType);
+    if (!maybeStruct) {
+        co_return TError(fieldAccess->Location,
+            "Обращение к полю '" + fieldAccess->FieldName + "' невозможно: объект не является структурой (тип: " + std::string(fieldAccess->Object->Type->TypeName()) + ").");
+    }
+    auto structType = maybeStruct.Cast();
+
+    const auto& fields = structType->Fields;
+    for (int i = 0; i < static_cast<int>(fields.size()); ++i) {
+        if (fields[i].first == fieldAccess->FieldName) {
+            fieldAccess->FieldIndex = i;
+            fieldAccess->Type = fields[i].second;
+            co_return fieldAccess;
+        }
+    }
+
+    std::string available;
+    for (const auto& [name, _] : fields) {
+        if (!available.empty()) available += ", ";
+        available += name;
+    }
+    co_return TError(fieldAccess->Location,
+        "Поле '" + fieldAccess->FieldName + "' не найдено в структуре. Доступные поля: " + available + ".");
+}
+
 TTask DoAnnotate(TExprPtr expr, NSemantics::TNameResolver& context, NSemantics::TScopeId scopeId) {
     if (auto maybeNum = TMaybeNode<TNumberExpr>(expr)) {
         co_return AnnotateNumber(maybeNum.Cast());
@@ -806,6 +838,8 @@ TTask DoAnnotate(TExprPtr expr, NSemantics::TNameResolver& context, NSemantics::
         co_return co_await AnnotateIndex(maybeIndex.Cast(), context, scopeId);
     } else if (auto maybeSlice = TMaybeNode<TSliceExpr>(expr)) {
         co_return co_await AnnotateSlice(maybeSlice.Cast(), context, scopeId);
+    } else if (auto maybeFieldAccess = TMaybeNode<TFieldAccessExpr>(expr)) {
+        co_return co_await AnnotateFieldAccess(maybeFieldAccess.Cast(), context, scopeId);
     } else if (TMaybeNode<TBreakStmt>(expr)) {
         expr->Type = std::make_shared<TVoidType>();
         co_return expr;
