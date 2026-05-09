@@ -15,6 +15,7 @@ ut(test_name_resolver test_name_resolver.cpp)
 ut(test_cfg test_cfg.cpp)
 ut(test_reg test_reg.cpp ${CMAKE_SOURCE_DIR}/test/regtest)
 ut(test_field_access test_field_access.cpp)
+ut(test_bit_ops test_bit_ops.cpp)
 
 # JavaScript execution tests (Node.js required)
 find_program(NODE_EXECUTABLE node)

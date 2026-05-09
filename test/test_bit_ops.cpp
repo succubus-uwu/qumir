@@ -1,0 +1,159 @@
+#include <gtest/gtest.h>
+
+#include <qumir/parser/lexer.h>
+#include <qumir/parser/parser.h>
+#include <qumir/parser/ast.h>
+#include <qumir/semantics/name_resolution/name_resolver.h>
+#include <qumir/semantics/transform/transform.h>
+#include <qumir/modules/system/system.h>
+#include <qumir/runtime/io.h>
+#include <qumir/ir/builder.h>
+#include <qumir/ir/lowering/lower_ast.h>
+#include <qumir/ir/eval.h>
+
+#include <sstream>
+
+using namespace NQumir;
+using namespace NQumir::NAst;
+
+namespace {
+
+struct TRunResult {
+    std::string output;
+    std::string error;
+    bool ok() const { return error.empty(); }
+};
+
+TRunResult RunWithInjection(const std::string& src, size_t insertAt, std::vector<TExprPtr> injected) {
+    NSemantics::TNameResolver resolver;
+    auto sysMod = std::make_shared<NRegistry::SystemModule>();
+    resolver.RegisterModule(sysMod.get());
+    resolver.ImportModule(sysMod->Name());
+
+    std::istringstream in(src);
+    TTokenStream ts(in);
+    TParser p;
+    auto parsed = p.parse(ts, &resolver);
+    if (!parsed) return {{}, parsed.error().ToString()};
+    auto ast = std::move(parsed.value());
+
+    auto* topBlock = dynamic_cast<TBlockExpr*>(ast.get());
+    if (!topBlock) return {{}, "expected TBlockExpr at top level"};
+
+    TBlockExpr* funcBody = nullptr;
+    for (auto& stmt : topBlock->Stmts) {
+        if (auto* funDecl = dynamic_cast<TFunDecl*>(stmt.get())) {
+            funcBody = funDecl->Body.get();
+            break;
+        }
+    }
+    if (!funcBody) return {{}, "expected TFunDecl in top-level block"};
+
+    auto it = funcBody->Stmts.begin() + static_cast<ptrdiff_t>(insertAt);
+    funcBody->Stmts.insert(it, injected.begin(), injected.end());
+
+    auto scope = resolver.GetOrCreateRootScope();
+    scope->AllowsRedeclare = true;
+    scope->RootLevel = false;
+
+    if (auto err = NTransform::Pipeline(ast, resolver); !err) {
+        return {{}, err.error().ToString()};
+    }
+
+    NIR::TModule module;
+    NIR::TBuilder builder(module);
+    NIR::TAstLowerer lowerer(module, builder, resolver);
+    if (auto lowerRes = lowerer.LowerTop(ast); !lowerRes) {
+        return {{}, lowerRes.error().ToString()};
+    }
+
+    auto* mainFun = module.GetEntryPoint();
+    if (!mainFun) return {{}, "no main function"};
+
+    std::ostringstream out;
+    NRuntime::SetOutputStream(&out);
+    std::istringstream stdinIn;
+    NRuntime::SetInputStream(&stdinIn);
+    NIR::TInterpreter interp(module, out, stdinIn);
+    try {
+        interp.Eval(*mainFun, {}, {});
+    } catch (const std::exception& e) {
+        NRuntime::SetOutputStream(nullptr);
+        return {{}, std::string("runtime error: ") + e.what()};
+    }
+    NRuntime::SetOutputStream(nullptr);
+    return {out.str(), {}};
+}
+
+TExprPtr num(int64_t value) {
+    return std::make_shared<TNumberExpr>(TLocation{}, value);
+}
+
+TExprPtr ident(const std::string& name) {
+    return std::make_shared<TIdentExpr>(TLocation{}, name);
+}
+
+TExprPtr binary(const std::string& op, TExprPtr left, TExprPtr right) {
+    return std::make_shared<TBinaryExpr>(TLocation{}, TOperator(op), std::move(left), std::move(right));
+}
+
+TExprPtr unary(const std::string& op, TExprPtr operand) {
+    return std::make_shared<TUnaryExpr>(TLocation{}, TOperator(op), std::move(operand));
+}
+
+TExprPtr assignX(TExprPtr value) {
+    return std::make_shared<TAssignExpr>(TLocation{}, "x", std::move(value));
+}
+
+TRunResult RunBitExpr(TExprPtr expr) {
+    const std::string src = "алг\nнач\n  цел x\n  вывод x, нс\nкон\n";
+    return RunWithInjection(src, 1, {assignX(std::move(expr))});
+}
+
+} // namespace
+
+TEST(BitOps, VMExecutesBinaryOps) {
+    struct TCase {
+        std::string op;
+        int64_t left;
+        int64_t right;
+        std::string expected;
+    };
+
+    const std::vector<TCase> cases = {
+        {"&",   6, 3, "2\n"},
+        {"|",   4, 1, "5\n"},
+        {"xor", 7, 3, "4\n"},
+        {"<<",  1, 8, "256\n"},
+        {">>",  256, 4, "16\n"},
+        {">>", -1, 1, "-1\n"},
+        {"<<",  1, 64, "1\n"},
+    };
+
+    for (const auto& c : cases) {
+        auto result = RunBitExpr(binary(c.op, num(c.left), num(c.right)));
+        ASSERT_TRUE(result.ok()) << c.op << ": " << result.error;
+        EXPECT_EQ(result.output, c.expected) << c.op;
+    }
+}
+
+TEST(BitOps, VMExecutesUnaryBitNot) {
+    auto result = RunBitExpr(unary("~", num(0)));
+    ASSERT_TRUE(result.ok()) << result.error;
+    EXPECT_EQ(result.output, "-1\n");
+}
+
+TEST(BitOps, TypeRejectsNonIntegerOperands) {
+    const std::string src = "алг\nнач\n  цел x\n  вывод x, нс\nкон\n";
+    auto result = RunWithInjection(src, 1, {
+        assignX(binary("&", std::make_shared<TNumberExpr>(TLocation{}, 1.5), num(1))),
+    });
+
+    EXPECT_FALSE(result.ok());
+    EXPECT_NE(result.error.find("Битовые операции"), std::string::npos) << result.error;
+}
+
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}
