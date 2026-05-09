@@ -1,5 +1,6 @@
 #include "eval.h"
 
+#include <bit>
 #include <cstdint>
 #include <iostream>
 #include <cassert>
@@ -267,6 +268,12 @@ std::optional<std::string> TInterpreter::DoEval(TFunction& function, std::vector
             assert(instr.Operands[0].Tmp.Idx >= 0);
             Runtime.Regs[instr.Operands[0].Tmp.Idx] = !ReadOperand(Runtime.Regs, instr.Operands[1]);
             break;
+        case EVMOp::IBitNot: {
+            assert(instr.Operands[0].Tmp.Idx >= 0);
+            auto value = ReadOperand<uint64_t>(Runtime.Regs, instr.Operands[1]);
+            Runtime.Regs[instr.Operands[0].Tmp.Idx] = std::bit_cast<int64_t>(~value);
+            break;
+        }
 
         case EVMOp::IAdd:
             assert(instr.Operands[0].Tmp.Idx >= 0);
@@ -311,6 +318,40 @@ std::optional<std::string> TInterpreter::DoEval(TFunction& function, std::vector
             assert(instr.Operands[0].Tmp.Idx >= 0);
             Runtime.Regs[instr.Operands[0].Tmp.Idx] = EvalAlu<double>(Runtime.Regs, instr, std::divides<double>{});
             break;
+
+        case EVMOp::IAnd:
+            assert(instr.Operands[0].Tmp.Idx >= 0);
+            Runtime.Regs[instr.Operands[0].Tmp.Idx] = EvalAlu<int64_t>(Runtime.Regs, instr, std::bit_and<int64_t>{});
+            break;
+        case EVMOp::IOr:
+            assert(instr.Operands[0].Tmp.Idx >= 0);
+            Runtime.Regs[instr.Operands[0].Tmp.Idx] = EvalAlu<int64_t>(Runtime.Regs, instr, std::bit_or<int64_t>{});
+            break;
+        case EVMOp::IXor:
+            assert(instr.Operands[0].Tmp.Idx >= 0);
+            Runtime.Regs[instr.Operands[0].Tmp.Idx] = EvalAlu<int64_t>(Runtime.Regs, instr, std::bit_xor<int64_t>{});
+            break;
+        case EVMOp::IShl: {
+            assert(instr.Operands[0].Tmp.Idx >= 0);
+            auto lhs = ReadOperand<uint64_t>(Runtime.Regs, instr.Operands[1]);
+            auto rhs = ReadOperand<uint64_t>(Runtime.Regs, instr.Operands[2]) & 63;
+            Runtime.Regs[instr.Operands[0].Tmp.Idx] = std::bit_cast<int64_t>(lhs << rhs);
+            break;
+        }
+        case EVMOp::IShrS: {
+            assert(instr.Operands[0].Tmp.Idx >= 0);
+            auto lhs = ReadOperand<int64_t>(Runtime.Regs, instr.Operands[1]);
+            auto rhs = ReadOperand<uint64_t>(Runtime.Regs, instr.Operands[2]) & 63;
+            Runtime.Regs[instr.Operands[0].Tmp.Idx] = lhs >> rhs;
+            break;
+        }
+        case EVMOp::IShrU: {
+            assert(instr.Operands[0].Tmp.Idx >= 0);
+            auto lhs = ReadOperand<uint64_t>(Runtime.Regs, instr.Operands[1]);
+            auto rhs = ReadOperand<uint64_t>(Runtime.Regs, instr.Operands[2]) & 63;
+            Runtime.Regs[instr.Operands[0].Tmp.Idx] = std::bit_cast<int64_t>(lhs >> rhs);
+            break;
+        }
 
         case EVMOp::ICmpLTS: // <
             assert(instr.Operands[0].Tmp.Idx >= 0);
