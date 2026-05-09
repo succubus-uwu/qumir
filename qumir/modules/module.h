@@ -1,5 +1,6 @@
 #pragma once
 
+#include <qumir/parser/ast.h>
 #include <qumir/semantics/name_resolution/name_resolver.h>
 
 namespace NQumir {
@@ -15,6 +16,11 @@ struct TExternalFunction {
     NAst::TTypePtr ReturnType;
     bool RequireArgsMaterialization = false; // if true, arguments must be materialized before calling, used for strings
     bool IsOp = false; // if true, Name is an operator symbol; no name conflict check on import
+    // Optional inline factory: receives annotated argument ASTs, returns replacement AST.
+    // If set, the IR interpreter replaces the call with the returned AST.
+    // Other backends (LLVM, WASM) continue using Ptr/Packed.
+    using TInlineFactory = std::function<NAst::TExprPtr(std::vector<NAst::TExprPtr>)>;
+    std::optional<TInlineFactory> Inline;
 
     mutable std::vector<uint32_t> NameCodePoints;
 };

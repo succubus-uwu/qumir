@@ -588,6 +588,36 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
         auto loaded = Builder.Emit1("lde"_op, { destPtr });
         Builder.SetType(loaded, elemTypeId);
         co_return TValueWithBlock{ loaded, Builder.CurrentBlockLabel(), EOwnership::Borrowed };
+    } else if (auto maybeConstruct = NAst::TMaybeNode<NAst::TStructConstructExpr>(expr)) {
+        auto sc = maybeConstruct.Cast();
+        auto objAstType = NAst::UnwrapReferenceType(NAst::UnwrapNamedType(sc->Type));
+        int structTypeId = FromAstType(objAstType, Module.Types);
+        int64_t totalSize = Module.Types.SizeInBytes(structTypeId);
+        int ptrTypeId = Module.Types.Ptr(Module.Types.I(EKind::I64));
+        auto i64 = Module.Types.I(EKind::I64);
+
+        auto ptr = Builder.Emit1("salloc"_op, {TImm{totalSize, i64}});
+        Builder.SetType(ptr, ptrTypeId);
+
+        const auto& fieldTypes = Module.Types.GetStructFields(structTypeId);
+        int64_t offset = 0;
+        for (size_t i = 0; i < sc->Fields.size(); ++i) {
+            auto fieldVal = co_await Lower(sc->Fields[i], scope);
+            if (!fieldVal.Value) {
+                co_return TError(sc->Fields[i]->Location, "Не удалось вычислить поле при конструировании структуры.");
+            }
+            auto fieldPtr = Builder.Emit1("+"_op, {ptr, TImm{offset, i64}});
+            Builder.SetType(fieldPtr, ptrTypeId);
+            int fieldTypeId = i < fieldTypes.size() ? fieldTypes[i] : -1;
+            if (Module.Types.GetKind(fieldTypeId) == EKind::Struct) {
+                int fieldSize = Module.Types.SizeInBytes(fieldTypeId);
+                Builder.Emit0("copy"_op, {fieldPtr, *fieldVal.Value, TImm{(int64_t)fieldSize}});
+            } else {
+                Builder.Emit0("ste"_op, {fieldPtr, *fieldVal.Value});
+            }
+            offset += Module.Types.SizeInBytes(fieldTypeId >= 0 ? fieldTypeId : 8);
+        }
+        co_return TValueWithBlock{ ptr, Builder.CurrentBlockLabel(), EOwnership::Owned };
     } else if (NAst::TMaybeNode<NAst::TFieldAccessExpr>(expr) || NAst::TMaybeNode<NAst::TFieldAssignExpr>(expr)) {
         auto maybeRead  = NAst::TMaybeNode<NAst::TFieldAccessExpr>(expr);
         auto maybeWrite = NAst::TMaybeNode<NAst::TFieldAssignExpr>(expr);
@@ -595,10 +625,20 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
         int fieldIndex = maybeRead ? maybeRead.Cast()->FieldIndex : maybeWrite.Cast()->FieldIndex;
         const std::string& fieldName = maybeRead ? maybeRead.Cast()->FieldName : maybeWrite.Cast()->FieldName;
 
-        // Common: lower object (struct load → Lea at VM level, yields address)
-        auto obj = co_await Lower(object, scope);
-        if (!obj.Value) {
-            co_return TError(object->Location, "Не удалось вычислить объект при обращении к полю '" + fieldName + "'.");
+        // We need the ADDRESS of the struct, not its value.
+        // For a direct variable (TIdentExpr), lea gives the alloca/slot address in both VM and LLVM.
+        // For other sub-expressions (e.g. nested field access), Lower already returns a pointer.
+        TOperand objAddr;
+        if (auto maybeIdent = NAst::TMaybeNode<NAst::TIdentExpr>(object)) {
+            auto tmp = co_await LoadVar(maybeIdent.Cast()->Name, scope, object->Location,
+                                        /*takeRefOfNotRef=*/true);
+            objAddr = tmp;
+        } else {
+            auto res = co_await Lower(object, scope);
+            if (!res.Value) {
+                co_return TError(object->Location, "Не удалось вычислить объект при обращении к полю '" + fieldName + "'.");
+            }
+            objAddr = *res.Value;
         }
 
         // Compute byte offset into the struct
@@ -612,7 +652,7 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
 
         auto i64      = Module.Types.I(EKind::I64);
         int  ptrTypeId = Module.Types.Ptr(Module.Types.I(EKind::I8));
-        auto fieldPtr  = Builder.Emit1("+"_op, {*obj.Value, TImm{fieldByteOffset, i64}});
+        auto fieldPtr  = Builder.Emit1("+"_op, {objAddr, TImm{fieldByteOffset, i64}});
         Builder.SetType(fieldPtr, ptrTypeId);
 
         // Dispatch: read or write
@@ -1033,6 +1073,11 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
 void TAstLowerer::ImportExternalFunction(int symbolId, const NAst::TFunDecl& funcDecl) {
     if (Module.SymIdToExtFuncIdx.find(symbolId) != Module.SymIdToExtFuncIdx.end()) {
         // already imported
+        return;
+    }
+    // Pure inline functions have no physical implementation — skip registration
+    // so backends (LLVM, WASM) don't emit imports or declarations for them.
+    if (funcDecl.InlineFactory.has_value()) {
         return;
     }
 

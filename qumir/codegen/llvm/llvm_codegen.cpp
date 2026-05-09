@@ -722,6 +722,17 @@ llvm::Value* TLLVMCodeGen::LowerInstr(const NIR::TInstr& instr, NIR::TModule& mo
             return storeTmp(val);
             break;
         }
+        case "salloc"_op: {
+            // TInstr: Dest = result ptr, Operands[0] = size imm (raw IR layout, not compiled VM layout)
+            int64_t sizeBytes = instr.Operands[0].Imm.Value;
+            auto* allocaTy = llvm::ArrayType::get(llvm::Type::getInt8Ty(ctx), sizeBytes);
+            auto* alloca = irb->CreateAlloca(allocaTy, nullptr, "salloc");
+            irb->CreateMemSet(alloca,
+                llvm::ConstantInt::get(llvm::Type::getInt8Ty(ctx), 0),
+                llvm::ConstantInt::get(i64, sizeBytes, false),
+                llvm::MaybeAlign(1));
+            return storeTmp(alloca);
+        }
         case "ste"_op: {
             // *ptr = tmp
             auto ptr = GetOp(instr.Operands[0], module);

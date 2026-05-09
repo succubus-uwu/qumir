@@ -155,6 +155,18 @@ std::optional<std::string> TInterpreter::DoEval(TFunction& function, std::vector
             std::memcpy(dst, src, static_cast<size_t>(size));
             break;
         }
+        case EVMOp::SAlloc: {
+            // TODO: allocate on Runtime.Stack instead of StructTemps so memory is reclaimed
+            // when the function returns rather than accumulating for the entire call duration.
+            // StructTemps is safe from pointer invalidation on emplace_back because inner
+            // vectors' heap data is not moved (only ownership is transferred), but allocations
+            // inside loops will accumulate until the outermost DoEval frame exits.
+            int64_t size = instr.Operands[1].Imm.Value;
+            Runtime.StructTemps.emplace_back(static_cast<size_t>(size), char(0));
+            int64_t addr = reinterpret_cast<int64_t>(Runtime.StructTemps.back().data());
+            Runtime.Regs[instr.Operands[0].Tmp.Idx] = addr;
+            break;
+        }
         case EVMOp::Ste: {
             int64_t intAddr = ReadOperand<int64_t>(Runtime.Regs, instr.Operands[0]);
             void* addr = reinterpret_cast<void*>(intAddr);

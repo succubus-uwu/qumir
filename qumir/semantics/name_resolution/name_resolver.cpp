@@ -536,6 +536,7 @@ std::expected<NRegistry::IModule*, std::string> TNameResolver::ImportModule(cons
         funDecl->Ptr = fn.Ptr;
         funDecl->Packed = fn.Packed;
         funDecl->RequireArgsMaterialization = fn.RequireArgsMaterialization;
+        funDecl->InlineFactory = fn.Inline;
 
         if (fn.IsOp) {
             ImportedOperators.push_back(funDecl);

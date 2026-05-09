@@ -158,6 +158,11 @@ void TVMCompiler::CompileUltraLow(const TFunction& function, TExecFunc& funcOut)
 
         // TODO: check operand types
         switch (ins.Op) {
+            case "salloc"_op: {
+                require(ins, 1, 1);
+                out.Op = EVMOp::SAlloc;
+                break;
+            }
             case "ste"_op: {
                 require(ins, 0, 2);
                 out.Op = EVMOp::Ste;

@@ -5,6 +5,8 @@
 #include <vector>
 #include <sstream>
 #include <iostream>
+#include <functional>
+#include <optional>
 
 #include <qumir/location.h>
 
@@ -472,6 +474,8 @@ struct TFunDecl : TExpr {
     void* Ptr = nullptr; // function pointer for built-in functions
     using TPacked = uint64_t(*)(const uint64_t* args, size_t argCount);
     TPacked Packed = nullptr; // packed thunk for built-in functions
+    using TInlineFactory = std::function<TExprPtr(std::vector<TExprPtr>)>;
+    std::optional<TInlineFactory> InlineFactory; // if set, call is replaced by the returned AST
     bool RequireArgsMaterialization = false; // if true, arguments must be materialized before calling, used for strings
     NAst::TTypePtr RetType; // ret type different from TExpr::Type which is the function value type
     int32_t Scope = -1; // Function internal scope, filled in by name resolver, -1 - unscoped
@@ -842,6 +846,31 @@ public:
 
     std::vector<TExprPtr*> MutableChildren() override {
         return { &Object };
+    }
+};
+
+// Constructs a struct value from per-field expressions. Type must be set to the struct type.
+// Used by inline factories to build struct results without requiring a TVarStmt.
+class TStructConstructExpr : public TExpr {
+public:
+    static constexpr const char* NodeId = "StructConstruct";
+    std::vector<TExprPtr> Fields;
+
+    TStructConstructExpr(TLocation loc, TTypePtr structType, std::vector<TExprPtr> fields)
+        : TExpr(std::move(loc))
+        , Fields(std::move(fields))
+    {
+        Type = std::move(structType);
+    }
+
+    const std::string_view NodeName() const override { return NodeId; }
+
+    std::vector<TExprPtr> Children() const override { return Fields; }
+
+    std::vector<TExprPtr*> MutableChildren() override {
+        std::vector<TExprPtr*> r;
+        for (auto& f : Fields) r.push_back(&f);
+        return r;
     }
 };
 

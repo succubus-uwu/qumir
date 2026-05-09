@@ -120,6 +120,27 @@ bool CanImplicit(TTypePtr S, TTypePtr D, NSemantics::TNameResolver* ctx) {
     return false;
 }
 
+// Returns the inline replacement if the function has an InlineFactory, nullptr otherwise.
+// The replacement has no Type set — callers that are coroutines must DoAnnotate it.
+TExprPtr TryApplyInlineFactory(const std::shared_ptr<TFunDecl>& funDecl, std::vector<TExprPtr> args) {
+    if (funDecl->InlineFactory) {
+        return (*funDecl->InlineFactory)(std::move(args));
+    }
+    return nullptr;
+}
+
+// Looks up a function by name in the given scope, then applies its InlineFactory if present.
+TExprPtr TryInlineByName(const std::string& name, std::vector<TExprPtr> args,
+                         NSemantics::TNameResolver& ctx, NSemantics::TScopeId scopeId) {
+    auto symId = ctx.Lookup(name, scopeId);
+    if (!symId) return nullptr;
+    auto node = ctx.GetSymbolNode(NSemantics::TSymbolId{symId->Id});
+    if (auto maybeFunDecl = TMaybeNode<TFunDecl>(node)) {
+        return TryApplyInlineFactory(maybeFunDecl.Cast(), std::move(args));
+    }
+    return nullptr;
+}
+
 TExprPtr InsertImplicitCastIfNeeded(TExprPtr expr, TTypePtr toType, NSemantics::TNameResolver* ctx) {
     if (!expr->Type || !toType) {
         return expr;
@@ -162,6 +183,11 @@ TExprPtr InsertImplicitCastIfNeeded(TExprPtr expr, TTypePtr toType, NSemantics::
     }
 
     if (auto synthName = ctx->GetCast(expr->Type, toType)) {
+        // If the cast function has an inline factory, apply it directly so the
+        // result is proper AST (not a pre-typed TCallExpr that bypasses annotation).
+        if (auto replacement = TryInlineByName(*synthName, {expr}, *ctx, NSemantics::TScopeId{0})) {
+            return replacement;
+        }
         auto callee = std::make_shared<TIdentExpr>(expr->Location, *synthName);
         callee->Type = std::make_shared<TFunctionType>(
             std::vector<TTypePtr>{expr->Type}, toType);
@@ -174,9 +200,18 @@ TExprPtr InsertImplicitCastIfNeeded(TExprPtr expr, TTypePtr toType, NSemantics::
     return MakeCast(std::move(expr), std::move(toType));
 }
 
+// Always re-annotates the inline replacement so all children get proper types/FieldIndex,
+// even if the top-level Type is already set (e.g. TCastExpr sets Type in its constructor).
+TTask AnnotateIfNeeded(TExprPtr expr, NSemantics::TNameResolver& ctx, NSemantics::TScopeId scopeId) {
+    co_return co_await DoAnnotate(expr, ctx, scopeId);
+}
+
 TExprPtr MakeModuleOpCall(const std::string& synthName, std::vector<TExprPtr> args,
     TTypePtr returnType, TLocation loc, NSemantics::TNameResolver& ctx)
 {
+    if (auto replacement = TryInlineByName(synthName, args, ctx, NSemantics::TScopeId{0})) {
+        return replacement;
+    }
     auto callee = std::make_shared<TIdentExpr>(loc, synthName);
     std::vector<TTypePtr> argTypes;
     for (auto& a : args) argTypes.push_back(a->Type);
@@ -228,7 +263,7 @@ TTask AnnotateUnary(std::shared_ptr<TUnaryExpr> unary, NSemantics::TNameResolver
             co_return unary;
         }
         if (auto m = context.GetUnaryOp("neg", UnwrapReferenceType(unary->Type))) {
-            co_return MakeModuleOpCall(m->SynthName, {unary->Operand}, m->ReturnType, unary->Location, context);
+            co_return co_await AnnotateIfNeeded(MakeModuleOpCall(m->SynthName, {unary->Operand}, m->ReturnType, unary->Location, context), context, scopeId);
         }
         co_return TError(unary->Location, "Нельзя применять унарный минус к нечисловому типу");
     }
@@ -355,8 +390,8 @@ TTask AnnotateBinary(std::shared_ptr<TBinaryExpr> binary, NSemantics::TNameResol
 
             auto common = CommonNumericType(left, right);
             if (!common) {
-                if (auto call = TryModuleBinaryOp(binary->Left, binary->Right, binary->Operator, context)) {
-                    co_return call;
+                if (auto result = TryModuleBinaryOp(binary->Left, binary->Right, binary->Operator, context)) {
+                    co_return co_await AnnotateIfNeeded(result, context, scopeId);
                 }
                 co_return TError(binary->Location, "+, -, *, / применимы только к числам (оператор + также работает для строк)");
             }
@@ -404,8 +439,8 @@ TTask AnnotateBinary(std::shared_ptr<TBinaryExpr> binary, NSemantics::TNameResol
                 binary->Left  = InsertImplicitCastIfNeeded(binary->Left,  common, &context);
                 binary->Right = InsertImplicitCastIfNeeded(binary->Right, common, &context);
             } else if (!(TMaybeType<TBoolType>(left) && TMaybeType<TBoolType>(right))) {
-                if (auto call = TryModuleBinaryOp(binary->Left, binary->Right, binary->Operator, context)) {
-                    co_return call;
+                if (auto result = TryModuleBinaryOp(binary->Left, binary->Right, binary->Operator, context)) {
+                    co_return co_await AnnotateIfNeeded(result, context, scopeId);
                 }
             }
             binary->Type = std::make_shared<TBoolType>();
@@ -417,8 +452,8 @@ TTask AnnotateBinary(std::shared_ptr<TBinaryExpr> binary, NSemantics::TNameResol
             binary->Type  = std::make_shared<TBoolType>();
             break;
         default:
-            if (auto call = TryModuleBinaryOp(binary->Left, binary->Right, binary->Operator, context)) {
-                co_return call;
+            if (auto result = TryModuleBinaryOp(binary->Left, binary->Right, binary->Operator, context)) {
+                co_return co_await AnnotateIfNeeded(result, context, scopeId);
             }
             co_return TError(binary->Location, "Неизвестный бинарный оператор: '" + binary->Operator.ToString() + "'");
             break;
@@ -631,6 +666,12 @@ TTask AnnotateCall(std::shared_ptr<TCallExpr> call, NSemantics::TNameResolver& c
             }
         }
         call->Type = maybeFunType.Cast()->ReturnType;
+
+        if (auto maybeIdent = TMaybeNode<TIdentExpr>(call->Callee)) {
+            if (auto replacement = TryInlineByName(maybeIdent.Cast()->Name, call->Args, context, scopeId)) {
+                co_return co_await AnnotateIfNeeded(replacement, context, scopeId);
+            }
+        }
     } else {
         call->Type = call->Callee->Type;
     }
