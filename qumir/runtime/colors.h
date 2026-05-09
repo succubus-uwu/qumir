@@ -77,8 +77,6 @@ inline RGB CMYKtoRGB(int64_t c, int64_t m, int64_t y, int64_t k) {
 extern "C" {
 
 // Color construction (components in [0,255] for RGB/A; [0,360]/[0,100] for HSL/HSV/CMYK)
-int64_t color_rgb(int64_t r, int64_t g, int64_t b);
-int64_t color_rgba(int64_t r, int64_t g, int64_t b, int64_t a);
 int64_t color_cmyk(int64_t c, int64_t m, int64_t y, int64_t k);
 int64_t color_cmyka(int64_t c, int64_t m, int64_t y, int64_t k, int64_t a);
 int64_t color_hsl(int64_t h, int64_t s, int64_t l);

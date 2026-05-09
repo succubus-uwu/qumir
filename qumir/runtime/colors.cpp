@@ -13,14 +13,6 @@ namespace NRuntime {
 
 extern "C" {
 
-int64_t color_rgb(int64_t r, int64_t g, int64_t b) {
-    return PackRGB(r, g, b);
-}
-
-int64_t color_rgba(int64_t r, int64_t g, int64_t b, int64_t a) {
-    return PackARGB(a, r, g, b);
-}
-
 int64_t color_cmyk(int64_t c, int64_t m, int64_t y, int64_t k) {
     auto rgb = CMYKtoRGB(c, m, y, k);
     return PackRGB(rgb.r, rgb.g, rgb.b);

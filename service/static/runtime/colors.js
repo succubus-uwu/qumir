@@ -65,9 +65,6 @@ export function argbToStyle(color) {
 
 // ── Color constructors ────────────────────────────────────────────────────────
 
-export function color_rgb(r, g, b)       { return packARGB(255, Number(r), Number(g), Number(b)); }
-export function color_rgba(r, g, b, a)   { return packARGB(Number(a), Number(r), Number(g), Number(b)); }
-
 export function color_hsl(h, s, l)       { const [r,g,b] = hslToRGB(Number(h),Number(s),Number(l)); return packARGB(255,r,g,b); }
 export function color_hsla(h, s, l, a)   { const [r,g,b] = hslToRGB(Number(h),Number(s),Number(l)); return packARGB(Number(a),r,g,b); }
 export function color_hsv(h, s, v)       { const [r,g,b] = hsvToRGB(Number(h),Number(s),Number(v)); return packARGB(255,r,g,b); }

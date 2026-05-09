@@ -24,6 +24,42 @@ ColorsModule::ColorsModule() {
         };
     };
 
+    auto intLiteral = [integerType](TLocation loc, int64_t value) -> NAst::TExprPtr {
+        auto expr = std::make_shared<NAst::TNumberExpr>(std::move(loc), value);
+        expr->Type = integerType;
+        return expr;
+    };
+
+    auto colorPack = [integerType, colorType, intLiteral](NAst::TExprPtr r, NAst::TExprPtr g,
+                                                          NAst::TExprPtr b, NAst::TExprPtr a) -> NAst::TExprPtr {
+        auto bin = [](const char* op, NAst::TExprPtr left, NAst::TExprPtr right, NAst::TTypePtr type) -> NAst::TExprPtr {
+            auto loc = left->Location;
+            auto expr = std::make_shared<NAst::TBinaryExpr>(std::move(loc), NAst::TOperator(op),
+                std::move(left), std::move(right));
+            expr->Type = std::move(type);
+            return expr;
+        };
+        auto mask = [&](NAst::TExprPtr value) {
+            auto loc = value->Location;
+            return bin("&", std::move(value), intLiteral(loc, 255), integerType);
+        };
+        auto shift = [&](NAst::TExprPtr value, int64_t bits) {
+            auto loc = value->Location;
+            return bin("<<", mask(std::move(value)), intLiteral(loc, bits), integerType);
+        };
+        auto bor = [&](NAst::TExprPtr left, NAst::TExprPtr right, NAst::TTypePtr type) {
+            return bin("|", std::move(left), std::move(right), std::move(type));
+        };
+
+        return bor(
+            bor(
+                bor(shift(std::move(a), 24), shift(std::move(r), 16), integerType),
+                shift(std::move(g), 8),
+                integerType),
+            mask(std::move(b)),
+            colorType);
+    };
+
     auto makeOutInt = [&]() -> NAst::TTypePtr {
         auto t = std::make_shared<NAst::TIntegerType>();
         t->Mutable  = true;
@@ -144,22 +180,21 @@ ColorsModule::ColorsModule() {
         {
             .Name = "RGB",
             .MangledName = "color_rgb",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(int64_t,int64_t,int64_t)>(color_rgb)),
-            .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
-                return static_cast<uint64_t>(color_rgb(args[0], args[1], args[2]));
-            },
             .ArgTypes = { integerType, integerType, integerType },
             .ReturnType = colorType,
+            .Inline = [colorPack](std::vector<NAst::TExprPtr> args) -> NAst::TExprPtr {
+                return colorPack(args[0], args[1], args[2],
+                    std::make_shared<NAst::TNumberExpr>(args[0]->Location, int64_t{255}));
+            },
         },
         {
             .Name = "RGBA",
             .MangledName = "color_rgba",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(int64_t,int64_t,int64_t,int64_t)>(color_rgba)),
-            .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
-                return static_cast<uint64_t>(color_rgba(args[0], args[1], args[2], args[3]));
-            },
             .ArgTypes = { integerType, integerType, integerType, integerType },
             .ReturnType = colorType,
+            .Inline = [colorPack](std::vector<NAst::TExprPtr> args) -> NAst::TExprPtr {
+                return colorPack(args[0], args[1], args[2], args[3]);
+            },
         },
         {
             .Name = "CMYK",

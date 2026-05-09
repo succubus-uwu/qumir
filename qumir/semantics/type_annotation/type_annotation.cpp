@@ -348,6 +348,9 @@ TTask AnnotateBinary(std::shared_ptr<TBinaryExpr> binary, NSemantics::TNameResol
     if (!binary->Left->Type || !binary->Right->Type) {
         co_return TError(binary->Location, "Не удалось определить типы выражения для бинарной операции");
     }
+    if (binary->Type && binary->Type->TypeName() == TNamedType::TypeId) {
+        co_return binary;
+    }
     auto left = UnwrapReferenceType(binary->Left->Type);
     auto right = UnwrapReferenceType(binary->Right->Type);
 
