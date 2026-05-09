@@ -113,12 +113,12 @@ void painter_pixel(int64_t x, int64_t y, int64_t color) {
     }
 }
 
-void painter_rect(int64_t x, int64_t y, int64_t w, int64_t h) {
-    std::cerr << "painter_rect (" << x << "," << y << ") " << w << "x" << h << "\n";
+void painter_rect(int64_t x1, int64_t y1, int64_t x2, int64_t y2) {
+    std::cerr << "painter_rect (" << x1 << "," << y1 << ")-(" << x2 << "," << y2 << ")\n";
 }
 
-void painter_ellipse(int64_t x, int64_t y, int64_t w, int64_t h) {
-    std::cerr << "painter_ellipse (" << x << "," << y << ") " << w << "x" << h << "\n";
+void painter_ellipse(int64_t x1, int64_t y1, int64_t x2, int64_t y2) {
+    std::cerr << "painter_ellipse (" << x1 << "," << y1 << ")-(" << x2 << "," << y2 << ")\n";
 }
 
 void painter_circle(int64_t x, int64_t y, int64_t r) {

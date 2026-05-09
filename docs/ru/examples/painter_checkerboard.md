@@ -27,7 +27,7 @@ toggle := 0
         иначе
             кисть(чёрный)
         все
-        прямоугольник(x * cellSize, y * cellSize, cellSize, cellSize)
+        прямоугольник(x * cellSize, y * cellSize, (x + 1) * cellSize, (y + 1) * cellSize)
         toggle := 1 - toggle
     кц
     toggle := 1 - toggle
@@ -55,7 +55,7 @@ toggle := 0
             иначе
                 кисть(чёрный)
             все
-            прямоугольник(x * cellSize, y * cellSize, cellSize, cellSize)
+            прямоугольник(x * cellSize, y * cellSize, (x + 1) * cellSize, (y + 1) * cellSize)
             toggle := 1 - toggle
         кц
         toggle := 1 - toggle

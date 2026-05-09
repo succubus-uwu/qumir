@@ -357,25 +357,31 @@ export function painter_pixel(x, y, color) {
   offCtx.fillRect(Number(x), Number(y), 1, 1);
 }
 
-export function painter_rect(x, y, w, h) {
+export function painter_rect(x1, y1, x2, y2) {
   if (!offCtx) return;
+  const x = Math.min(Number(x1), Number(x2));
+  const y = Math.min(Number(y1), Number(y2));
+  const w = Math.abs(Number(x2) - Number(x1));
+  const h = Math.abs(Number(y2) - Number(y1));
   offCtx.save();
   applyStroke(); applyFill();
   offCtx.globalAlpha = state.density / 100;
-  if (state.hasBrush) offCtx.fillRect(Number(x), Number(y), Number(w), Number(h));
-  offCtx.strokeRect(Number(x), Number(y), Number(w), Number(h));
+  if (state.hasBrush) offCtx.fillRect(x, y, w, h);
+  offCtx.strokeRect(x, y, w, h);
   offCtx.restore();
 }
 
-export function painter_ellipse(x, y, w, h) {
+export function painter_ellipse(x1, y1, x2, y2) {
   if (!offCtx) return;
-  const cx = Number(x) + Number(w)/2;
-  const cy = Number(y) + Number(h)/2;
+  const cx = (Number(x1) + Number(x2)) / 2;
+  const cy = (Number(y1) + Number(y2)) / 2;
+  const rx = Math.abs(Number(x2) - Number(x1)) / 2;
+  const ry = Math.abs(Number(y2) - Number(y1)) / 2;
   offCtx.save();
   applyStroke(); applyFill();
   offCtx.globalAlpha = state.density / 100;
   offCtx.beginPath();
-  offCtx.ellipse(cx, cy, Number(w)/2, Number(h)/2, 0, 0, Math.PI*2);
+  offCtx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2);
   if (state.hasBrush) offCtx.fill();
   offCtx.stroke();
   offCtx.restore();
