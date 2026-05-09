@@ -144,7 +144,7 @@ int main(int argc, char ** argv) {
     std::optional<std::string> value;
     if (!result) {
         auto errStr = result.error().ToString();
-        std::cerr << "Error: " << errStr << std::endl;
+        std::cerr << errStr;
         return 1;
     }
 
