@@ -10,6 +10,8 @@
 #include <qumir/ir/builder.h>
 #include <qumir/ir/lowering/lower_ast.h>
 #include <qumir/ir/eval.h>
+#include <qumir/codegen/llvm/llvm_codegen.h>
+#include <qumir/codegen/llvm/llvm_runner.h>
 
 #include <sstream>
 
@@ -24,7 +26,17 @@ struct TRunResult {
     bool ok() const { return error.empty(); }
 };
 
-TRunResult RunWithInjection(const std::string& src, size_t insertAt, std::vector<TExprPtr> injected) {
+enum class EBackend {
+    VM,
+    LLVM,
+};
+
+TRunResult RunWithInjection(
+    const std::string& src,
+    size_t insertAt,
+    std::vector<TExprPtr> injected,
+    EBackend backend = EBackend::VM)
+{
     NSemantics::TNameResolver resolver;
     auto sysMod = std::make_shared<NRegistry::SystemModule>();
     resolver.RegisterModule(sysMod.get());
@@ -74,9 +86,21 @@ TRunResult RunWithInjection(const std::string& src, size_t insertAt, std::vector
     NRuntime::SetOutputStream(&out);
     std::istringstream stdinIn;
     NRuntime::SetInputStream(&stdinIn);
-    NIR::TInterpreter interp(module, out, stdinIn);
     try {
-        interp.Eval(*mainFun, {}, {});
+        if (backend == EBackend::VM) {
+            NIR::TInterpreter interp(module, out, stdinIn);
+            interp.Eval(*mainFun, {}, {});
+        } else {
+            NCodeGen::TLLVMCodeGen cg({});
+            auto artifacts = cg.Emit(module, 0);
+            NCodeGen::TLlvmRunner runner;
+            std::string runErr;
+            runner.Run(std::move(artifacts), mainFun->Name, &runErr, mainFun->ReturnTypeIsString);
+            if (!runErr.empty()) {
+                NRuntime::SetOutputStream(nullptr);
+                return {{}, std::string("llvm run error: ") + runErr};
+            }
+        }
     } catch (const std::exception& e) {
         NRuntime::SetOutputStream(nullptr);
         return {{}, std::string("runtime error: ") + e.what()};
@@ -105,14 +129,14 @@ TExprPtr assignX(TExprPtr value) {
     return std::make_shared<TAssignExpr>(TLocation{}, "x", std::move(value));
 }
 
-TRunResult RunBitExpr(TExprPtr expr) {
+TRunResult RunBitExpr(TExprPtr expr, EBackend backend = EBackend::VM) {
     const std::string src = "алг\nнач\n  цел x\n  вывод x, нс\nкон\n";
-    return RunWithInjection(src, 1, {assignX(std::move(expr))});
+    return RunWithInjection(src, 1, {assignX(std::move(expr))}, backend);
 }
 
 } // namespace
 
-TEST(BitOps, VMExecutesBinaryOps) {
+void ExpectBinaryOps(EBackend backend) {
     struct TCase {
         std::string op;
         int64_t left;
@@ -131,16 +155,32 @@ TEST(BitOps, VMExecutesBinaryOps) {
     };
 
     for (const auto& c : cases) {
-        auto result = RunBitExpr(binary(c.op, num(c.left), num(c.right)));
+        auto result = RunBitExpr(binary(c.op, num(c.left), num(c.right)), backend);
         ASSERT_TRUE(result.ok()) << c.op << ": " << result.error;
         EXPECT_EQ(result.output, c.expected) << c.op;
     }
 }
 
-TEST(BitOps, VMExecutesUnaryBitNot) {
-    auto result = RunBitExpr(unary("~", num(0)));
+void ExpectUnaryBitNot(EBackend backend) {
+    auto result = RunBitExpr(unary("~", num(0)), backend);
     ASSERT_TRUE(result.ok()) << result.error;
     EXPECT_EQ(result.output, "-1\n");
+}
+
+TEST(BitOps, VMExecutesBinaryOps) {
+    ExpectBinaryOps(EBackend::VM);
+}
+
+TEST(BitOps, VMExecutesUnaryBitNot) {
+    ExpectUnaryBitNot(EBackend::VM);
+}
+
+TEST(BitOps, LLVMExecutesBinaryOps) {
+    ExpectBinaryOps(EBackend::LLVM);
+}
+
+TEST(BitOps, LLVMExecutesUnaryBitNot) {
+    ExpectUnaryBitNot(EBackend::LLVM);
 }
 
 TEST(BitOps, TypeRejectsNonIntegerOperands) {

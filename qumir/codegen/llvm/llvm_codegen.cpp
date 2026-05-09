@@ -45,8 +45,18 @@ llvm::Type* GetTypeById(int typeId, const TTypeTable& tt, llvm::LLVMContext& ctx
     }
     switch (tt.GetKind(typeId)) {
         case EKind::I1: return llvm::Type::getInt1Ty(ctx);
+        case EKind::I8:
+        case EKind::U8:
+            return llvm::Type::getInt8Ty(ctx);
+        case EKind::I16:
+        case EKind::U16:
+            return llvm::Type::getInt16Ty(ctx);
         case EKind::I32: return llvm::Type::getInt32Ty(ctx);
+        case EKind::U32:
+            return llvm::Type::getInt32Ty(ctx);
         case EKind::I64: return llvm::Type::getInt64Ty(ctx);
+        case EKind::U64:
+            return llvm::Type::getInt64Ty(ctx);
         case EKind::F64: return llvm::Type::getDoubleTy(ctx);
         case EKind::Void: return llvm::Type::getVoidTy(ctx);
         case EKind::Ptr: return llvm::PointerType::get(ctx, 0); // use pointer type (i8*) across targets
@@ -60,6 +70,18 @@ llvm::Type* GetTypeById(int typeId, const TTypeTable& tt, llvm::LLVMContext& ctx
         }
         default:
             throw std::runtime_error("unsupported primitive type");
+    }
+}
+
+bool IsSignedIntegerType(const TTypeTable& tt, int typeId) {
+    switch (tt.GetKind(typeId)) {
+        case EKind::U8:
+        case EKind::U16:
+        case EKind::U32:
+        case EKind::U64:
+            return false;
+        default:
+            return true;
     }
 }
 
@@ -667,6 +689,41 @@ llvm::Value* TLLVMCodeGen::LowerInstr(const NIR::TInstr& instr, NIR::TModule& mo
                 throw std::runtime_error("unsupported type for arithmetic op");
             }
         }
+        case "&"_op:
+        case "|"_op:
+        case "xor"_op:
+        case "<<"_op:
+        case ">>"_op: {
+            if (!outputType || !outputType->isIntegerTy()) {
+                throw std::runtime_error("bitwise op needs an integer typed dest");
+            }
+
+            auto lhs = cast(GetOp(instr.Operands[0], module), outputType);
+            auto rhs = cast(GetOp(instr.Operands[1], module), outputType);
+
+            switch (opcode) {
+                case "&"_op:
+                    return storeTmp(irb->CreateAnd(lhs, rhs, "bandtmp"));
+                case "|"_op:
+                    return storeTmp(irb->CreateOr(lhs, rhs, "bortmp"));
+                case "xor"_op:
+                    return storeTmp(irb->CreateXor(lhs, rhs, "bxortmp"));
+                case "<<"_op:
+                case ">>"_op: {
+                    unsigned bitWidth = outputType->getIntegerBitWidth();
+                    auto mask = llvm::ConstantInt::get(outputType, bitWidth - 1);
+                    rhs = irb->CreateAnd(rhs, mask, "shiftmasktmp");
+                    if (opcode == "<<"_op) {
+                        return storeTmp(irb->CreateShl(lhs, rhs, "shltmp"));
+                    }
+                    if (IsSignedIntegerType(module.Types, outputTypeId)) {
+                        return storeTmp(irb->CreateAShr(lhs, rhs, "ashrtmp"));
+                    }
+                    return storeTmp(irb->CreateLShr(lhs, rhs, "lshrtmp"));
+                }
+            }
+            throw std::runtime_error("unsupported bitwise opcode");
+        }
         // Relational / equality operators: produce i64 0/1
         case "<"_op:
         case "<="_op:
@@ -706,6 +763,13 @@ llvm::Value* TLLVMCodeGen::LowerInstr(const NIR::TInstr& instr, NIR::TModule& mo
                 auto cmp = irb->CreateICmpEQ(v, zero, "nottmp");
                 return storeTmp(cmp);
             }
+        }
+        case "~"_op: {
+            auto v = GetOp(instr.Operands[0], module);
+            if (!outputType || !outputType->isIntegerTy()) {
+                throw std::runtime_error("bitwise not output type must be integer");
+            }
+            return storeTmp(irb->CreateNot(cast(v, outputType), "bnottmp"));
         }
         case "neg"_op: {
             auto v = GetOp(instr.Operands[0], module);
