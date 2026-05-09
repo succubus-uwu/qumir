@@ -845,6 +845,34 @@ public:
     }
 };
 
+class TFieldAssignExpr : public TExpr {
+public:
+    static constexpr const char* NodeId = "FieldAssign";
+    TExprPtr Object;
+    std::string FieldName;
+    int FieldIndex = -1;
+    TExprPtr Value;
+
+    TFieldAssignExpr(TLocation loc, TExprPtr object, std::string fieldName, TExprPtr value)
+        : TExpr(std::move(loc))
+        , Object(std::move(object))
+        , FieldName(std::move(fieldName))
+        , Value(std::move(value))
+    { }
+
+    const std::string_view NodeName() const override {
+        return NodeId;
+    }
+
+    std::vector<TExprPtr> Children() const override {
+        return { Object, Value };
+    }
+
+    std::vector<TExprPtr*> MutableChildren() override {
+        return { &Object, &Value };
+    }
+};
+
 template<typename TransformFunctor, typename FilterFunctor>
 bool TransformAst(TExprPtr& result, TExprPtr node, TransformFunctor f, FilterFunctor filter) {
     if (!node) return false;

@@ -122,6 +122,22 @@ TDefiniteAssignmentChecker::CheckExpr(
         return CheckFunDecl(maybeFunDecl.Cast(), scopeId, inAssigned);
     }
 
+    if (auto maybeFieldAssign = TMaybeNode<TFieldAssignExpr>(expr)) {
+        auto fa = maybeFieldAssign.Cast();
+        auto valueRes = CheckExpr(fa->Value, scopeId, inAssigned);
+        if (!valueRes) return valueRes;
+        TAssignedSet state = std::move(*valueRes);
+        // Writing any field counts as initializing the struct variable.
+        if (auto maybeIdent = TMaybeNode<TIdentExpr>(fa->Object)) {
+            auto symId = GetSymbolId(maybeIdent.Cast()->Name, scopeId, fa->Object);
+            if (symId) state.insert(*symId);
+        }
+        return state;
+    }
+    if (auto maybeFieldAccess = TMaybeNode<TFieldAccessExpr>(expr)) {
+        return CheckExpr(maybeFieldAccess.Cast()->Object, scopeId, inAssigned);
+    }
+
     if (auto maybeIndex = TMaybeNode<TIndexExpr>(expr)) {
         if (auto maybeArrayType = TMaybeType<TArrayType>(maybeIndex.Cast()->Collection->Type)) {
             return inAssigned;

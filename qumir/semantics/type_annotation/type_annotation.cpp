@@ -809,6 +809,62 @@ TTask AnnotateFieldAccess(std::shared_ptr<TFieldAccessExpr> fieldAccess, NSemant
         "Поле '" + fieldAccess->FieldName + "' не найдено в структуре. Доступные поля: " + available + ".");
 }
 
+static std::pair<std::shared_ptr<TStructType>, std::string>
+ResolveStructField(TTypePtr objType, const std::string& fieldName, int& outIndex) {
+    auto structType = TMaybeType<TStructType>(UnwrapNamedType(UnwrapReferenceType(objType))).Cast();
+    if (!structType) return {nullptr, ""};
+    const auto& fields = structType->Fields;
+    for (int i = 0; i < static_cast<int>(fields.size()); ++i) {
+        if (fields[i].first == fieldName) {
+            outIndex = i;
+            return {structType, ""};
+        }
+    }
+    std::string available;
+    for (const auto& [name, _] : fields) {
+        if (!available.empty()) available += ", ";
+        available += name;
+    }
+    return {nullptr, available};
+}
+
+TTask AnnotateFieldAssign(std::shared_ptr<TFieldAssignExpr> fieldAssign, NSemantics::TNameResolver& context, NSemantics::TScopeId scopeId) {
+    fieldAssign->Object = co_await DoAnnotate(fieldAssign->Object, context, scopeId);
+    if (!fieldAssign->Object->Type) {
+        co_return TError(fieldAssign->Location, "Не удалось определить тип объекта при присваивании полю '" + fieldAssign->FieldName + "'.");
+    }
+
+    int fieldIdx = -1;
+    auto [structType, available] = ResolveStructField(fieldAssign->Object->Type, fieldAssign->FieldName, fieldIdx);
+    if (!structType) {
+        if (available.empty()) {
+            co_return TError(fieldAssign->Location,
+                "Присваивание полю '" + fieldAssign->FieldName + "' невозможно: объект не является структурой.");
+        }
+        co_return TError(fieldAssign->Location,
+            "Поле '" + fieldAssign->FieldName + "' не найдено в структуре. Доступные поля: " + available + ".");
+    }
+    fieldAssign->FieldIndex = fieldIdx;
+    auto fieldType = structType->Fields[fieldIdx].second;
+
+    fieldAssign->Value = co_await DoAnnotate(fieldAssign->Value, context, scopeId);
+    if (!fieldAssign->Value->Type) {
+        co_return TError(fieldAssign->Location, "Не удалось определить тип значения при присваивании полю '" + fieldAssign->FieldName + "'.");
+    }
+    auto valueType = UnwrapReferenceType(fieldAssign->Value->Type);
+    if (!EqualTypes(valueType, fieldType)) {
+        if (!CanImplicit(valueType, fieldType, &context)) {
+            co_return TError(fieldAssign->Location,
+                "Нельзя неявно преобразовать тип '" + std::string(valueType->TypeName()) +
+                "' к типу поля '" + fieldAssign->FieldName + "' (" + std::string(fieldType->TypeName()) + ").");
+        }
+        fieldAssign->Value = InsertImplicitCastIfNeeded(fieldAssign->Value, fieldType, &context);
+    }
+
+    fieldAssign->Type = std::make_shared<TVoidType>();
+    co_return fieldAssign;
+}
+
 TTask DoAnnotate(TExprPtr expr, NSemantics::TNameResolver& context, NSemantics::TScopeId scopeId) {
     if (auto maybeNum = TMaybeNode<TNumberExpr>(expr)) {
         co_return AnnotateNumber(maybeNum.Cast());
@@ -840,6 +896,8 @@ TTask DoAnnotate(TExprPtr expr, NSemantics::TNameResolver& context, NSemantics::
         co_return co_await AnnotateSlice(maybeSlice.Cast(), context, scopeId);
     } else if (auto maybeFieldAccess = TMaybeNode<TFieldAccessExpr>(expr)) {
         co_return co_await AnnotateFieldAccess(maybeFieldAccess.Cast(), context, scopeId);
+    } else if (auto maybeFieldAssign = TMaybeNode<TFieldAssignExpr>(expr)) {
+        co_return co_await AnnotateFieldAssign(maybeFieldAssign.Cast(), context, scopeId);
     } else if (TMaybeNode<TBreakStmt>(expr)) {
         expr->Type = std::make_shared<TVoidType>();
         co_return expr;

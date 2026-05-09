@@ -588,6 +588,55 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
         auto loaded = Builder.Emit1("lde"_op, { destPtr });
         Builder.SetType(loaded, elemTypeId);
         co_return TValueWithBlock{ loaded, Builder.CurrentBlockLabel(), EOwnership::Borrowed };
+    } else if (NAst::TMaybeNode<NAst::TFieldAccessExpr>(expr) || NAst::TMaybeNode<NAst::TFieldAssignExpr>(expr)) {
+        auto maybeRead  = NAst::TMaybeNode<NAst::TFieldAccessExpr>(expr);
+        auto maybeWrite = NAst::TMaybeNode<NAst::TFieldAssignExpr>(expr);
+        NAst::TExprPtr& object = maybeRead ? maybeRead.Cast()->Object : maybeWrite.Cast()->Object;
+        int fieldIndex = maybeRead ? maybeRead.Cast()->FieldIndex : maybeWrite.Cast()->FieldIndex;
+        const std::string& fieldName = maybeRead ? maybeRead.Cast()->FieldName : maybeWrite.Cast()->FieldName;
+
+        // Common: lower object (struct load → Lea at VM level, yields address)
+        auto obj = co_await Lower(object, scope);
+        if (!obj.Value) {
+            co_return TError(object->Location, "Не удалось вычислить объект при обращении к полю '" + fieldName + "'.");
+        }
+
+        // Compute byte offset into the struct
+        auto objAstType = NAst::UnwrapReferenceType(NAst::UnwrapNamedType(object->Type));
+        int structTypeId = FromAstType(objAstType, Module.Types);
+        const auto& fieldTypes = Module.Types.GetStructFields(structTypeId);
+        int64_t fieldByteOffset = 0;
+        for (int i = 0; i < fieldIndex; ++i) {
+            fieldByteOffset += Module.Types.SizeInBytes(fieldTypes[i]);
+        }
+
+        auto i64      = Module.Types.I(EKind::I64);
+        int  ptrTypeId = Module.Types.Ptr(Module.Types.I(EKind::I8));
+        auto fieldPtr  = Builder.Emit1("+"_op, {*obj.Value, TImm{fieldByteOffset, i64}});
+        Builder.SetType(fieldPtr, ptrTypeId);
+
+        // Dispatch: read or write
+        NAst::TTypePtr fieldAstType = maybeRead ? expr->Type : maybeWrite.Cast()->Value->Type;
+        int fieldTypeId = FromAstType(fieldAstType, Module.Types);
+        if (maybeRead) {
+            if (Module.Types.GetKind(fieldTypeId) == EKind::Struct) {
+                co_return TValueWithBlock{ fieldPtr, Builder.CurrentBlockLabel(), EOwnership::Borrowed };
+            }
+            auto loaded = Builder.Emit1("lde"_op, { fieldPtr });
+            Builder.SetType(loaded, fieldTypeId);
+            co_return TValueWithBlock{ loaded, Builder.CurrentBlockLabel(), EOwnership::Borrowed };
+        } else {
+            auto rhs = co_await Lower(maybeWrite.Cast()->Value, scope);
+            if (!rhs.Value) {
+                co_return TError(maybeWrite.Cast()->Value->Location, "Не удалось вычислить значение при присваивании полю '" + fieldName + "'.");
+            }
+            if (Module.Types.GetKind(fieldTypeId) == EKind::Struct) {
+                Builder.Emit0("copy"_op, {fieldPtr, *rhs.Value, TImm{(int64_t)Module.Types.SizeInBytes(fieldTypeId)}});
+            } else {
+                Builder.Emit0("ste"_op, {fieldPtr, *rhs.Value});
+            }
+            co_return TValueWithBlock{ std::nullopt, Builder.CurrentBlockLabel() };
+        }
     } else if (auto maybeMultiIndex = NAst::TMaybeNode<NAst::TMultiIndexExpr>(expr)) {
         auto multiIndex = maybeMultiIndex.Cast();
         auto maybeIdent = NAst::TMaybeNode<NAst::TIdentExpr>(multiIndex->Collection);
