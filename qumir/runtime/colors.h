@@ -16,11 +16,6 @@ inline constexpr int64_t PackRGB(int64_t r, int64_t g, int64_t b) {
 
 extern "C" {
 
-// Color decomposition
-void color_decompose_cmyk(int64_t color, int64_t* c, int64_t* m, int64_t* y, int64_t* k);
-void color_decompose_hsl(int64_t color, int64_t* h, int64_t* s, int64_t* l);
-void color_decompose_hsv(int64_t color, int64_t* h, int64_t* s, int64_t* v);
-
 // Output: prints "#RRGGBB" to current output stream
 void color_print(int64_t color);
 

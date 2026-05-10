@@ -367,6 +367,210 @@ ColorsModule::ColorsModule() {
         return block;
     };
 
+    auto decomposeColorTempId = std::make_shared<size_t>(0);
+    auto makeColorDecomposeBlock =
+        [integerType, floatType, boolType, voidType, intLiteral, floatLiteral, ident, binary, cast, ifExpr, decomposeColorTempId]
+        (const char* suffix, const auto& emitBody) {
+            return [=](std::vector<NAst::TExprPtr> args) -> NAst::TExprPtr {
+                auto loc = args[0]->Location;
+                const auto prefix = std::string("$$color_decompose_") + suffix + "_" + std::to_string((*decomposeColorTempId)++);
+                auto name = [&](const char* local) { return prefix + local; };
+                auto idi = [&](const char* local) { return ident(loc, name(local), integerType); };
+                auto idf = [&](const char* local) { return ident(loc, name(local), floatType); };
+                auto f = [&](double value) { return floatLiteral(loc, value); };
+                auto assignLocal = [&](const char* local, NAst::TExprPtr value) -> NAst::TExprPtr {
+                    return std::make_shared<NAst::TAssignExpr>(loc, name(local), std::move(value));
+                };
+                auto roundToInt = [&](NAst::TExprPtr value) -> NAst::TExprPtr {
+                    return cast(binary("+", std::move(value), f(0.5), floatType), integerType);
+                };
+                auto assignTarget = [&](const NAst::TExprPtr& target, NAst::TExprPtr value) -> NAst::TExprPtr {
+                    if (auto maybeIdent = NAst::TMaybeNode<NAst::TIdentExpr>(target)) {
+                        return std::make_shared<NAst::TAssignExpr>(target->Location, maybeIdent.Cast()->Name, std::move(value));
+                    }
+                    if (auto maybeIndex = NAst::TMaybeNode<NAst::TIndexExpr>(target)) {
+                        auto index = maybeIndex.Cast();
+                        if (auto maybeCollection = NAst::TMaybeNode<NAst::TIdentExpr>(index->Collection)) {
+                            return std::make_shared<NAst::TArrayAssignExpr>(
+                                target->Location,
+                                maybeCollection.Cast()->Name,
+                                std::vector<NAst::TExprPtr>{index->Index},
+                                std::move(value));
+                        }
+                    }
+                    if (auto maybeMultiIndex = NAst::TMaybeNode<NAst::TMultiIndexExpr>(target)) {
+                        auto index = maybeMultiIndex.Cast();
+                        if (auto maybeCollection = NAst::TMaybeNode<NAst::TIdentExpr>(index->Collection)) {
+                            return std::make_shared<NAst::TArrayAssignExpr>(
+                                target->Location,
+                                maybeCollection.Cast()->Name,
+                                index->Indices,
+                                std::move(value));
+                        }
+                    }
+
+                    return std::make_shared<NAst::TCallExpr>(
+                        target->Location,
+                        std::make_shared<NAst::TIdentExpr>(target->Location, "__unsupported_inline_color_decompose_target"),
+                        std::vector<NAst::TExprPtr>{});
+                };
+
+                auto block = std::make_shared<NAst::TBlockExpr>(loc, std::vector<NAst::TExprPtr>{});
+                block->Type = voidType;
+                auto declare = [&](const char* local, NAst::TTypePtr type) {
+                    auto var = std::make_shared<NAst::TVarStmt>(loc, name(local), std::move(type));
+                    block->Stmts.push_back(var);
+                };
+                for (const char* local : {"$color", "$r", "$g", "$b"}) {
+                    declare(local, integerType);
+                }
+                for (const char* local : {"$rf", "$gf", "$bf", "$mx", "$mn", "$d", "$hf", "$sf", "$lf", "$kf"}) {
+                    declare(local, floatType);
+                }
+
+                block->Stmts.push_back(assignLocal("$color", cast(args[0], integerType)));
+                auto component = [&](int64_t shift) -> NAst::TExprPtr {
+                    NAst::TExprPtr value = idi("$color");
+                    if (shift != 0) {
+                        value = binary(">>", std::move(value), intLiteral(loc, shift), integerType);
+                    }
+                    return binary("&", std::move(value), intLiteral(loc, 255), integerType);
+                };
+                block->Stmts.push_back(assignLocal("$r", component(16)));
+                block->Stmts.push_back(assignLocal("$g", component(8)));
+                block->Stmts.push_back(assignLocal("$b", component(0)));
+                block->Stmts.push_back(assignLocal("$rf", binary("/", idi("$r"), f(255.0), floatType)));
+                block->Stmts.push_back(assignLocal("$gf", binary("/", idi("$g"), f(255.0), floatType)));
+                block->Stmts.push_back(assignLocal("$bf", binary("/", idi("$b"), f(255.0), floatType)));
+                block->Stmts.push_back(assignLocal("$mx", ifExpr(
+                    binary(">", idf("$rf"), idf("$gf"), boolType),
+                    ifExpr(binary(">", idf("$rf"), idf("$bf"), boolType), idf("$rf"), idf("$bf"), floatType),
+                    ifExpr(binary(">", idf("$gf"), idf("$bf"), boolType), idf("$gf"), idf("$bf"), floatType),
+                    floatType)));
+                block->Stmts.push_back(assignLocal("$mn", ifExpr(
+                    binary("<", idf("$rf"), idf("$gf"), boolType),
+                    ifExpr(binary("<", idf("$rf"), idf("$bf"), boolType), idf("$rf"), idf("$bf"), floatType),
+                    ifExpr(binary("<", idf("$gf"), idf("$bf"), boolType), idf("$gf"), idf("$bf"), floatType),
+                    floatType)));
+
+                emitBody(loc, block, idi, idf, f, assignLocal, assignTarget, roundToInt, args);
+                return block;
+            };
+        };
+
+    auto decomposeCmyk = makeColorDecomposeBlock("cmyk",
+        [integerType, floatType, boolType, voidType, intLiteral, binary]
+        (TLocation loc, const std::shared_ptr<NAst::TBlockExpr>& block,
+         const auto& idi, const auto& idf, const auto& f, const auto& assignLocal,
+         const auto& assignTarget, const auto& roundToInt, const std::vector<NAst::TExprPtr>& args) {
+            block->Stmts.push_back(assignLocal("$kf", binary("-", f(1.0), idf("$mx"), floatType)));
+            auto percent = [&](NAst::TExprPtr channel) {
+                return roundToInt(binary("*",
+                    binary("/", binary("-", binary("-", f(1.0), std::move(channel), floatType), idf("$kf"), floatType),
+                        binary("-", f(1.0), idf("$kf"), floatType), floatType),
+                    f(100.0), floatType));
+            };
+            auto black = std::make_shared<NAst::TBlockExpr>(loc, std::vector<NAst::TExprPtr>{});
+            black->Type = voidType;
+            black->Stmts.push_back(assignTarget(args[1], intLiteral(loc, 0)));
+            black->Stmts.push_back(assignTarget(args[2], intLiteral(loc, 0)));
+            black->Stmts.push_back(assignTarget(args[3], intLiteral(loc, 0)));
+            black->Stmts.push_back(assignTarget(args[4], intLiteral(loc, 100)));
+            auto chroma = std::make_shared<NAst::TBlockExpr>(loc, std::vector<NAst::TExprPtr>{});
+            chroma->Type = voidType;
+            chroma->Stmts.push_back(assignTarget(args[1], percent(idf("$rf"))));
+            chroma->Stmts.push_back(assignTarget(args[2], percent(idf("$gf"))));
+            chroma->Stmts.push_back(assignTarget(args[3], percent(idf("$bf"))));
+            chroma->Stmts.push_back(assignTarget(args[4], roundToInt(binary("*", idf("$kf"), f(100.0), floatType))));
+            auto stmt = std::make_shared<NAst::TIfStmt>(
+                loc,
+                binary(">=", idf("$kf"), f(1.0), boolType),
+                std::move(black),
+                std::move(chroma));
+            stmt->Type = voidType;
+            block->Stmts.push_back(stmt);
+        });
+
+    auto decomposeHsl = makeColorDecomposeBlock("hsl",
+        [integerType, floatType, boolType, voidType, binary, ifExpr]
+        (TLocation loc, const std::shared_ptr<NAst::TBlockExpr>& block,
+         const auto& idi, const auto& idf, const auto& f, const auto& assignLocal,
+         const auto& assignTarget, const auto& roundToInt, const std::vector<NAst::TExprPtr>& args) {
+            block->Stmts.push_back(assignLocal("$lf", binary("/", binary("+", idf("$mx"), idf("$mn"), floatType), f(2.0), floatType)));
+            block->Stmts.push_back(assignLocal("$sf", f(0.0)));
+            block->Stmts.push_back(assignLocal("$hf", f(0.0)));
+            auto chroma = std::make_shared<NAst::TBlockExpr>(loc, std::vector<NAst::TExprPtr>{});
+            chroma->Type = voidType;
+            chroma->Stmts.push_back(assignLocal("$d", binary("-", idf("$mx"), idf("$mn"), floatType)));
+            chroma->Stmts.push_back(assignLocal("$sf", ifExpr(
+                binary(">", idf("$lf"), f(0.5), boolType),
+                binary("/", idf("$d"), binary("-", f(2.0), binary("+", idf("$mx"), idf("$mn"), floatType), floatType), floatType),
+                binary("/", idf("$d"), binary("+", idf("$mx"), idf("$mn"), floatType), floatType),
+                floatType)));
+            chroma->Stmts.push_back(assignLocal("$hf", ifExpr(
+                binary("==", idf("$mx"), idf("$rf"), boolType),
+                binary("+", binary("/", binary("-", idf("$gf"), idf("$bf"), floatType), idf("$d"), floatType),
+                    ifExpr(binary("<", idf("$gf"), idf("$bf"), boolType), f(6.0), f(0.0), floatType), floatType),
+                ifExpr(
+                    binary("==", idf("$mx"), idf("$gf"), boolType),
+                    binary("+", binary("/", binary("-", idf("$bf"), idf("$rf"), floatType), idf("$d"), floatType), f(2.0), floatType),
+                    binary("+", binary("/", binary("-", idf("$rf"), idf("$gf"), floatType), idf("$d"), floatType), f(4.0), floatType),
+                    floatType),
+                floatType)));
+            chroma->Stmts.push_back(assignLocal("$hf", binary("/", idf("$hf"), f(6.0), floatType)));
+            auto noop = std::make_shared<NAst::TBlockExpr>(loc, std::vector<NAst::TExprPtr>{});
+            noop->Type = voidType;
+            auto stmt = std::make_shared<NAst::TIfStmt>(
+                loc,
+                binary("!=", idf("$mx"), idf("$mn"), boolType),
+                std::move(chroma),
+                std::move(noop));
+            stmt->Type = voidType;
+            block->Stmts.push_back(stmt);
+            block->Stmts.push_back(assignTarget(args[1], roundToInt(binary("*", idf("$hf"), f(360.0), floatType))));
+            block->Stmts.push_back(assignTarget(args[2], roundToInt(binary("*", idf("$sf"), f(100.0), floatType))));
+            block->Stmts.push_back(assignTarget(args[3], roundToInt(binary("*", idf("$lf"), f(100.0), floatType))));
+        });
+
+    auto decomposeHsv = makeColorDecomposeBlock("hsv",
+        [integerType, floatType, boolType, voidType, binary, ifExpr]
+        (TLocation loc, const std::shared_ptr<NAst::TBlockExpr>& block,
+         const auto& idi, const auto& idf, const auto& f, const auto& assignLocal,
+         const auto& assignTarget, const auto& roundToInt, const std::vector<NAst::TExprPtr>& args) {
+            block->Stmts.push_back(assignLocal("$d", binary("-", idf("$mx"), idf("$mn"), floatType)));
+            block->Stmts.push_back(assignLocal("$sf", ifExpr(
+                binary("==", idf("$mx"), f(0.0), boolType),
+                f(0.0),
+                binary("/", idf("$d"), idf("$mx"), floatType),
+                floatType)));
+            block->Stmts.push_back(assignLocal("$hf", f(0.0)));
+            auto chroma = std::make_shared<NAst::TBlockExpr>(loc, std::vector<NAst::TExprPtr>{});
+            chroma->Type = voidType;
+            chroma->Stmts.push_back(assignLocal("$hf", ifExpr(
+                binary("==", idf("$mx"), idf("$rf"), boolType),
+                binary("+", binary("/", binary("-", idf("$gf"), idf("$bf"), floatType), idf("$d"), floatType),
+                    ifExpr(binary("<", idf("$gf"), idf("$bf"), boolType), f(6.0), f(0.0), floatType), floatType),
+                ifExpr(
+                    binary("==", idf("$mx"), idf("$gf"), boolType),
+                    binary("+", binary("/", binary("-", idf("$bf"), idf("$rf"), floatType), idf("$d"), floatType), f(2.0), floatType),
+                    binary("+", binary("/", binary("-", idf("$rf"), idf("$gf"), floatType), idf("$d"), floatType), f(4.0), floatType),
+                    floatType),
+                floatType)));
+            chroma->Stmts.push_back(assignLocal("$hf", binary("/", idf("$hf"), f(6.0), floatType)));
+            auto noop = std::make_shared<NAst::TBlockExpr>(loc, std::vector<NAst::TExprPtr>{});
+            noop->Type = voidType;
+            auto stmt = std::make_shared<NAst::TIfStmt>(
+                loc,
+                binary("!=", idf("$d"), f(0.0), boolType),
+                std::move(chroma),
+                std::move(noop));
+            stmt->Type = voidType;
+            block->Stmts.push_back(stmt);
+            block->Stmts.push_back(assignTarget(args[1], roundToInt(binary("*", idf("$hf"), f(360.0), floatType))));
+            block->Stmts.push_back(assignTarget(args[2], roundToInt(binary("*", idf("$sf"), f(100.0), floatType))));
+            block->Stmts.push_back(assignTarget(args[3], roundToInt(binary("*", idf("$mx"), f(100.0), floatType))));
+        });
+
     auto makeOutInt = [&]() -> NAst::TTypePtr {
         auto t = std::make_shared<NAst::TIntegerType>();
         t->Mutable  = true;
@@ -557,45 +761,23 @@ ColorsModule::ColorsModule() {
         {
             .Name = "разложить в CMYK",
             .MangledName = "color_decompose_cmyk",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t,int64_t*,int64_t*,int64_t*,int64_t*)>(color_decompose_cmyk)),
-            .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
-                color_decompose_cmyk(args[0],
-                    reinterpret_cast<int64_t*>(args[1]),
-                    reinterpret_cast<int64_t*>(args[2]),
-                    reinterpret_cast<int64_t*>(args[3]),
-                    reinterpret_cast<int64_t*>(args[4]));
-                return 0;
-            },
             .ArgTypes = { colorType, makeOutInt(), makeOutInt(), makeOutInt(), makeOutInt() },
             .ReturnType = voidType,
+            .Inline = decomposeCmyk,
         },
         {
             .Name = "разложить в HSL",
             .MangledName = "color_decompose_hsl",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t,int64_t*,int64_t*,int64_t*)>(color_decompose_hsl)),
-            .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
-                color_decompose_hsl(args[0],
-                    reinterpret_cast<int64_t*>(args[1]),
-                    reinterpret_cast<int64_t*>(args[2]),
-                    reinterpret_cast<int64_t*>(args[3]));
-                return 0;
-            },
             .ArgTypes = { colorType, makeOutInt(), makeOutInt(), makeOutInt() },
             .ReturnType = voidType,
+            .Inline = decomposeHsl,
         },
         {
             .Name = "разложить в HSV",
             .MangledName = "color_decompose_hsv",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t,int64_t*,int64_t*,int64_t*)>(color_decompose_hsv)),
-            .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
-                color_decompose_hsv(args[0],
-                    reinterpret_cast<int64_t*>(args[1]),
-                    reinterpret_cast<int64_t*>(args[2]),
-                    reinterpret_cast<int64_t*>(args[3]));
-                return 0;
-            },
             .ArgTypes = { colorType, makeOutInt(), makeOutInt(), makeOutInt() },
             .ReturnType = voidType,
+            .Inline = decomposeHsv,
         },
 
         // ── Output operator ───────────────────────────────────────────────────
