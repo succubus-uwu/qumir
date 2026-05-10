@@ -66,25 +66,18 @@ ColorsModule::ColorsModule() {
         return expr;
     };
 
-    auto colorPack = [integerType, colorType, intLiteral](NAst::TExprPtr r, NAst::TExprPtr g,
+    auto colorPack = [integerType, colorType, intLiteral, binary](NAst::TExprPtr r, NAst::TExprPtr g,
                                                           NAst::TExprPtr b, NAst::TExprPtr a) -> NAst::TExprPtr {
-        auto bin = [](const char* op, NAst::TExprPtr left, NAst::TExprPtr right, NAst::TTypePtr type) -> NAst::TExprPtr {
-            auto loc = left->Location;
-            auto expr = std::make_shared<NAst::TBinaryExpr>(std::move(loc), NAst::TOperator(op),
-                std::move(left), std::move(right));
-            expr->Type = std::move(type);
-            return expr;
-        };
         auto mask = [&](NAst::TExprPtr value) {
             auto loc = value->Location;
-            return bin("&", std::move(value), intLiteral(loc, 255), integerType);
+            return binary("&", std::move(value), intLiteral(loc, 255), integerType);
         };
         auto shift = [&](NAst::TExprPtr value, int64_t bits) {
             auto loc = value->Location;
-            return bin("<<", mask(std::move(value)), intLiteral(loc, bits), integerType);
+            return binary("<<", mask(std::move(value)), intLiteral(loc, bits), integerType);
         };
         auto bor = [&](NAst::TExprPtr left, NAst::TExprPtr right, NAst::TTypePtr type) {
-            return bin("|", std::move(left), std::move(right), std::move(type));
+            return binary("|", std::move(left), std::move(right), std::move(type));
         };
 
         return bor(
