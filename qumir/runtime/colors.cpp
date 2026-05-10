@@ -43,12 +43,6 @@ int64_t color_hsva(int64_t h, int64_t s, int64_t v, int64_t a) {
     return PackARGB(a, rgb.r, rgb.g, rgb.b);
 }
 
-void color_decompose_rgb(int64_t color, int64_t* r, int64_t* g, int64_t* b) {
-    *r = (color >> 16) & 0xFF;
-    *g = (color >> 8)  & 0xFF;
-    *b =  color        & 0xFF;
-}
-
 void color_decompose_cmyk(int64_t color, int64_t* c, int64_t* m, int64_t* y, int64_t* k) {
     int64_t r = (color >> 16) & 0xFF;
     int64_t g = (color >> 8)  & 0xFF;

@@ -60,6 +60,82 @@ ColorsModule::ColorsModule() {
             colorType);
     };
 
+    auto decomposeRgbTempId = std::make_shared<size_t>(0);
+    auto decomposeRgb = [integerType, colorType, voidType, intLiteral, decomposeRgbTempId](std::vector<NAst::TExprPtr> args) -> NAst::TExprPtr {
+        const auto colorName = "$$color_decompose_rgb_" + std::to_string((*decomposeRgbTempId)++);
+
+        auto bin = [](const char* op, NAst::TExprPtr left, NAst::TExprPtr right, NAst::TTypePtr type) -> NAst::TExprPtr {
+            auto loc = left->Location;
+            auto expr = std::make_shared<NAst::TBinaryExpr>(std::move(loc), NAst::TOperator(op),
+                std::move(left), std::move(right));
+            expr->Type = std::move(type);
+            return expr;
+        };
+
+        auto ident = [](TLocation loc, const std::string& name, NAst::TTypePtr type) -> NAst::TExprPtr {
+            auto expr = std::make_shared<NAst::TIdentExpr>(std::move(loc), name);
+            expr->Type = std::move(type);
+            return expr;
+        };
+
+        auto component = [&](int64_t shift) -> NAst::TExprPtr {
+            auto loc = args[0]->Location;
+            NAst::TExprPtr value = ident(loc, colorName, integerType);
+            if (shift != 0) {
+                value = bin(">>", std::move(value), intLiteral(loc, shift), integerType);
+            }
+            return bin("&", std::move(value), intLiteral(loc, 255), integerType);
+        };
+
+        auto assignTarget = [&](const NAst::TExprPtr& target, NAst::TExprPtr value) -> NAst::TExprPtr {
+            if (auto maybeIdent = NAst::TMaybeNode<NAst::TIdentExpr>(target)) {
+                auto id = maybeIdent.Cast();
+                return std::make_shared<NAst::TAssignExpr>(target->Location, id->Name, std::move(value));
+            }
+            if (auto maybeIndex = NAst::TMaybeNode<NAst::TIndexExpr>(target)) {
+                auto index = maybeIndex.Cast();
+                auto maybeCollection = NAst::TMaybeNode<NAst::TIdentExpr>(index->Collection);
+                if (maybeCollection) {
+                    return std::make_shared<NAst::TArrayAssignExpr>(
+                        target->Location,
+                        maybeCollection.Cast()->Name,
+                        std::vector<NAst::TExprPtr>{index->Index},
+                        std::move(value));
+                }
+            }
+            if (auto maybeMultiIndex = NAst::TMaybeNode<NAst::TMultiIndexExpr>(target)) {
+                auto index = maybeMultiIndex.Cast();
+                auto maybeCollection = NAst::TMaybeNode<NAst::TIdentExpr>(index->Collection);
+                if (maybeCollection) {
+                    return std::make_shared<NAst::TArrayAssignExpr>(
+                        target->Location,
+                        maybeCollection.Cast()->Name,
+                        index->Indices,
+                        std::move(value));
+                }
+            }
+
+            return std::make_shared<NAst::TCallExpr>(
+                target->Location,
+                std::make_shared<NAst::TIdentExpr>(target->Location, "__unsupported_inline_color_decompose_target"),
+                std::vector<NAst::TExprPtr>{});
+        };
+
+        auto block = std::make_shared<NAst::TBlockExpr>(args[0]->Location, std::vector<NAst::TExprPtr>{});
+        block->Type = voidType;
+
+        auto colorVar = std::make_shared<NAst::TVarStmt>(args[0]->Location, colorName, integerType);
+        colorVar->Type = integerType;
+        block->Stmts.push_back(colorVar);
+        auto colorValue = std::make_shared<NAst::TCastExpr>(args[0]->Location, args[0], integerType);
+        colorValue->Type = integerType;
+        block->Stmts.push_back(std::make_shared<NAst::TAssignExpr>(args[0]->Location, colorName, colorValue));
+        block->Stmts.push_back(assignTarget(args[1], component(16)));
+        block->Stmts.push_back(assignTarget(args[2], component(8)));
+        block->Stmts.push_back(assignTarget(args[3], component(0)));
+        return block;
+    };
+
     auto makeOutInt = [&]() -> NAst::TTypePtr {
         auto t = std::make_shared<NAst::TIntegerType>();
         t->Mutable  = true;
@@ -261,16 +337,9 @@ ColorsModule::ColorsModule() {
         {
             .Name = "разложить в RGB",
             .MangledName = "color_decompose_rgb",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t,int64_t*,int64_t*,int64_t*)>(color_decompose_rgb)),
-            .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
-                color_decompose_rgb(args[0],
-                    reinterpret_cast<int64_t*>(args[1]),
-                    reinterpret_cast<int64_t*>(args[2]),
-                    reinterpret_cast<int64_t*>(args[3]));
-                return 0;
-            },
             .ArgTypes = { colorType, makeOutInt(), makeOutInt(), makeOutInt() },
             .ReturnType = voidType,
+            .Inline = decomposeRgb,
         },
         {
             .Name = "разложить в CMYK",

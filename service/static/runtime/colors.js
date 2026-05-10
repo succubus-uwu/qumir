@@ -74,13 +74,6 @@ export function color_cmyka(c,m,y,k,a)   { const [r,g,b] = cmykToRGB(Number(c),N
 
 // ── Color decomposition ───────────────────────────────────────────────────────
 
-export function color_decompose_rgb(color, rPtr, gPtr, bPtr) {
-  const c = BigInt.asUintN(32, BigInt(color));
-  writeI64(rPtr, (c >> 16n) & 0xFFn);
-  writeI64(gPtr, (c >>  8n) & 0xFFn);
-  writeI64(bPtr,  c         & 0xFFn);
-}
-
 export function color_decompose_cmyk(color, cPtr, mPtr, yPtr, kPtr) {
   const c = BigInt.asUintN(32, BigInt(color));
   const r = Number((c >> 16n) & 0xFFn) / 255;

@@ -279,6 +279,9 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
         } else if (NAst::TMaybeType<NAst::TIntegerType>(expr->Type) && NAst::TMaybeType<NAst::TSymbolType>(cast->Operand->Type)) {
             // oposite of above: int to symbol
             tmp = Builder.Emit1("mov"_op, {*operand.Value});
+        } else if (FromAstType(NAst::UnwrapNamedType(expr->Type), Module.Types)
+            == FromAstType(NAst::UnwrapNamedType(cast->Operand->Type), Module.Types)) {
+            tmp = Builder.Emit1("mov"_op, {*operand.Value});
         } else {
             co_return TError(cast->Location, TErrorString::Get<EErrorId::UNSUPPORTED_CAST_TYPES>(std::string(cast->Operand->Type->TypeName()), std::string(expr->Type->TypeName())));
         }
