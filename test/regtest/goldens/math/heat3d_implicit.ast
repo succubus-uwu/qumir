@@ -618,26 +618,27 @@
                                       ($k:<Int>)
                                       ($newv:<Float>))
                                     ($diff =:<Void>
-                                      (IfExpr:<Float>
-                                        (<:<Bool>
-                                          (-:<Float>
-                                            ($newv:<Float>)
-                                            ($oldv:<Float>))
-                                          (0.000000:<Float>))
-                                        (-:<Float>
-                                          (-:<Float>
-                                            ($newv:<Float>)
-                                            ($oldv:<Float>)))
+                                      (LetExpr:<Float>
                                         (-:<Float>
                                           ($newv:<Float>)
-                                          ($oldv:<Float>))))
+                                          ($oldv:<Float>))
+                                        (IfExpr:<Float>
+                                          (<:<Bool>
+                                            ($$$value:<Float>)
+                                            (0.000000:<Float>))
+                                          (-:<Float>
+                                            ($$$value:<Float>))
+                                          ($$$value:<Float>))))
                                     ($change =:<Void>
-                                      (IfExpr:<Float>
-                                        (>:<Bool>
-                                          ($change:<Float>)
-                                          ($diff:<Float>))
+                                      (LetExpr:<Float>
                                         ($change:<Float>)
-                                        ($diff:<Float>))))
+                                        ($diff:<Float>)
+                                        (IfExpr:<Float>
+                                          (>:<Bool>
+                                            ($$$left:<Float>)
+                                            ($$$right:<Float>))
+                                          ($$$left:<Float>)
+                                          ($$$right:<Float>)))))
                                   ($$$next =:<Void>
                                     (+:<Int>
                                       ($$$next:<Int>)
@@ -797,26 +798,7 @@
                                 ($pi:<Float>)
                                 ($z:<Float>)))))
                         ($diff =:<Void>
-                          (IfExpr:<Float>
-                            (<:<Bool>
-                              (-:<Float>
-                                (MultiIndex:<Float>
-                                  ($u:<Array [Float; 4]>)
-                                  ($nt:<Int>)
-                                  ($i:<Int>)
-                                  ($j:<Int>)
-                                  ($k:<Int>))
-                                ($uex:<Float>))
-                              (0.000000:<Float>))
-                            (-:<Float>
-                              (-:<Float>
-                                (MultiIndex:<Float>
-                                  ($u:<Array [Float; 4]>)
-                                  ($nt:<Int>)
-                                  ($i:<Int>)
-                                  ($j:<Int>)
-                                  ($k:<Int>))
-                                ($uex:<Float>)))
+                          (LetExpr:<Float>
                             (-:<Float>
                               (MultiIndex:<Float>
                                 ($u:<Array [Float; 4]>)
@@ -824,14 +806,24 @@
                                 ($i:<Int>)
                                 ($j:<Int>)
                                 ($k:<Int>))
-                              ($uex:<Float>))))
+                              ($uex:<Float>))
+                            (IfExpr:<Float>
+                              (<:<Bool>
+                                ($$$value:<Float>)
+                                (0.000000:<Float>))
+                              (-:<Float>
+                                ($$$value:<Float>))
+                              ($$$value:<Float>))))
                         ($err =:<Void>
-                          (IfExpr:<Float>
-                            (>:<Bool>
-                              ($err:<Float>)
-                              ($diff:<Float>))
+                          (LetExpr:<Float>
                             ($err:<Float>)
-                            ($diff:<Float>))))
+                            ($diff:<Float>)
+                            (IfExpr:<Float>
+                              (>:<Bool>
+                                ($$$left:<Float>)
+                                ($$$right:<Float>))
+                              ($$$left:<Float>)
+                              ($$$right:<Float>)))))
                       ($$$next =:<Void>
                         (+:<Int>
                           ($$$next:<Int>)

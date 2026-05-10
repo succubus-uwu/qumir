@@ -2589,13 +2589,15 @@
           (Block:<Void>
             (IfStmt:<Void>
               (<:<Bool>
-                (IfExpr:<Float>
-                  (<:<Bool>
-                    ($d:<Float>)
-                    (0.000000:<Float>))
-                  (-:<Float>
-                    ($d:<Float>))
-                  ($d:<Float>))
+                (LetExpr:<Float>
+                  ($d:<Float>)
+                  (IfExpr:<Float>
+                    (<:<Bool>
+                      ($$$value:<Float>)
+                      (0.000000:<Float>))
+                    (-:<Float>
+                      ($$$value:<Float>))
+                    ($$$value:<Float>)))
                 (0.000000:<Float>))
               (Block:<Void>
                 (IfStmt:<Void>

@@ -11,26 +11,6 @@ double cotan(double x) {
     return 1.0 / tan(x);
 }
 
-int64_t min_int64_t(int64_t a, int64_t b) {
-    return a < b ? a : b;
-}
-
-int64_t max_int64_t(int64_t a, int64_t b) {
-    return a > b ? a : b;
-}
-
-double min_double(double a, double b) {
-    return a < b ? a : b;
-}
-
-double max_double(double a, double b) {
-    return a > b ? a : b;
-}
-
-int sign(double x) {
-    return (x > 0) - (x < 0);
-}
-
 int64_t trunc_double(double x) {
     return static_cast<int64_t>(x);
 }

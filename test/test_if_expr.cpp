@@ -288,6 +288,25 @@ TEST(SystemInline, IntMinMaxAbsSignUseIfExpr) {
     EXPECT_EQ(result.ir.find("sign"), std::string::npos) << result.ir;
 }
 
+TEST(SystemInline, NestedIntMinUsesDistinctLetScopes) {
+    const std::string src = R"(алг
+нач
+  цел a,b,c,d,x
+  a := 4
+  b := 3
+  c := 2
+  d := 1
+  x := imin(imin(imin(a,b),c),d)
+  вывод x, нс
+кон
+)";
+
+    auto result = RunProgram(src);
+    ASSERT_TRUE(result.ok()) << result.error;
+    EXPECT_EQ(result.output, "1\n");
+    EXPECT_EQ(result.ir.find("min_int64_t"), std::string::npos) << result.ir;
+}
+
 TEST(SystemInline, FloatMinMaxAbsUseIfExpr) {
     const std::string src = R"(алг
 нач

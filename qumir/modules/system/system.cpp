@@ -78,22 +78,38 @@ SystemModule::SystemModule() {
             return std::make_shared<NAst::TLetExpr>(TLocation{}, std::move(bindings), std::move(body));
         };
     };
-    auto inlineMax = [boolType](NAst::TTypePtr type) {
-        return [type, boolType](std::vector<NAst::TExprPtr> args) -> NAst::TExprPtr {
-            return ifExpr(
-                binary(">", args[0], args[1], boolType),
-                args[0],
-                args[1],
+    auto inlineMax = [&](NAst::TTypePtr type) {
+        return [type, boolType, &ident](std::vector<NAst::TExprPtr> args) -> NAst::TExprPtr {
+            std::vector<NAst::TLetExpr::TBinding> bindings;
+            bindings.push_back(NAst::TLetExpr::TBinding{
+                .Name = "$$left",
+                .Value = args[0],
+            });
+            bindings.push_back(NAst::TLetExpr::TBinding{
+                .Name = "$$right",
+                .Value = args[1],
+            });
+            auto body = ifExpr(
+                binary(">", ident("$$left"), ident("$$right"), boolType),
+                ident("$$left"),
+                ident("$$right"),
                 type);
+            return std::make_shared<NAst::TLetExpr>(TLocation{}, std::move(bindings), std::move(body));
         };
     };
-    auto inlineAbs = [boolType](NAst::TTypePtr type) {
-        return [type, boolType](std::vector<NAst::TExprPtr> args) -> NAst::TExprPtr {
-            return ifExpr(
-                binary("<", args[0], number(type, 0), boolType),
-                unary("-", args[0], type),
-                args[0],
+    auto inlineAbs = [&](NAst::TTypePtr type) {
+        return [type, boolType, &ident](std::vector<NAst::TExprPtr> args) -> NAst::TExprPtr {
+            std::vector<NAst::TLetExpr::TBinding> bindings;
+            bindings.push_back(NAst::TLetExpr::TBinding{
+                .Name = "$$value",
+                .Value = args[0],
+            });
+            auto body = ifExpr(
+                binary("<", ident("$$value"), number(type, 0), boolType),
+                unary("-", ident("$$value"), type),
+                ident("$$value"),
                 type);
+            return std::make_shared<NAst::TLetExpr>(TLocation{}, std::move(bindings), std::move(body));
         };
     };
 
@@ -101,23 +117,25 @@ SystemModule::SystemModule() {
         {
             .Name = "sign",
             .MangledName = "sign",
-            .Ptr = reinterpret_cast<void*>(static_cast<int(*)(double)>(sign)),
-            .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
-                return sign(std::bit_cast<double>(args[0]));
-            },
             .ArgTypes = { floatType },
             .ReturnType = integerType,
-            .Inline = [integerType, floatType, boolType](std::vector<NAst::TExprPtr> args) -> NAst::TExprPtr {
+            .Inline = [integerType, floatType, boolType, &ident](std::vector<NAst::TExprPtr> args) -> NAst::TExprPtr {
+                std::vector<NAst::TLetExpr::TBinding> bindings;
+                bindings.push_back(NAst::TLetExpr::TBinding{
+                    .Name = "$$value",
+                    .Value = args[0],
+                });
                 auto zero = number(floatType, 0);
-                return ifExpr(
-                    binary(">", args[0], zero, boolType),
+                auto body = ifExpr(
+                    binary(">", ident("$$value"), zero, boolType),
                     number(integerType, 1),
                     ifExpr(
-                        binary("<", args[0], zero, boolType),
+                        binary("<", ident("$$value"), zero, boolType),
                         number(integerType, -1),
                         number(integerType, 0),
                         integerType),
                     integerType);
+                return std::make_shared<NAst::TLetExpr>(TLocation{}, std::move(bindings), std::move(body));
             },
         },
         {
@@ -130,10 +148,6 @@ SystemModule::SystemModule() {
         {
             .Name = "imax",
             .MangledName = "max_int64_t",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(int64_t, int64_t)>(max_int64_t)),
-            .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
-                return std::bit_cast<uint64_t>(max_int64_t(std::bit_cast<int64_t>(args[0]), std::bit_cast<int64_t>(args[1])));
-            },
             .ArgTypes = { integerType, integerType },
             .ReturnType = integerType,
             .Inline = inlineMax(integerType),
@@ -141,10 +155,6 @@ SystemModule::SystemModule() {
         {
             .Name = "min",
             .MangledName = "min_double",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(double, double)>(min_double)),
-            .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
-                return std::bit_cast<uint64_t>(min_double(std::bit_cast<double>(args[0]), std::bit_cast<double>(args[1])));
-            },
             .ArgTypes = { floatType, floatType },
             .ReturnType = floatType,
             .Inline = inlineMin(floatType),
@@ -152,10 +162,6 @@ SystemModule::SystemModule() {
         {
             .Name = "max",
             .MangledName = "max_double",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(double, double)>(max_double)),
-            .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
-                return std::bit_cast<uint64_t>(max_double(std::bit_cast<double>(args[0]), std::bit_cast<double>(args[1])));
-            },
             .ArgTypes = { floatType, floatType },
             .ReturnType = floatType,
             .Inline = inlineMax(floatType),
@@ -173,10 +179,6 @@ SystemModule::SystemModule() {
         {
             .Name = "iabs",
             .MangledName = "labs",
-            .Ptr = reinterpret_cast<void*>(static_cast<int(*)(int)>(abs)),
-            .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
-                return std::bit_cast<uint64_t>(labs(std::bit_cast<int64_t>(args[0])));
-            },
             .ArgTypes = { integerType },
             .ReturnType = integerType,
             .Inline = inlineAbs(integerType),
@@ -184,10 +186,6 @@ SystemModule::SystemModule() {
         {
             .Name = "abs",
             .MangledName = "fabs",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(double)>(fabs)),
-            .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
-                return std::bit_cast<uint64_t>(fabs(std::bit_cast<double>(args[0])));
-            },
             .ArgTypes = { floatType },
             .ReturnType = floatType,
             .Inline = inlineAbs(floatType),

@@ -1,21 +1,7 @@
 // JS runtime shims for math/system functions imported by wasm
 // Keep names exactly as in MangledName fields. IO functions moved to io.js
 
-export function sign(x) {
-  if (Number.isNaN(x)) return 0;
-  return x > 0 ? 1 : (x < 0 ? -1 : 0);
-}
-
-export function min_int64_t(a, b) { return (BigInt(a) < BigInt(b)) ? BigInt(a) : BigInt(b); }
-export function max_int64_t(a, b) { return (BigInt(a) > BigInt(b)) ? BigInt(a) : BigInt(b); }
-
-export function min_double(a, b) { return Math.min(a, b); }
-export function max_double(a, b) { return Math.max(a, b); }
-
 export function sqrt(x) { return Math.sqrt(x); }
-
-export function labs(x) { return Math.abs(Number(x)) | 0; }
-export function fabs(x) { return Math.abs(x); }
 
 export function sin(x) { return Math.sin(x); }
 export function cos(x) { return Math.cos(x); }
