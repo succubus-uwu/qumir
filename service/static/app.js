@@ -262,6 +262,7 @@ function applyProjectToInputs(project, { silent = false } = {}) {
   if (Array.isArray(project.files)) {
     if (__ioFilesRoot) {
       __ioFilesRoot.innerHTML = '';
+      ensureErrorsPane();
     }
     __ioFiles.length = 0;
     project.files.forEach(file => {
@@ -918,6 +919,9 @@ function ensureErrorsPane() {
   pane = document.createElement('div');
   pane.className = 'io-pane errors-pane';
   pane.dataset.ioPane = 'errors';
+  if (__currentIoPane === 'errors') {
+    pane.classList.add('active');
+  }
   const viewer = document.createElement('pre');
   viewer.id = 'errors';
   viewer.className = 'io-file-text';
@@ -2913,6 +2917,7 @@ initEditor();
 
     if (__ioFilesRoot) {
       __ioFilesRoot.innerHTML = '';
+      ensureErrorsPane();
     }
     __ioFiles.length = 0;
     nextFiles.forEach(file => {
