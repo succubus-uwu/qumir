@@ -2589,8 +2589,12 @@
           (Block:<Void>
             (IfStmt:<Void>
               (<:<Bool>
-                (Call:<Float>
-                  ($abs:<Fun (Float) -> Float>)
+                (IfExpr:<Float>
+                  (<:<Bool>
+                    ($d:<Float>)
+                    (0.000000:<Float>))
+                  (-:<Float>
+                    ($d:<Float>))
                   ($d:<Float>))
                 (0.000000:<Float>))
               (Block:<Void>

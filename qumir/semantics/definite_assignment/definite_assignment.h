@@ -32,6 +32,10 @@ private:
         const std::shared_ptr<NAst::TIfStmt>& ifExpr,
         TScopeId scopeId,
         const TAssignedSet& inAssigned);
+    std::expected<TAssignedSet, TError> CheckIfExpr(
+        const std::shared_ptr<NAst::TIfExpr>& ifExpr,
+        TScopeId scopeId,
+        const TAssignedSet& inAssigned);
 
     std::expected<TAssignedSet, TError> CheckLoop(
         const std::shared_ptr<NAst::TLoopStmtExpr>& loop,

@@ -142,6 +142,10 @@ TRunResult RunIntIfExpr(TExprPtr expr, EBackend backend = EBackend::VM) {
     return RunWithInjection(src, 1, {assign("x", std::move(expr))}, backend);
 }
 
+TRunResult RunProgram(const std::string& src, EBackend backend = EBackend::VM) {
+    return RunWithInjection(src, 0, {}, backend);
+}
+
 } // namespace
 
 TEST(IfExpr, VMExecutesThenBranch) {
@@ -194,6 +198,55 @@ TEST(IfExpr, TypeAnnotationRejectsIncompatibleBranches) {
     auto result = RunIntIfExpr(ifExpr(num(1), num(10), str("bad")));
     EXPECT_FALSE(result.ok());
     EXPECT_NE(result.error.find("if-expression"), std::string::npos) << result.error;
+}
+
+TEST(SystemInline, IntMinMaxAbsSignUseIfExpr) {
+    const std::string src =
+        "алг\n"
+        "нач\n"
+        "  цел x\n"
+        "  x := imin(7, 3)\n"
+        "  вывод x, нс\n"
+        "  x := imax(7, 3)\n"
+        "  вывод x, нс\n"
+        "  x := iabs(-5)\n"
+        "  вывод x, нс\n"
+        "  x := sign(-2.0)\n"
+        "  вывод x, нс\n"
+        "кон\n";
+
+    auto result = RunProgram(src);
+    ASSERT_TRUE(result.ok()) << result.error;
+    EXPECT_EQ(result.output, "3\n7\n5\n-1\n");
+    EXPECT_NE(result.ir.find("phi"), std::string::npos) << result.ir;
+    EXPECT_EQ(result.ir.find("min_int64_t"), std::string::npos) << result.ir;
+    EXPECT_EQ(result.ir.find("max_int64_t"), std::string::npos) << result.ir;
+    EXPECT_EQ(result.ir.find("labs"), std::string::npos) << result.ir;
+    EXPECT_EQ(result.ir.find("sign"), std::string::npos) << result.ir;
+}
+
+TEST(SystemInline, FloatMinMaxAbsUseIfExpr) {
+    const std::string src =
+        "алг\n"
+        "нач\n"
+        "  вещ x\n"
+        "  x := min(2.5, -1.5)\n"
+        "  вывод x, нс\n"
+        "  x := max(2.5, -1.5)\n"
+        "  вывод x, нс\n"
+        "  x := abs(-3.25)\n"
+        "  вывод x, нс\n"
+        "кон\n";
+
+    auto result = RunProgram(src);
+    ASSERT_TRUE(result.ok()) << result.error;
+    EXPECT_NE(result.output.find("-1.5"), std::string::npos) << result.output;
+    EXPECT_NE(result.output.find("2.5"), std::string::npos) << result.output;
+    EXPECT_NE(result.output.find("3.25"), std::string::npos) << result.output;
+    EXPECT_NE(result.ir.find("phi"), std::string::npos) << result.ir;
+    EXPECT_EQ(result.ir.find("min_double"), std::string::npos) << result.ir;
+    EXPECT_EQ(result.ir.find("max_double"), std::string::npos) << result.ir;
+    EXPECT_EQ(result.ir.find("fabs"), std::string::npos) << result.ir;
 }
 
 int main(int argc, char** argv) {

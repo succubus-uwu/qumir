@@ -731,8 +731,24 @@
                                 ($pi:<Float>)
                                 ($z:<Float>)))))
                         ($diff =:<Void>
-                          (Call:<Float>
-                            ($abs:<Fun (Float) -> Float>)
+                          (IfExpr:<Float>
+                            (<:<Bool>
+                              (-:<Float>
+                                (MultiIndex:<Float>
+                                  ($u:<Array [Float; 3]>)
+                                  ($i:<Int>)
+                                  ($j:<Int>)
+                                  ($k:<Int>))
+                                ($uex:<Float>))
+                              (0.000000:<Float>))
+                            (-:<Float>
+                              (-:<Float>
+                                (MultiIndex:<Float>
+                                  ($u:<Array [Float; 3]>)
+                                  ($i:<Int>)
+                                  ($j:<Int>)
+                                  ($k:<Int>))
+                                ($uex:<Float>)))
                             (-:<Float>
                               (MultiIndex:<Float>
                                 ($u:<Array [Float; 3]>)
@@ -741,8 +757,10 @@
                                 ($k:<Int>))
                               ($uex:<Float>))))
                         ($err =:<Void>
-                          (Call:<Float>
-                            ($max:<Fun (Float, Float) -> Float>)
+                          (IfExpr:<Float>
+                            (>:<Bool>
+                              ($err:<Float>)
+                              ($diff:<Float>))
                             ($err:<Float>)
                             ($diff:<Float>))))
                       ($$$next =:<Void>

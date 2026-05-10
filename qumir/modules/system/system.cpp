@@ -19,6 +19,30 @@ namespace {
         auto refType = std::make_shared<NAst::TReferenceType>(underlyingType);
         return refType;
     }
+
+    NAst::TExprPtr number(NAst::TTypePtr type, int64_t value) {
+        auto expr = std::make_shared<NAst::TNumberExpr>(TLocation{}, value);
+        expr->Type = std::move(type);
+        return expr;
+    }
+
+    NAst::TExprPtr unary(const char* op, NAst::TExprPtr operand, NAst::TTypePtr type) {
+        auto expr = std::make_shared<NAst::TUnaryExpr>(TLocation{}, NAst::TOperator(op), std::move(operand));
+        expr->Type = std::move(type);
+        return expr;
+    }
+
+    NAst::TExprPtr binary(const char* op, NAst::TExprPtr left, NAst::TExprPtr right, NAst::TTypePtr type) {
+        auto expr = std::make_shared<NAst::TBinaryExpr>(TLocation{}, NAst::TOperator(op), std::move(left), std::move(right));
+        expr->Type = std::move(type);
+        return expr;
+    }
+
+    NAst::TExprPtr ifExpr(NAst::TExprPtr cond, NAst::TExprPtr thenExpr, NAst::TExprPtr elseExpr, NAst::TTypePtr type) {
+        auto expr = std::make_shared<NAst::TIfExpr>(TLocation{}, std::move(cond), std::move(thenExpr), std::move(elseExpr));
+        expr->Type = std::move(type);
+        return expr;
+    }
 }
 
 SystemModule::SystemModule() {
@@ -30,6 +54,33 @@ SystemModule::SystemModule() {
     auto voidPtrType = std::make_shared<NAst::TPointerType>(voidType);
     auto fileType = std::make_shared<NAst::TFileType>();
     auto symbolType = std::make_shared<NAst::TSymbolType>();
+    auto inlineMin = [boolType](NAst::TTypePtr type) {
+        return [type, boolType](std::vector<NAst::TExprPtr> args) -> NAst::TExprPtr {
+            return ifExpr(
+                binary("<", args[0], args[1], boolType),
+                args[0],
+                args[1],
+                type);
+        };
+    };
+    auto inlineMax = [boolType](NAst::TTypePtr type) {
+        return [type, boolType](std::vector<NAst::TExprPtr> args) -> NAst::TExprPtr {
+            return ifExpr(
+                binary(">", args[0], args[1], boolType),
+                args[0],
+                args[1],
+                type);
+        };
+    };
+    auto inlineAbs = [boolType](NAst::TTypePtr type) {
+        return [type, boolType](std::vector<NAst::TExprPtr> args) -> NAst::TExprPtr {
+            return ifExpr(
+                binary("<", args[0], number(type, 0), boolType),
+                unary("-", args[0], type),
+                args[0],
+                type);
+        };
+    };
 
     std::vector<TExternalFunction> functions = {
         {
@@ -41,6 +92,18 @@ SystemModule::SystemModule() {
             },
             .ArgTypes = { floatType },
             .ReturnType = integerType,
+            .Inline = [integerType, floatType, boolType](std::vector<NAst::TExprPtr> args) -> NAst::TExprPtr {
+                auto zero = number(floatType, 0);
+                return ifExpr(
+                    binary(">", args[0], zero, boolType),
+                    number(integerType, 1),
+                    ifExpr(
+                        binary("<", args[0], zero, boolType),
+                        number(integerType, -1),
+                        number(integerType, 0),
+                        integerType),
+                    integerType);
+            },
         },
         {
             .Name = "imin",
@@ -51,6 +114,7 @@ SystemModule::SystemModule() {
             },
             .ArgTypes = { integerType, integerType },
             .ReturnType = integerType,
+            .Inline = inlineMin(integerType),
         },
         {
             .Name = "imax",
@@ -61,6 +125,7 @@ SystemModule::SystemModule() {
             },
             .ArgTypes = { integerType, integerType },
             .ReturnType = integerType,
+            .Inline = inlineMax(integerType),
         },
         {
             .Name = "min",
@@ -71,6 +136,7 @@ SystemModule::SystemModule() {
             },
             .ArgTypes = { floatType, floatType },
             .ReturnType = floatType,
+            .Inline = inlineMin(floatType),
         },
         {
             .Name = "max",
@@ -81,6 +147,7 @@ SystemModule::SystemModule() {
             },
             .ArgTypes = { floatType, floatType },
             .ReturnType = floatType,
+            .Inline = inlineMax(floatType),
         },
         {
             .Name = "sqrt",
@@ -101,6 +168,7 @@ SystemModule::SystemModule() {
             },
             .ArgTypes = { integerType },
             .ReturnType = integerType,
+            .Inline = inlineAbs(integerType),
         },
         {
             .Name = "abs",
@@ -111,6 +179,7 @@ SystemModule::SystemModule() {
             },
             .ArgTypes = { floatType },
             .ReturnType = floatType,
+            .Inline = inlineAbs(floatType),
         },
         {
             .Name = "sin",

@@ -861,10 +861,10 @@ function <main> () { ; void
   }
   block {
     label: label(58)
-    load tmp(586,i64) = local(56,i64) 
-    load tmp(587,i64) = local(55,i64) 
-    + tmp(588,i64) = tmp(586,i64) tmp(587,i64) 
-    stre local(56,i64) tmp(588,i64) 
+    load tmp(633,i64) = local(56,i64) 
+    load tmp(634,i64) = local(55,i64) 
+    + tmp(635,i64) = tmp(633,i64) tmp(634,i64) 
+    stre local(56,i64) tmp(635,i64) 
     jmp label(55) 
   }
   block {
@@ -901,10 +901,10 @@ function <main> () { ; void
   }
   block {
     label: label(63)
-    load tmp(583,i64) = local(59,i64) 
-    load tmp(584,i64) = local(58,i64) 
-    + tmp(585,i64) = tmp(583,i64) tmp(584,i64) 
-    stre local(59,i64) tmp(585,i64) 
+    load tmp(630,i64) = local(59,i64) 
+    load tmp(631,i64) = local(58,i64) 
+    + tmp(632,i64) = tmp(630,i64) tmp(631,i64) 
+    stre local(59,i64) tmp(632,i64) 
     jmp label(60) 
   }
   block {
@@ -971,24 +971,92 @@ function <main> () { ; void
     lde tmp(573,f64) = tmp(572,ptr to f64) 
     load tmp(574,f64) = local(21,f64) 
     - tmp(575,f64) = tmp(573,f64) tmp(574,f64) 
-    arg tmp(575,f64) 
-    call tmp(576,f64) = abs 
-    stre local(22,f64) tmp(576,f64) 
-    load tmp(577,f64) = local(20,f64) 
-    load tmp(578,f64) = local(22,f64) 
-    arg tmp(577,f64) 
-    arg tmp(578,f64) 
-    call tmp(579,f64) = max 
-    stre local(20,f64) tmp(579,f64) 
-    jmp label(68) 
+    < tmp(576,i1) = tmp(575,f64) imm(0,f64) 
+    cmp tmp(576,i1) label(70) label(71) 
   }
   block {
     label: label(68)
-    load tmp(580,i64) = local(62,i64) 
-    load tmp(581,i64) = local(61,i64) 
-    + tmp(582,i64) = tmp(580,i64) tmp(581,i64) 
-    stre local(62,i64) tmp(582,i64) 
+    load tmp(627,i64) = local(62,i64) 
+    load tmp(628,i64) = local(61,i64) 
+    + tmp(629,i64) = tmp(627,i64) tmp(628,i64) 
+    stre local(62,i64) tmp(629,i64) 
     jmp label(65) 
+  }
+  block {
+    label: label(70)
+    load tmp(577,ptr to f64) = local(9,ptr to f64) 
+    load tmp(578,i64) = local(13,i64) 
+    load tmp(579,i64) = local(63,i64) 
+    - tmp(580,i64) = tmp(578,i64) tmp(579,i64) 
+    load tmp(581,i64) = local(12,i64) 
+    load tmp(582,i64) = local(66,i64) 
+    - tmp(583,i64) = tmp(581,i64) tmp(582,i64) 
+    load tmp(584,i64) = local(65,i64) 
+    * tmp(585,i64) = tmp(583,i64) tmp(584,i64) 
+    + tmp(586,i64) = tmp(585,i64) tmp(580,i64) 
+    load tmp(587,i64) = local(11,i64) 
+    load tmp(588,i64) = local(69,i64) 
+    - tmp(589,i64) = tmp(587,i64) tmp(588,i64) 
+    load tmp(590,i64) = local(68,i64) 
+    * tmp(591,i64) = tmp(589,i64) tmp(590,i64) 
+    + tmp(592,i64) = tmp(591,i64) tmp(586,i64) 
+    * tmp(593,i64) = tmp(592,i64) imm(8,i64) 
+    + tmp(594,ptr to f64) = tmp(577,ptr to f64) tmp(593,i64) 
+    lde tmp(595,f64) = tmp(594,ptr to f64) 
+    load tmp(596,f64) = local(21,f64) 
+    - tmp(597,f64) = tmp(595,f64) tmp(596,f64) 
+    neg tmp(598,f64) = tmp(597,f64) 
+    jmp label(72) 
+  }
+  block {
+    label: label(71)
+    load tmp(599,ptr to f64) = local(9,ptr to f64) 
+    load tmp(600,i64) = local(13,i64) 
+    load tmp(601,i64) = local(63,i64) 
+    - tmp(602,i64) = tmp(600,i64) tmp(601,i64) 
+    load tmp(603,i64) = local(12,i64) 
+    load tmp(604,i64) = local(66,i64) 
+    - tmp(605,i64) = tmp(603,i64) tmp(604,i64) 
+    load tmp(606,i64) = local(65,i64) 
+    * tmp(607,i64) = tmp(605,i64) tmp(606,i64) 
+    + tmp(608,i64) = tmp(607,i64) tmp(602,i64) 
+    load tmp(609,i64) = local(11,i64) 
+    load tmp(610,i64) = local(69,i64) 
+    - tmp(611,i64) = tmp(609,i64) tmp(610,i64) 
+    load tmp(612,i64) = local(68,i64) 
+    * tmp(613,i64) = tmp(611,i64) tmp(612,i64) 
+    + tmp(614,i64) = tmp(613,i64) tmp(608,i64) 
+    * tmp(615,i64) = tmp(614,i64) imm(8,i64) 
+    + tmp(616,ptr to f64) = tmp(599,ptr to f64) tmp(615,i64) 
+    lde tmp(617,f64) = tmp(616,ptr to f64) 
+    load tmp(618,f64) = local(21,f64) 
+    - tmp(619,f64) = tmp(617,f64) tmp(618,f64) 
+    jmp label(72) 
+  }
+  block {
+    label: label(72)
+    phi tmp(620,f64) = tmp(598,f64) label(70) tmp(619,f64) label(71) 
+    stre local(22,f64) tmp(620,f64) 
+    load tmp(621,f64) = local(20,f64) 
+    load tmp(622,f64) = local(22,f64) 
+    > tmp(623,i1) = tmp(621,f64) tmp(622,f64) 
+    cmp tmp(623,i1) label(73) label(74) 
+  }
+  block {
+    label: label(73)
+    load tmp(624,f64) = local(20,f64) 
+    jmp label(75) 
+  }
+  block {
+    label: label(74)
+    load tmp(625,f64) = local(22,f64) 
+    jmp label(75) 
+  }
+  block {
+    label: label(75)
+    phi tmp(626,f64) = tmp(624,f64) label(73) tmp(625,f64) label(74) 
+    stre local(20,f64) tmp(626,f64) 
+    jmp label(68) 
   }
   block {
     label: label(69)
@@ -1002,57 +1070,57 @@ function <main> () { ; void
     label: label(59)
     arg imm(1,ptr to i8) 
     call output_string 
-    load tmp(589,i64) = local(0,i64) 
-    arg tmp(589,i64) 
+    load tmp(636,i64) = local(0,i64) 
+    arg tmp(636,i64) 
     arg imm(0,i64) 
     call output_int64 
     arg imm(2,ptr to i8) 
     call output_string 
-    load tmp(590,f64) = local(19,f64) 
-    arg tmp(590,f64) 
+    load tmp(637,f64) = local(19,f64) 
+    arg tmp(637,f64) 
     arg imm(8,i64) 
     arg imm(8,i64) 
     call output_double 
     arg imm(3,ptr to i8) 
     call output_string 
-    load tmp(591,f64) = local(6,f64) 
-    arg tmp(591,f64) 
+    load tmp(638,f64) = local(6,f64) 
+    arg tmp(638,f64) 
     arg imm(8,i64) 
     arg imm(8,i64) 
     call output_double 
     arg imm(4,ptr to i8) 
     call output_string 
-    load tmp(592,f64) = local(20,f64) 
-    arg tmp(592,f64) 
+    load tmp(639,f64) = local(20,f64) 
+    arg tmp(639,f64) 
     arg imm(8,i64) 
     arg imm(8,i64) 
     call output_double 
-    mov tmp(593,i32) = imm(10,i64) 
-    arg tmp(593,i32) 
+    mov tmp(640,i32) = imm(10,i64) 
+    arg tmp(640,i32) 
     call output_symbol 
-    load tmp(594,f64) = local(20,f64) 
-    < tmp(595,i1) = tmp(594,f64) imm(4576918229304087675,f64) 
-    cmp tmp(595,i1) label(70) label(71) 
+    load tmp(641,f64) = local(20,f64) 
+    < tmp(642,i1) = tmp(641,f64) imm(4576918229304087675,f64) 
+    cmp tmp(642,i1) label(76) label(77) 
   }
   block {
-    label: label(70)
+    label: label(76)
     arg imm(5,ptr to i8) 
     call output_string 
-    jmp label(72) 
+    jmp label(78) 
   }
   block {
-    label: label(71)
+    label: label(77)
     arg imm(6,ptr to i8) 
     call output_string 
-    jmp label(72) 
+    jmp label(78) 
   }
   block {
-    label: label(72)
-    load tmp(596,ptr to f64) = local(10,ptr to f64) 
-    arg tmp(596,ptr to f64) 
+    label: label(78)
+    load tmp(643,ptr to f64) = local(10,ptr to f64) 
+    arg tmp(643,ptr to f64) 
     call array_destroy 
-    load tmp(597,ptr to f64) = local(9,ptr to f64) 
-    arg tmp(597,ptr to f64) 
+    load tmp(644,ptr to f64) = local(9,ptr to f64) 
+    arg tmp(644,ptr to f64) 
     call array_destroy 
     jmp label(1) 
   }

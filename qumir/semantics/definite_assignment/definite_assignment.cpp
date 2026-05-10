@@ -102,6 +102,10 @@ TDefiniteAssignmentChecker::CheckExpr(
         return CheckIf(maybeIf.Cast(), scopeId, inAssigned);
     }
 
+    if (auto maybeIf = TMaybeNode<TIfExpr>(expr)) {
+        return CheckIfExpr(maybeIf.Cast(), scopeId, inAssigned);
+    }
+
     if (auto maybeLoop = TMaybeNode<TLoopStmtExpr>(expr)) {
         return CheckLoop(maybeLoop.Cast(), scopeId, inAssigned);
     }
@@ -279,6 +283,31 @@ TDefiniteAssignmentChecker::CheckIf(
     }
 
     return inAssigned;
+}
+
+std::expected<TDefiniteAssignmentChecker::TAssignedSet, TError>
+TDefiniteAssignmentChecker::CheckIfExpr(
+    const std::shared_ptr<TIfExpr>& ifExpr,
+    TScopeId scopeId,
+    const TAssignedSet& inAssigned)
+{
+    auto condRes = CheckExpr(ifExpr->Cond, scopeId, inAssigned);
+    if (!condRes) {
+        return std::unexpected(condRes.error());
+    }
+    TAssignedSet afterCond = std::move(*condRes);
+
+    auto thenRes = CheckExpr(ifExpr->Then, scopeId, afterCond);
+    if (!thenRes) {
+        return std::unexpected(thenRes.error());
+    }
+
+    auto elseRes = CheckExpr(ifExpr->Else, scopeId, afterCond);
+    if (!elseRes) {
+        return std::unexpected(elseRes.error());
+    }
+
+    return Intersect(*thenRes, *elseRes);
 }
 
 std::expected<TDefiniteAssignmentChecker::TAssignedSet, TError>
