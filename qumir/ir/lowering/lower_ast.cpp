@@ -494,6 +494,41 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
         }
         co_return TValueWithBlock{ res, Builder.CurrentBlockLabel() };
 
+    } else if (auto maybeLetExpr = NAst::TMaybeNode<NAst::TLetExpr>(expr)) {
+        auto letExpr = maybeLetExpr.Cast();
+        if (letExpr->Scope < 0) {
+            co_return TError(letExpr->Location, "LetExpr has no resolved scope.");
+        }
+
+        TBlockScope letScope {
+            .FuncIdx = scope.FuncIdx,
+            .Id = NSemantics::TScopeId{letExpr->Scope},
+            .BreakLabel = scope.BreakLabel,
+            .ContinueLabel = scope.ContinueLabel
+        };
+
+        for (const auto& binding : letExpr->Bindings) {
+            auto maybeVar = NAst::TMaybeNode<NAst::TVarStmt>(binding.Symbol);
+            if (!maybeVar) {
+                co_return TError(letExpr->Location, "LetExpr binding '" + binding.Name + "' has no variable symbol.");
+            }
+
+            co_await Lower(maybeVar.Cast(), letScope);
+
+            auto assign = std::make_shared<NAst::TAssignExpr>(
+                binding.Value ? binding.Value->Location : letExpr->Location,
+                binding.Name,
+                binding.Value);
+            auto assignRes = co_await Lower(assign, letScope);
+            Builder.SetCurrentBlock(assignRes.ProducingLabel);
+        }
+
+        auto bodyRes = co_await Lower(letExpr->Body, letScope);
+        if (!bodyRes.Value) {
+            co_return TError(letExpr->Location, "LetExpr body does not return a value.");
+        }
+        co_return bodyRes;
+
     } else if (auto maybeIfe = NAst::TMaybeNode<NAst::TIfStmt>(expr)) {
         // If is a statement in this language: no result value, no phi merge.
         auto ife = maybeIfe.Cast();

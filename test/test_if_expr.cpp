@@ -125,12 +125,36 @@ TExprPtr str(std::string value) {
     return std::make_shared<TStringLiteralExpr>(TLocation{}, std::move(value));
 }
 
+TExprPtr ident(const std::string& name) {
+    return std::make_shared<TIdentExpr>(TLocation{}, name);
+}
+
+TExprPtr binary(const std::string& op, TExprPtr left, TExprPtr right) {
+    return std::make_shared<TBinaryExpr>(TLocation{}, TOperator(op), std::move(left), std::move(right));
+}
+
+TExprPtr call(const std::string& name, std::vector<TExprPtr> args) {
+    return std::make_shared<TCallExpr>(
+        TLocation{},
+        std::make_shared<TIdentExpr>(TLocation{}, name),
+        std::move(args));
+}
+
 TExprPtr ifExpr(TExprPtr cond, TExprPtr thenExpr, TExprPtr elseExpr) {
     return std::make_shared<TIfExpr>(
         TLocation{},
         std::move(cond),
         std::move(thenExpr),
         std::move(elseExpr));
+}
+
+TExprPtr letExpr(std::string name, TExprPtr value, TExprPtr body) {
+    std::vector<TLetExpr::TBinding> bindings;
+    bindings.push_back(TLetExpr::TBinding{
+        .Name = std::move(name),
+        .Value = std::move(value),
+    });
+    return std::make_shared<TLetExpr>(TLocation{}, std::move(bindings), std::move(body));
 }
 
 TExprPtr assign(const std::string& name, TExprPtr value) {
@@ -200,20 +224,59 @@ TEST(IfExpr, TypeAnnotationRejectsIncompatibleBranches) {
     EXPECT_NE(result.error.find("if-expression"), std::string::npos) << result.error;
 }
 
+TEST(LetExpr, VMExecutesBodyWithBinding) {
+    auto expr = letExpr("tmp", num(21), binary("+", ident("tmp"), ident("tmp")));
+    auto result = RunIntIfExpr(std::move(expr));
+    ASSERT_TRUE(result.ok()) << result.error;
+    EXPECT_EQ(result.output, "42\n");
+}
+
+TEST(LetExpr, LLVMExecutesBodyWithBinding) {
+    auto expr = letExpr("tmp", num(21), binary("+", ident("tmp"), ident("tmp")));
+    auto result = RunIntIfExpr(std::move(expr), EBackend::LLVM);
+    ASSERT_TRUE(result.ok()) << result.error;
+    EXPECT_EQ(result.output, "42\n");
+}
+
+TEST(LetExpr, EvaluatesBindingExactlyOnce) {
+    const std::string src = R"(алг
+нач
+  цел g
+  цел y
+  g := 0
+  вывод y, " ", g, нс
+кон
+
+алг цел bump(арг рез цел v)
+нач
+  v := v + 1
+  знач := v
+кон
+)";
+
+    auto expr = letExpr(
+        "tmp",
+        call("bump", {ident("g")}),
+        binary("+", ident("tmp"), ident("tmp")));
+    auto result = RunWithInjection(src, 3, {assign("y", std::move(expr))});
+    ASSERT_TRUE(result.ok()) << result.error;
+    EXPECT_EQ(result.output, "2 1\n");
+}
+
 TEST(SystemInline, IntMinMaxAbsSignUseIfExpr) {
-    const std::string src =
-        "алг\n"
-        "нач\n"
-        "  цел x\n"
-        "  x := imin(7, 3)\n"
-        "  вывод x, нс\n"
-        "  x := imax(7, 3)\n"
-        "  вывод x, нс\n"
-        "  x := iabs(-5)\n"
-        "  вывод x, нс\n"
-        "  x := sign(-2.0)\n"
-        "  вывод x, нс\n"
-        "кон\n";
+    const std::string src = R"(алг
+нач
+  цел x
+  x := imin(7, 3)
+  вывод x, нс
+  x := imax(7, 3)
+  вывод x, нс
+  x := iabs(-5)
+  вывод x, нс
+  x := sign(-2.0)
+  вывод x, нс
+кон
+)";
 
     auto result = RunProgram(src);
     ASSERT_TRUE(result.ok()) << result.error;
@@ -226,17 +289,17 @@ TEST(SystemInline, IntMinMaxAbsSignUseIfExpr) {
 }
 
 TEST(SystemInline, FloatMinMaxAbsUseIfExpr) {
-    const std::string src =
-        "алг\n"
-        "нач\n"
-        "  вещ x\n"
-        "  x := min(2.5, -1.5)\n"
-        "  вывод x, нс\n"
-        "  x := max(2.5, -1.5)\n"
-        "  вывод x, нс\n"
-        "  x := abs(-3.25)\n"
-        "  вывод x, нс\n"
-        "кон\n";
+    const std::string src = R"(алг
+нач
+  вещ x
+  x := min(2.5, -1.5)
+  вывод x, нс
+  x := max(2.5, -1.5)
+  вывод x, нс
+  x := abs(-3.25)
+  вывод x, нс
+кон
+)";
 
     auto result = RunProgram(src);
     ASSERT_TRUE(result.ok()) << result.error;

@@ -105,6 +105,48 @@ TNameResolver::TTask TNameResolver::Resolve(TExprPtr node, TScopePtr scope, TSco
             scope = NewScope(scope, funcScope);
             block->Scope = scope->Id.Id;
         }
+    } else if (auto maybeLet = TMaybeNode<TLetExpr>(node)) {
+        auto letExpr = maybeLet.Cast();
+        if (letExpr->Scope >= 0 && static_cast<size_t>(letExpr->Scope) >= Scopes.size()) {
+            co_return TError(letExpr->Location, "let expression has invalid scope id: " + std::to_string(letExpr->Scope));
+        }
+        auto letScope = letExpr->Scope >= 0 ? Scopes[letExpr->Scope] : NewScope(scope, funcScope);
+        letExpr->Scope = letScope->Id.Id;
+
+        for (auto& binding : letExpr->Bindings) {
+            if (!binding.Value) {
+                errors.emplace_back(TError(letExpr->Location, "let binding '" + binding.Name + "' has no value"));
+                continue;
+            }
+
+            auto valueRes = Resolve(binding.Value, letScope, funcScope).result();
+            if (!valueRes) {
+                errors.emplace_back(valueRes.error());
+                continue;
+            }
+
+            if (!binding.Symbol) {
+                binding.Symbol = std::make_shared<TVarStmt>(letExpr->Location, binding.Name, nullptr);
+            }
+            auto res = Declare(binding.Name, binding.Symbol, letScope, funcScope);
+            if (!res) {
+                errors.emplace_back(res.error());
+            }
+        }
+
+        if (letExpr->Body) {
+            auto bodyRes = Resolve(letExpr->Body, letScope, funcScope).result();
+            if (!bodyRes) {
+                errors.emplace_back(bodyRes.error());
+            }
+        } else {
+            errors.emplace_back(TError(letExpr->Location, "let expression has no body"));
+        }
+
+        if (errors.empty()) {
+            co_return {};
+        }
+        co_return TError(node->Location, errors);
     } else if (auto maybeIdent = TMaybeNode<TIdentExpr>(node)) {
         auto ident = maybeIdent.Cast();
         auto found = Lookup(ident->Name, scope->Id);

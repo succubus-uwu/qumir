@@ -361,6 +361,53 @@ struct TIfExpr : TExpr {
     }
 };
 
+struct TLetExpr : TExpr {
+    // Expression form of hidden local bindings: works like Var/Assign prelude,
+    // but can be used inside another expression and returns Body's value.
+    struct TBinding {
+        std::string Name;
+        TExprPtr Value;
+        TTypePtr Type;
+        TExprPtr Symbol;
+    };
+
+    static constexpr const char* NodeId = "LetExpr";
+
+    std::vector<TBinding> Bindings;
+    TExprPtr Body;
+    int32_t Scope = -1;
+
+    TLetExpr(TLocation loc, std::vector<TBinding> bindings, TExprPtr body)
+        : TExpr(std::move(loc))
+        , Bindings(std::move(bindings))
+        , Body(std::move(body))
+    { }
+
+    std::vector<TExprPtr> Children() const override {
+        std::vector<TExprPtr> result;
+        result.reserve(Bindings.size() + 1);
+        for (const auto& binding : Bindings) {
+            result.push_back(binding.Value);
+        }
+        result.push_back(Body);
+        return result;
+    }
+
+    std::vector<TExprPtr*> MutableChildren() override {
+        std::vector<TExprPtr*> result;
+        result.reserve(Bindings.size() + 1);
+        for (auto& binding : Bindings) {
+            result.push_back(&binding.Value);
+        }
+        result.push_back(&Body);
+        return result;
+    }
+
+    const std::string_view NodeName() const override {
+        return NodeId;
+    }
+};
+
 struct TLoopStmtExpr : TExpr {
     static constexpr const char* NodeId = "Loop";
 

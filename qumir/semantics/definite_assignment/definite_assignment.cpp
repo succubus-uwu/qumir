@@ -106,6 +106,10 @@ TDefiniteAssignmentChecker::CheckExpr(
         return CheckIfExpr(maybeIf.Cast(), scopeId, inAssigned);
     }
 
+    if (auto maybeLet = TMaybeNode<TLetExpr>(expr)) {
+        return CheckLetExpr(maybeLet.Cast(), scopeId, inAssigned);
+    }
+
     if (auto maybeLoop = TMaybeNode<TLoopStmtExpr>(expr)) {
         return CheckLoop(maybeLoop.Cast(), scopeId, inAssigned);
     }
@@ -308,6 +312,42 @@ TDefiniteAssignmentChecker::CheckIfExpr(
     }
 
     return Intersect(*thenRes, *elseRes);
+}
+
+std::expected<TDefiniteAssignmentChecker::TAssignedSet, TError>
+TDefiniteAssignmentChecker::CheckLetExpr(
+    const std::shared_ptr<TLetExpr>& letExpr,
+    TScopeId scopeId,
+    const TAssignedSet& inAssigned)
+{
+    TAssignedSet state = inAssigned;
+    TScopeId letScope{letExpr->Scope >= 0 ? letExpr->Scope : scopeId.Id};
+
+    for (const auto& binding : letExpr->Bindings) {
+        if (!binding.Value) {
+            return std::unexpected(TError(
+                letExpr->Location,
+                "LetExpr binding '" + binding.Name + "' has no value."));
+        }
+
+        auto valueRes = CheckExpr(binding.Value, letScope, state);
+        if (!valueRes) {
+            return std::unexpected(valueRes.error());
+        }
+        state = std::move(*valueRes);
+
+        auto symbolId = GetSymbolId(binding.Name, letScope, binding.Value);
+        if (!symbolId) {
+            return std::unexpected(symbolId.error());
+        }
+        state.insert(*symbolId);
+    }
+
+    if (!letExpr->Body) {
+        return std::unexpected(TError(letExpr->Location, "LetExpr has no body."));
+    }
+
+    return CheckExpr(letExpr->Body, letScope, state);
 }
 
 std::expected<TDefiniteAssignmentChecker::TAssignedSet, TError>

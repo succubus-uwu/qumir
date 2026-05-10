@@ -637,6 +637,9 @@ std::expected<bool, TError> PostNameResolutionTransform(NAst::TExprPtr& expr, NS
             } else if (auto maybeBlock = NAst::TMaybeNode<NAst::TBlockExpr>(node)) {
                 auto block = maybeBlock.Cast();
                 scopeId = block->Scope;
+            } else if (auto maybeLet = NAst::TMaybeNode<NAst::TLetExpr>(node)) {
+                auto letExpr = maybeLet.Cast();
+                scopeId = letExpr->Scope;
             }
             return node;
         },
