@@ -327,7 +327,7 @@
               ($r:<Array [Float; 1]>)))
           ($rnorm =:<Void>
             ($beta:<Float>))
-          (If:<Void>
+          (IfStmt:<Void>
             (<=:<Bool>
               ($rnorm:<Float>)
               ($tol:<Float>))
@@ -639,7 +639,7 @@
                     (1:<Int>))
                   ($j:<Int>)
                   ($hip1:<Float>))
-                (If:<Void>
+                (IfStmt:<Void>
                   (!=:<Bool>
                     ($hip1:<Float>)
                     (0.000000:<Float>))
@@ -826,7 +826,7 @@
                             ($j:<Int>)
                             (1:<Int>))
                           ($j:<Int>))))))
-                (If:<Void>
+                (IfStmt:<Void>
                   (!=:<Bool>
                     ($denom:<Float>)
                     (0.000000:<Float>))
@@ -913,7 +913,7 @@
                     (+:<Int>
                       ($j:<Int>)
                       (1:<Int>))))
-                (If:<Void>
+                (IfStmt:<Void>
                   (<:<Bool>
                     ($rnorm:<Float>)
                     (0.000000:<Float>))
@@ -922,7 +922,7 @@
                       (-:<Float>
                         ($rnorm:<Float>))))
                   nil)
-                (If:<Void>
+                (IfStmt:<Void>
                   (<=:<Bool>
                     ($rnorm:<Float>)
                     ($tol:<Float>))
@@ -1036,7 +1036,7 @@
                       (+:<Int>
                         ($$$next:<Int>)
                         ($$$step:<Int>)))))
-                (If:<Void>
+                (IfStmt:<Void>
                   (!=:<Bool>
                     (MultiIndex:<Float>
                       ($H:<Array [Float; 2]>)
@@ -1150,7 +1150,7 @@
               ($norm2:<Fun (Int, Array) -> Float>)
               ($n:<Int>)
               ($r:<Array [Float; 1]>)))
-          (If:<Void>
+          (IfStmt:<Void>
             (<=:<Bool>
               ($rnorm:<Float>)
               ($tol:<Float>))
@@ -1207,7 +1207,7 @@
               (Index:<Float>
                 ($r:<Array [Float; 1]>)
                 ($i:<Int>)))
-            (If:<Void>
+            (IfStmt:<Void>
               (<:<Bool>
                 ($vabs:<Float>)
                 (0.000000:<Float>))
@@ -1226,7 +1226,7 @@
                   (Index:<Float>
                     ($r:<Array [Float; 1]>)
                     ($i:<Int>)))))
-            (If:<Void>
+            (IfStmt:<Void>
               (>:<Bool>
                 ($vabs:<Float>)
                 ($res_inf:<Float>))

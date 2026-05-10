@@ -8,7 +8,7 @@
         (1:<Int>))
       ($j =:<Void>
         (2:<Int>))
-      (If:<Void>
+      (IfStmt:<Void>
         (!=:<Bool>
           ($i:<Int>)
           ($j:<Int>))

@@ -86,7 +86,7 @@
       (Var $R:<Int>)
       (Var $c:<Int>)
       (Var $X:<Int>)
-      (If:<Void>
+      (IfStmt:<Void>
         (>=:<Bool>
           ($nStart:<Int>)
           ($nEnd:<Int>))
@@ -141,7 +141,7 @@
                   ($R:<Int>)
                   (1:<Int>))))
             nil)
-          (If:<Void>
+          (IfStmt:<Void>
             (<=:<Bool>
               ($L:<Int>)
               ($R:<Int>))

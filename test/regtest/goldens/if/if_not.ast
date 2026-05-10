@@ -5,7 +5,7 @@
       (Var $i:<Int>)
       ($i =:<Void>
         (2:<Int>))
-      (If:<Void>
+      (IfStmt:<Void>
         (!:<Bool>
           (==:<Bool>
             ($i:<Int>)

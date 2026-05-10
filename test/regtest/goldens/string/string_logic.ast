@@ -19,7 +19,7 @@
       (Var $счет:<Int>)
       ($счет =:<Void>
         (0:<Int>))
-      (If:<Void>
+      (IfStmt:<Void>
         (==:<Bool>
           (Call:<Int>
             ($str_compare:<Fun (String, String) -> Int>)
@@ -32,7 +32,7 @@
               ($счет:<Int>)
               (1:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (==:<Bool>
           (Call:<Int>
             ($str_compare:<Fun (String, String) -> Int>)
@@ -47,7 +47,7 @@
               ($счет:<Int>)
               (1000:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (==:<Bool>
           ($ch1:<Char>)
           (Cast<Char>:<Char>
@@ -58,7 +58,7 @@
               ($счет:<Int>)
               (1:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (!=:<Bool>
           (Call:<Int>
             ($str_compare:<Fun (String, String) -> Int>)
@@ -71,7 +71,7 @@
               ($счет:<Int>)
               (1000:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (!=:<Bool>
           ($ch1:<Char>)
           ($ch2:<Char>))
@@ -81,7 +81,7 @@
               ($счет:<Int>)
               (1:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (!=:<Bool>
           ($ch2:<Char>)
           (Cast<Char>:<Char>
@@ -92,7 +92,7 @@
               ($счет:<Int>)
               (1000:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (<:<Bool>
           (Call:<Int>
             ($str_compare:<Fun (String, String) -> Int>)
@@ -105,7 +105,7 @@
               ($счет:<Int>)
               (1:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (<=:<Bool>
           (Call:<Int>
             ($str_compare:<Fun (String, String) -> Int>)
@@ -118,7 +118,7 @@
               ($счет:<Int>)
               (1:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (>:<Bool>
           (Call:<Int>
             ($str_compare:<Fun (String, String) -> Int>)
@@ -131,7 +131,7 @@
               ($счет:<Int>)
               (1:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (>=:<Bool>
           (Call:<Int>
             ($str_compare:<Fun (String, String) -> Int>)
@@ -144,7 +144,7 @@
               ($счет:<Int>)
               (1:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (<:<Bool>
           ($ch1:<Char>)
           ($ch2:<Char>))
@@ -154,7 +154,7 @@
               ($счет:<Int>)
               (1:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (>:<Bool>
           ($ch2:<Char>)
           ($ch1:<Char>))
@@ -164,7 +164,7 @@
               ($счет:<Int>)
               (1:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (<=:<Bool>
           ($ch1:<Char>)
           (Cast<Char>:<Char>
@@ -175,7 +175,7 @@
               ($счет:<Int>)
               (1:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (>=:<Bool>
           ($ch2:<Char>)
           (Cast<Char>:<Char>

@@ -20,7 +20,7 @@
       (Var $r:<Int>)
       ($r =:<Void>
         (0:<Int>))
-      (If:<Void>
+      (IfStmt:<Void>
         (<:<Bool>
           (Call:<Int>
             ($str_compare:<Fun (String, String) -> Int>)
@@ -33,7 +33,7 @@
               ($r:<Int>)
               (1:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (>:<Bool>
           (Call:<Int>
             ($str_compare:<Fun (String, String) -> Int>)
@@ -46,7 +46,7 @@
               ($r:<Int>)
               (1:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (<:<Bool>
           (Call:<Int>
             ($str_compare:<Fun (String, String) -> Int>)
@@ -59,7 +59,7 @@
               ($r:<Int>)
               (1:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (>:<Bool>
           (Call:<Int>
             ($str_compare:<Fun (String, String) -> Int>)
@@ -72,7 +72,7 @@
               ($r:<Int>)
               (1:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (>=:<Bool>
           (Call:<Int>
             ($str_compare:<Fun (String, String) -> Int>)
@@ -85,7 +85,7 @@
               ($r:<Int>)
               (1:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (<=:<Bool>
           (Call:<Int>
             ($str_compare:<Fun (String, String) -> Int>)

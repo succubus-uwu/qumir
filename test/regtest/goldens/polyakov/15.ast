@@ -65,7 +65,7 @@
                 ($L:<Int>)
                 ($R:<Int>))
               (2:<Int>)))
-          (If:<Void>
+          (IfStmt:<Void>
             (<:<Bool>
               ($X:<Int>)
               (Index:<Int>
@@ -78,7 +78,7 @@
               ($L =:<Void>
                 ($c:<Int>)))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (==:<Bool>
           (Index:<Int>
             ($A:<Array [Int; 1]>)

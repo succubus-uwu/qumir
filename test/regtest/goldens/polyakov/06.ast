@@ -9,7 +9,7 @@
       ($b =:<Void>
         (20:<Int>))
       (Var $M:<Int>)
-      (If:<Void>
+      (IfStmt:<Void>
         (>:<Bool>
           ($a:<Int>)
           ($b:<Int>))
@@ -21,7 +21,7 @@
             ($b:<Int>))))
       ($M =:<Void>
         ($a:<Int>))
-      (If:<Void>
+      (IfStmt:<Void>
         (>=:<Bool>
           ($b:<Int>)
           ($a:<Int>))

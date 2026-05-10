@@ -755,7 +755,7 @@
             (+:<Int>
               ($$$next:<Int>)
               ($$$step:<Int>)))))
-      (If:<Void>
+      (IfStmt:<Void>
         (>:<Bool>
           ($m:<Int>)
           (1:<Int>))
@@ -794,7 +794,7 @@
           ($k =:<Void>
             ($$$next:<Int>))
           (Block:<Void>
-            (If:<Void>
+            (IfStmt:<Void>
               (==:<Bool>
                 (Index:<Float>
                   ($beta:<Array [Float; 1]>)
@@ -1225,7 +1225,7 @@
                   (+:<Int>
                     ($$$next:<Int>)
                     ($$$step:<Int>)))))
-            (If:<Void>
+            (IfStmt:<Void>
               (<:<Bool>
                 ($k:<Int>)
                 (-:<Int>
@@ -1343,7 +1343,7 @@
           ($k =:<Void>
             ($$$next:<Int>))
           (Block:<Void>
-            (If:<Void>
+            (IfStmt:<Void>
               (<:<Bool>
                 (Index:<Float>
                   ($alpha:<Array [Float; 1]>)
@@ -1355,7 +1355,7 @@
                     ($alpha:<Array [Float; 1]>)
                     ($k:<Int>))))
               nil)
-            (If:<Void>
+            (IfStmt:<Void>
               (>:<Bool>
                 (Index:<Float>
                   ($alpha:<Array [Float; 1]>)
@@ -1367,7 +1367,7 @@
                     ($alpha:<Array [Float; 1]>)
                     ($k:<Int>))))
               nil)
-            (If:<Void>
+            (IfStmt:<Void>
               (&&:<Bool>
                 (<:<Bool>
                   ($k:<Int>)
@@ -1489,7 +1489,7 @@
                         ($alpha:<Array [Float; 1]>)
                         ($beta:<Array [Float; 1]>)
                         ($mid:<Float>))))
-                  (If:<Void>
+                  (IfStmt:<Void>
                     (>=:<Bool>
                       ($cnt:<Float>)
                       (Cast<Float>:<Float>
@@ -2428,7 +2428,7 @@
                         ($x:<Array [Float; 2]>)
                         ($i:<Int>)
                         ($j:<Int>))))
-                  (If:<Void>
+                  (IfStmt:<Void>
                     (>:<Bool>
                       ($i:<Int>)
                       (1:<Int>))
@@ -2443,7 +2443,7 @@
                               (1:<Int>))
                             ($j:<Int>)))))
                     nil)
-                  (If:<Void>
+                  (IfStmt:<Void>
                     (<:<Bool>
                       ($i:<Int>)
                       ($NI:<Int>))
@@ -2458,7 +2458,7 @@
                               (1:<Int>))
                             ($j:<Int>)))))
                     nil)
-                  (If:<Void>
+                  (IfStmt:<Void>
                     (>:<Bool>
                       ($j:<Int>)
                       (1:<Int>))
@@ -2473,7 +2473,7 @@
                               ($j:<Int>)
                               (1:<Int>))))))
                     nil)
-                  (If:<Void>
+                  (IfStmt:<Void>
                     (<:<Bool>
                       ($j:<Int>)
                       ($NJ:<Int>))
@@ -2551,7 +2551,7 @@
             ($alpha:<Array [Float; 1]>)
             (0:<Int>))
           ($lam:<Float>)))
-      (If:<Void>
+      (IfStmt:<Void>
         (<:<Bool>
           ($d:<Float>)
           (0.000000:<Float>))
@@ -2587,14 +2587,14 @@
           ($i =:<Void>
             ($$$next:<Int>))
           (Block:<Void>
-            (If:<Void>
+            (IfStmt:<Void>
               (<:<Bool>
                 (Call:<Float>
                   ($abs:<Fun (Float) -> Float>)
                   ($d:<Float>))
                 (0.000000:<Float>))
               (Block:<Void>
-                (If:<Void>
+                (IfStmt:<Void>
                   (>=:<Bool>
                     ($d:<Float>)
                     (0.000000:<Float>))
@@ -2626,7 +2626,7 @@
                         ($i:<Int>)
                         (1:<Int>))))
                   ($d:<Float>))))
-            (If:<Void>
+            (IfStmt:<Void>
               (<:<Bool>
                 ($d:<Float>)
                 (0.000000:<Float>))

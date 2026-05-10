@@ -29,7 +29,7 @@ private:
         const TAssignedSet& inAssigned);
 
     std::expected<TAssignedSet, TError> CheckIf(
-        const std::shared_ptr<NAst::TIfExpr>& ifExpr,
+        const std::shared_ptr<NAst::TIfStmt>& ifExpr,
         TScopeId scopeId,
         const TAssignedSet& inAssigned);
 

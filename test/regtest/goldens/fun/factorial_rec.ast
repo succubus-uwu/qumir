@@ -44,7 +44,7 @@
     (Block:<Void>
       (Var $$$return:<Int>)
       (Var $i:<Int>)
-      (If:<Void>
+      (IfStmt:<Void>
         (==:<Bool>
           ($число:<Int>)
           (1:<Int>))

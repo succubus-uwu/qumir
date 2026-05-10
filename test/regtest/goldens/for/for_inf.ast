@@ -28,7 +28,7 @@
             (Call:<Void>
               ($output_string:<Fun (String) -> Void>)
               ("\n":<String>)))
-          (If:<Void>
+          (IfStmt:<Void>
             (==:<Bool>
               ($i:<Int>)
               (3:<Int>))

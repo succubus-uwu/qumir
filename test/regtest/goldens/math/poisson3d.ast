@@ -777,7 +777,7 @@
                   (+:<Int>
                     ($$$next:<Int>)
                     ($$$step:<Int>)))))
-            (If:<Void>
+            (IfStmt:<Void>
               (<:<Bool>
                 ($err:<Float>)
                 ($tol:<Float>))
@@ -948,7 +948,7 @@
           ($output_symbol:<Fun (Char) -> Void>)
           (Cast<Char>:<Char>
             (10:<Int>))))
-      (If:<Void>
+      (IfStmt:<Void>
         (<:<Bool>
           ($err:<Float>)
           ($tol:<Float>))

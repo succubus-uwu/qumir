@@ -30,7 +30,7 @@
           ($i =:<Void>
             ($$$next:<Int>))
           (Block:<Void>
-            (If:<Void>
+            (IfStmt:<Void>
               (>:<Bool>
                 ($i:<Int>)
                 (5:<Int>))

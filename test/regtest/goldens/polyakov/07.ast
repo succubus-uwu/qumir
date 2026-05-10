@@ -7,7 +7,7 @@
       (Var $b:<Int>)
       ($b =:<Void>
         (11:<Int>))
-      (If:<Void>
+      (IfStmt:<Void>
         (>:<Bool>
           ($a:<Int>)
           ($b:<Int>))
@@ -17,7 +17,7 @@
               ($output_string:<Fun (String) -> Void>)
               ("Андрей старше":<String>))))
         (Block:<Void>
-          (If:<Void>
+          (IfStmt:<Void>
             (==:<Bool>
               ($a:<Int>)
               ($b:<Int>))

@@ -33,7 +33,7 @@
       (Var $$$return:<Int>)
       ($$$return =:<Void>
         (0:<Int>))
-      (If:<Void>
+      (IfStmt:<Void>
         (==:<Bool>
           (1:<Int>)
           (1:<Int>))
@@ -49,7 +49,7 @@
       (Var $$$return:<Int>)
       ($$$return =:<Void>
         (1:<Int>))
-      (If:<Void>
+      (IfStmt:<Void>
         (==:<Bool>
           (2:<Int>)
           (3:<Int>))

@@ -5,7 +5,7 @@
       (Var $ф:<Int>)
       ($ф =:<Void>
         (0:<Int>))
-      (If:<Void>
+      (IfStmt:<Void>
         (<:<Bool>
           ($ф:<Int>)
           (10:<Int>))
@@ -14,7 +14,7 @@
             (+:<Int>
               ($ф:<Int>)
               (1:<Int>))))
-        (If:<Void>
+        (IfStmt:<Void>
           (>:<Bool>
             ($ф:<Int>)
             (20:<Int>))

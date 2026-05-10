@@ -446,7 +446,7 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
                     co_return TValueWithBlock{ tmp, Builder.CurrentBlockLabel() };
                 }
         }
-    } else if (auto maybeIfe = NAst::TMaybeNode<NAst::TIfExpr>(expr)) {
+    } else if (auto maybeIfe = NAst::TMaybeNode<NAst::TIfStmt>(expr)) {
         // If is a statement in this language: no result value, no phi merge.
         auto ife = maybeIfe.Cast();
         auto cond = co_await Lower(ife->Cond, scope);

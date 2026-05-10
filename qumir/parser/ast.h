@@ -309,13 +309,13 @@ struct TBlockExpr : TExpr {
     }
 };
 
-struct TIfExpr : TExpr {
-    static constexpr const char* NodeId = "If";
+struct TIfStmt : TExpr {
+    static constexpr const char* NodeId = "IfStmt";
 
     TExprPtr Cond;
     TExprPtr Then;
     TExprPtr Else;
-    TIfExpr(TLocation loc, TExprPtr c, TExprPtr t, TExprPtr e)
+    TIfStmt(TLocation loc, TExprPtr c, TExprPtr t, TExprPtr e)
         : TExpr(std::move(loc))
         , Cond(std::move(c))
         , Then(std::move(t))

@@ -31,7 +31,7 @@
           ($i =:<Void>
             ($$$next:<Int>))
           (Block:<Void>
-            (If:<Void>
+            (IfStmt:<Void>
               (==:<Bool>
                 (Call:<Char>
                   ($str_symbol_at:<Fun (String, Int) -> Char>)

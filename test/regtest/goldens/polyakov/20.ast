@@ -107,7 +107,7 @@
                 ($j =:<Void>
                   ($$$next:<Int>))
                 (Block:<Void>
-                  (If:<Void>
+                  (IfStmt:<Void>
                     (<:<Bool>
                       (Call:<Int>
                         ($str_compare:<Fun (String, String) -> Int>)

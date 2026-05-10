@@ -41,7 +41,7 @@
               nil
               nil
               (Block:<Void>
-                (If:<Void>
+                (IfStmt:<Void>
                   (==:<Bool>
                     (Call:<Int>
                       ($mod:<Fun (Int, Int) -> Int>)
@@ -59,7 +59,7 @@
                     ($k:<Int>)
                     (1:<Int>))))
               nil)
-            (If:<Void>
+            (IfStmt:<Void>
               (==:<Bool>
                 ($count:<Int>)
                 (0:<Int>))

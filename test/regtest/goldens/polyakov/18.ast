@@ -38,7 +38,7 @@
               ($позиция:<Fun (String, String) -> Int>)
               ($wOld:<String>)
               ($s:<Ref &String>)))
-          (If:<Void>
+          (IfStmt:<Void>
             (<:<Bool>
               ($p:<Int>)
               (0:<Int>))
@@ -50,7 +50,7 @@
                   ($s:<Ref &String>)))
               (Break:<Void>))
             nil)
-          (If:<Void>
+          (IfStmt:<Void>
             (>:<Bool>
               ($p:<Int>)
               (1:<Int>))
@@ -72,7 +72,7 @@
               ($str_concat:<Fun (String, String) -> String>)
               ($res:<String>)
               ($wNew:<String>)))
-          (If:<Void>
+          (IfStmt:<Void>
             (>:<Bool>
               (+:<Int>
                 ($p:<Int>)

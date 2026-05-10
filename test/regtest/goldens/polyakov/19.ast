@@ -11,7 +11,7 @@
         (0:<Int>))))
   (FunDecl $TumbaWords ($A, $w0, $N):<Fun (String, String, Int) -> Void>
     (Block:<Void>
-      (If:<Void>
+      (IfStmt:<Void>
         (==:<Bool>
           ($N:<Int>)
           (Call:<Int>

@@ -47,7 +47,7 @@
         ("яблоко":<String>))
       ($строка3 =:<Void>
         ("груша":<String>))
-      (If:<Void>
+      (IfStmt:<Void>
         (==:<Bool>
           (Call:<Int>
             ($str_compare:<Fun (String, String) -> Int>)
@@ -63,7 +63,7 @@
               ($output_string:<Fun (String) -> Void>)
               ("\n":<String>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (==:<Bool>
           (Call:<Int>
             ($str_compare:<Fun (String, String) -> Int>)
@@ -86,7 +86,7 @@
             (Call:<Void>
               ($output_string:<Fun (String) -> Void>)
               ("\n":<String>)))))
-      (If:<Void>
+      (IfStmt:<Void>
         (<:<Bool>
           (Call:<Int>
             ($str_compare:<Fun (String, String) -> Int>)

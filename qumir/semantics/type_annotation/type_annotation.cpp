@@ -689,7 +689,7 @@ TTask AnnotateCall(std::shared_ptr<TCallExpr> call, NSemantics::TNameResolver& c
     co_return call;
 }
 
-TTask AnnotateIf(std::shared_ptr<TIfExpr> ifExpr, NSemantics::TNameResolver& context, NSemantics::TScopeId scopeId) {
+TTask AnnotateIf(std::shared_ptr<TIfStmt> ifExpr, NSemantics::TNameResolver& context, NSemantics::TScopeId scopeId) {
     ifExpr->Cond = co_await DoAnnotate(ifExpr->Cond, context, scopeId);
     if (!ifExpr->Cond->Type) {
         co_return TError(ifExpr->Cond->Location, "Условие в `если' не имеет типа. Проверьте корректность выражения в условии.");
@@ -940,7 +940,7 @@ TTask DoAnnotate(TExprPtr expr, NSemantics::TNameResolver& context, NSemantics::
         co_return co_await AnnotateFunDecl(maybeFunDecl.Cast(), context, scopeId);
     } else if (auto maybeCall = TMaybeNode<TCallExpr>(expr)) {
         co_return co_await AnnotateCall(maybeCall.Cast(), context, scopeId);
-    } else if (auto maybeIf = TMaybeNode<TIfExpr>(expr)) {
+    } else if (auto maybeIf = TMaybeNode<TIfStmt>(expr)) {
         co_return co_await AnnotateIf(maybeIf.Cast(), context, scopeId);
     } else if (auto maybeIndex = TMaybeNode<TIndexExpr>(expr)) {
         co_return co_await AnnotateIndex(maybeIndex.Cast(), context, scopeId);

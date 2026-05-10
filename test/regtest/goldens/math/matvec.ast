@@ -140,7 +140,7 @@
                 ($j =:<Void>
                   ($$$next:<Int>))
                 (Block:<Void>
-                  (If:<Void>
+                  (IfStmt:<Void>
                     (<=:<Bool>
                       ($j:<Int>)
                       ($i:<Int>))
@@ -282,7 +282,7 @@
                   (1.000000:<Float>))))
             ($absv =:<Void>
               ($err:<Float>))
-            (If:<Void>
+            (IfStmt:<Void>
               (<:<Bool>
                 ($absv:<Float>)
                 (0.000000:<Float>))
@@ -297,7 +297,7 @@
                 (*:<Float>
                   ($err:<Float>)
                   ($err:<Float>))))
-            (If:<Void>
+            (IfStmt:<Void>
               (>:<Bool>
                 ($absv:<Float>)
                 ($res_inf:<Float>))

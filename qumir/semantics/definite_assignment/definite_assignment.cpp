@@ -98,7 +98,7 @@ TDefiniteAssignmentChecker::CheckExpr(
                           inAssigned);
     }
 
-    if (auto maybeIf = TMaybeNode<TIfExpr>(expr)) {
+    if (auto maybeIf = TMaybeNode<TIfStmt>(expr)) {
         return CheckIf(maybeIf.Cast(), scopeId, inAssigned);
     }
 
@@ -253,7 +253,7 @@ TDefiniteAssignmentChecker::CheckBlock(
 
 std::expected<TDefiniteAssignmentChecker::TAssignedSet, TError>
 TDefiniteAssignmentChecker::CheckIf(
-    const std::shared_ptr<TIfExpr>& ifExpr,
+    const std::shared_ptr<TIfStmt>& ifExpr,
     TScopeId scopeId,
     const TAssignedSet& inAssigned)
 {

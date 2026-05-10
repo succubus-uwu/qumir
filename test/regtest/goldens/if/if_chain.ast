@@ -5,7 +5,7 @@
       (Var $a:<Int>)
       ($a =:<Void>
         (0:<Int>))
-      (If:<Void>
+      (IfStmt:<Void>
         (&&:<Bool>
           (<:<Bool>
             (1:<Int>)
@@ -19,7 +19,7 @@
               ($a:<Int>)
               (1:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (&&:<Bool>
           (&&:<Bool>
             (<:<Bool>
@@ -37,7 +37,7 @@
               ($a:<Int>)
               (10:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (&&:<Bool>
           (&&:<Bool>
             (&&:<Bool>
@@ -59,7 +59,7 @@
               ($a:<Int>)
               (100:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (&&:<Bool>
           (<:<Bool>
             (1:<Int>)
@@ -73,7 +73,7 @@
               ($a:<Int>)
               (1000:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (&&:<Bool>
           (<:<Bool>
             (2:<Int>)
@@ -87,7 +87,7 @@
               ($a:<Int>)
               (2000:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (!:<Bool>
           (&&:<Bool>
             (<:<Bool>
@@ -102,7 +102,7 @@
               ($a:<Int>)
               (3000:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (&&:<Bool>
           (&&:<Bool>
             (&&:<Bool>
@@ -124,7 +124,7 @@
               ($a:<Int>)
               (10000:<Int>))))
         nil)
-      (If:<Void>
+      (IfStmt:<Void>
         (&&:<Bool>
           (<:<Bool>
             (3:<Int>)

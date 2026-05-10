@@ -28,7 +28,7 @@
           ($m =:<Void>
             ($$$next:<Int>))
           (Block:<Void>
-            (If:<Void>
+            (IfStmt:<Void>
               (==:<Bool>
                 ($m:<Int>)
                 (1:<Int>))
@@ -40,7 +40,7 @@
                   (Call:<Void>
                     ($output_string:<Fun (String) -> Void>)
                     ("\n":<String>))))
-              (If:<Void>
+              (IfStmt:<Void>
                 (==:<Bool>
                   ($m:<Int>)
                   (2:<Int>))
@@ -52,7 +52,7 @@
                     (Call:<Void>
                       ($output_string:<Fun (String) -> Void>)
                       ("\n":<String>))))
-                (If:<Void>
+                (IfStmt:<Void>
                   (==:<Bool>
                     ($m:<Int>)
                     (3:<Int>))
@@ -64,7 +64,7 @@
                       (Call:<Void>
                         ($output_string:<Fun (String) -> Void>)
                         ("\n":<String>))))
-                  (If:<Void>
+                  (IfStmt:<Void>
                     (==:<Bool>
                       ($m:<Int>)
                       (4:<Int>))
@@ -76,7 +76,7 @@
                         (Call:<Void>
                           ($output_string:<Fun (String) -> Void>)
                           ("\n":<String>))))
-                    (If:<Void>
+                    (IfStmt:<Void>
                       (==:<Bool>
                         ($m:<Int>)
                         (5:<Int>))
@@ -88,7 +88,7 @@
                           (Call:<Void>
                             ($output_string:<Fun (String) -> Void>)
                             ("\n":<String>))))
-                      (If:<Void>
+                      (IfStmt:<Void>
                         (==:<Bool>
                           ($m:<Int>)
                           (6:<Int>))
@@ -100,7 +100,7 @@
                             (Call:<Void>
                               ($output_string:<Fun (String) -> Void>)
                               ("\n":<String>))))
-                        (If:<Void>
+                        (IfStmt:<Void>
                           (==:<Bool>
                             ($m:<Int>)
                             (7:<Int>))
@@ -112,7 +112,7 @@
                               (Call:<Void>
                                 ($output_string:<Fun (String) -> Void>)
                                 ("\n":<String>))))
-                          (If:<Void>
+                          (IfStmt:<Void>
                             (==:<Bool>
                               ($m:<Int>)
                               (8:<Int>))
@@ -124,7 +124,7 @@
                                 (Call:<Void>
                                   ($output_string:<Fun (String) -> Void>)
                                   ("\n":<String>))))
-                            (If:<Void>
+                            (IfStmt:<Void>
                               (==:<Bool>
                                 ($m:<Int>)
                                 (9:<Int>))
@@ -136,7 +136,7 @@
                                   (Call:<Void>
                                     ($output_string:<Fun (String) -> Void>)
                                     ("\n":<String>))))
-                              (If:<Void>
+                              (IfStmt:<Void>
                                 (==:<Bool>
                                   ($m:<Int>)
                                   (10:<Int>))
@@ -148,7 +148,7 @@
                                     (Call:<Void>
                                       ($output_string:<Fun (String) -> Void>)
                                       ("\n":<String>))))
-                                (If:<Void>
+                                (IfStmt:<Void>
                                   (==:<Bool>
                                     ($m:<Int>)
                                     (11:<Int>))
@@ -160,7 +160,7 @@
                                       (Call:<Void>
                                         ($output_string:<Fun (String) -> Void>)
                                         ("\n":<String>))))
-                                  (If:<Void>
+                                  (IfStmt:<Void>
                                     (==:<Bool>
                                       ($m:<Int>)
                                       (12:<Int>))

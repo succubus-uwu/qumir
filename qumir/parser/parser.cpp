@@ -821,10 +821,10 @@ TAstTask switch_expr(TWrappedTokenStream& stream, IModuleManager* mm) {
     }
 
     // need to build if-then-else chain from cases
-    std::shared_ptr<TIfExpr> rootIf = nullptr;
-    std::shared_ptr<TIfExpr> lastIf = nullptr;
+    std::shared_ptr<TIfStmt> rootIf = nullptr;
+    std::shared_ptr<TIfStmt> lastIf = nullptr;
     for (auto& c : cases) {
-        auto newIf = std::make_shared<TIfExpr>(location, std::move(c.first), std::move(c.second), nullptr);
+        auto newIf = std::make_shared<TIfStmt>(location, std::move(c.first), std::move(c.second), nullptr);
         if (!rootIf) {
             rootIf = newIf;
             lastIf = newIf;
@@ -867,7 +867,7 @@ TAstTask if_expr(TWrappedTokenStream& stream, IModuleManager* mm) {
     auto elseTok = stream.Next();
     if (isKeyword(elseTok, EKeyword::EndIf)) {
         // if without else
-        co_return std::make_shared<TIfExpr>(location, cond, thenBranch, nullptr);
+        co_return std::make_shared<TIfStmt>(location, cond, thenBranch, nullptr);
     }
 
     if (!isKeyword(elseTok, EKeyword::Else)) {
@@ -881,7 +881,7 @@ TAstTask if_expr(TWrappedTokenStream& stream, IModuleManager* mm) {
         co_return TError(endTok.Location, "ожидалось 'все' в конце оператора 'если'");
     }
 
-    co_return std::make_shared<TIfExpr>(location, cond, thenBranch, elseBranch);
+    co_return std::make_shared<TIfStmt>(location, cond, thenBranch, elseBranch);
 }
 
 // Parse optional argument list after '(' then ')' or after '[' then ']'
