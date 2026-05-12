@@ -11,6 +11,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include "lexer_base.h"
+
 namespace NQumir {
 
 namespace NAst {
@@ -94,36 +96,13 @@ enum class EOperator : uint8_t {
     LSqBr, // [
     RSqBr, // ]
     Colon, // :
-    // Special operators
-    Eol, // \n
-    Eof, // end of file
     // Logical operators
     And,
     Or,
     Not,
-};
-
-struct TToken {
-    enum EType {
-        Integer,
-        Float,
-        String,
-        Char,
-        Operator,
-        Identifier,
-        Keyword,
-    };
-
-    // everything except string fits in 8 bytes
-    union UPrimitive {
-        int64_t i64;
-        double f64;
-    };
-    UPrimitive Value; // valid for Integer, Float, Operator, Keyword
-    std::string Name; // valid for Identifier, String, NamedType
-    std::string RawValue; // original raw value from source code (for error messages)
-    EType Type;
-    TLocation Location;
+    // Special operators
+    Eol, // \n
+    Eof = (unsigned char)-1, // end of file
 };
 
 class ILexerContext {
@@ -153,40 +132,16 @@ struct TLexerContext : public ILexerContext {
     std::unordered_map<std::string, std::string> LiteralSuffixMap;
 };
 
-class TTokenStream
+class TTokenStream : public ITokenStream
 {
 public:
     TTokenStream(std::istream& in);
-    TToken Next(); // returns Eof token on EOF
-    void Unget(TToken token);
-    const TLocation& operator()() const;
-    const TLocation& GetLocation() const;
     ILexerContext* GetContext() { return &Context; }
 
 private:
-    void Read();
+    void Read() override;
 
-    std::istream& In;
-    std::deque<TToken> Tokens;
-    TLocation CurrentLocation;
     TLexerContext Context;
-};
-
-class TWrappedTokenStream {
-public:
-    TWrappedTokenStream(TTokenStream& baseStream, int windowSize);
-
-    TToken Next();
-    void Unget(TToken token);
-    const TLocation& operator()() const;
-    const TLocation& GetLocation() const;
-    const std::deque<TToken>& GetWindow() const { return Window; }
-    ILexerContext* GetContext() { return BaseStream.GetContext(); }
-
-private:
-    TTokenStream& BaseStream;
-    std::deque<TToken> Window;
-    int WindowSize;
 };
 
 } // namespace NAst
