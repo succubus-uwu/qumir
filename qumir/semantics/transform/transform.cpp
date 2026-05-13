@@ -681,21 +681,6 @@ std::expected<std::monostate, TError> Pipeline(NAst::TExprPtr& expr, NSemantics:
 {
     static constexpr int MaxIterations = 10;
 
-    // Strip TUseExpr nodes from the AST — imports were already processed by the parser
-    // (or by calling ImportModule directly). ImportModule is idempotent per module name.
-    if (auto maybeBlock = NAst::TMaybeNode<NAst::TBlockExpr>(expr)) {
-        auto block = maybeBlock.Cast();
-        auto& stmts = block->Stmts;
-        while (!stmts.empty() && NAst::TMaybeNode<NAst::TUseExpr>(stmts.front())) {
-            auto use = NAst::TMaybeNode<NAst::TUseExpr>(stmts.front()).Cast();
-            auto result = r.ImportModule(use->ModuleName);
-            if (!result) {
-                return std::unexpected(TError(use->Location, result.error()));
-            }
-            stmts.erase(stmts.begin());
-        }
-    }
-
     auto nameResolution = [&](NAst::TExprPtr& e) -> std::expected<std::monostate, TError>{
         if (auto error = PreNameResolutionTransform(e); !error) {
             return std::unexpected(error.error());

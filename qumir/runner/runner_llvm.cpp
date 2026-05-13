@@ -1,6 +1,7 @@
 #include "runner_llvm.h"
 
 #include <qumir/parser/lexer.h>
+#include <qumir/parser/core/printer.h>
 #include <qumir/semantics/transform/transform.h>
 #include <qumir/modules/system/system.h>
 #include <qumir/modules/turtle/turtle.h>
@@ -63,7 +64,7 @@ std::expected<std::optional<std::string>, TError> TLLVMRunner::Run(std::istream&
     }
     if (Options.PrintAst) {
         std::cerr << "=========== AST: ===========\n";
-        std::cerr << *ast << std::endl;
+        std::cerr << ast << std::endl;
         std::cerr << "============================\n\n";
     }
 

@@ -1064,6 +1064,9 @@ TTask DoAnnotate(TExprPtr expr, NSemantics::TNameResolver& context, NSemantics::
         co_return co_await AnnotateFieldAccess(maybeFieldAccess.Cast(), context, scopeId);
     } else if (auto maybeFieldAssign = TMaybeNode<TFieldAssignExpr>(expr)) {
         co_return co_await AnnotateFieldAssign(maybeFieldAssign.Cast(), context, scopeId);
+    } else if (TMaybeNode<TUseExpr>(expr)) {
+        expr->Type = std::make_shared<TVoidType>();
+        co_return expr;
     } else if (TMaybeNode<TBreakStmt>(expr)) {
         expr->Type = std::make_shared<TVoidType>();
         co_return expr;

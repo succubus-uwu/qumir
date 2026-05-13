@@ -23,14 +23,14 @@ add_library(qumir
     parser/lexer_base.cpp
     parser/core/lexer.h
     parser/core/lexer.cpp
+    parser/core/printer.h
+    parser/core/printer.cpp
     parser/operator.h
     parser/operator.cpp
     parser/parser.h
     parser/parser.cpp
     parser/type.h
     parser/type.cpp
-    parser/core/lexer.h
-    parser/core/lexer.cpp
     runner/runner_ir.h
     runner/runner_ir.cpp
     runner/runner_llvm.h

@@ -1312,6 +1312,9 @@ std::expected<std::monostate, TError> TAstLowerer::LowerTop(const NAst::TExprPtr
                 if (!lowered) {
                     return std::unexpected(lowered.error());
                 }
+            } else if (NAst::TMaybeNode<NAst::TUseExpr>(s)) {
+                // Imports are handled during parsing/name resolution; keep the AST node
+                // for source/core printing but do not lower it to IR.
             } else {
                 return std::unexpected(TError(s->Location, TErrorString::Get<EErrorId::UNEXPECTED_TOP_LEVEL_STATEMENT>(s->ToString())));
             }

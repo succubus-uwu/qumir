@@ -1013,6 +1013,7 @@ bool PreorderTransformAst(TExprPtr& result, TExprPtr node, TransformFunctor f, F
 }
 
 std::ostream& operator<<(std::ostream& os, const TExpr& expr);
+std::ostream& operator<<(std::ostream& os, const TExprPtr& expr);
 
 } // namespace NAst
 } // namespace NQumir

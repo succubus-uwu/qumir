@@ -61,7 +61,7 @@ AST node forms:
   (vars var1 var2 ... varN)
       TVarsBlockExpr, NodeId = "VarsBlock".
 
-  (fun name (param1 ... paramN) return_type body)
+  (fun name return_type (param1 ... paramN) (attr1 ... attrM) body)
       TFunDecl, NodeId = "FunDecl".
 
   (call callee arg1 arg2 ... argN)
@@ -91,10 +91,10 @@ AST node forms:
   (assert expr)
       TAssertStmt, NodeId = "Assert".
 
-  (field field_name)
+  (field field_name object)
       TFieldAccessExpr, NodeId = "FieldAccess".
 
-  (struct field1 field2 ... fieldN)
+  (struct ((name1 field1) (name2 field2) ... (nameN fieldN)))
       TStructConstructExpr, NodeId = "StructConstruct".
 
   (field_assign object field_name value)

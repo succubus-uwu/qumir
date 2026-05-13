@@ -7,6 +7,7 @@
 #include <algorithm>
 
 #include <qumir/parser/lexer.h>
+#include <qumir/parser/core/printer.h>
 #include <qumir/parser/parser.h>
 #include <qumir/semantics/name_resolution/name_resolver.h>
 #include <qumir/semantics/type_annotation/type_annotation.h>
@@ -95,7 +96,7 @@ std::string BuildAst(NAst::TTokenStream& ts) {
     }
 
     std::ostringstream out;
-    out << *expr;
+    out << expr;
     return out.str();
 }
 
