@@ -366,11 +366,11 @@ private:
         PrintType(node->Type, level);
         for (const auto& [from, to] : node->Bounds) {
             Separator(level + 1);
-            Out << '(';
+            Out << '[';
             PrintExpr(from, true, level + 1);
             Space();
             PrintExpr(to, true, level + 1);
-            Out << ')';
+            Out << ']';
         }
         Out << ')';
     }

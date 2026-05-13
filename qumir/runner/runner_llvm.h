@@ -20,6 +20,7 @@ namespace NQumir {
 
 struct TLLVMRunnerOptions {
     bool PrintAst = false;
+    bool PrintTransformedAst = false;
     bool PrintIr = false;
     bool PrintLlvm = false;
     int OptLevel = 0; // 0-3

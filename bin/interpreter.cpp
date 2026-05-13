@@ -31,6 +31,7 @@ int main(int argc, char ** argv) {
     RunnerType runnerType = RunnerType::IR; // default
     bool printEvalTimeUs = false;
     bool printAst = false;
+    bool printTransformedAst = false;
     bool printIr = false;
     bool printLlvm = false;
     bool printByteCode = false;
@@ -44,6 +45,8 @@ int main(int argc, char ** argv) {
             printEvalTimeUs = true;
         } else if (!std::strcmp(argv[i], "--print-ast")) {
             printAst = true;
+        } else if (!std::strcmp(argv[i], "--print-transformed-ast")) {
+            printTransformedAst = true;
         } else if (!std::strcmp(argv[i], "--print-ir")) {
             printIr = true;
         } else if (!std::strcmp(argv[i], "--print-llvm")) {
@@ -82,6 +85,7 @@ int main(int argc, char ** argv) {
                          "  --jit                Enable llvm jit\n"
                          "  --time-us            Print evaluation time in microseconds\n"
                          "  --print-ast          Print AST after parsing\n"
+                         "  --print-transformed-ast Print AST after semantic transforms\n"
                          "  --print-ir           Print IR after lowering\n"
                          "  --print-llvm         Print LLVM IR after codegen\n"
                          "  --input-file|-i <file>  Input file (default: stdin)\n"
@@ -114,6 +118,7 @@ int main(int argc, char ** argv) {
         std::cin,
         TIRRunnerOptions {
             .PrintAst = printAst,
+            .PrintTransformedAst = printTransformedAst,
             .PrintIr = printIr,
             .PrintByteCode = printByteCode,
             .OptLevel = optLevel
@@ -122,6 +127,7 @@ int main(int argc, char ** argv) {
 
     TLLVMRunner llvmRunner(TLLVMRunnerOptions {
         .PrintAst = printAst,
+        .PrintTransformedAst = printTransformedAst,
         .PrintIr = printIr,
         .PrintLlvm = printLlvm,
         .OptLevel = optLevel

@@ -59,7 +59,7 @@ AST node forms:
       TContinueStmt, NodeId = "Continue".
 
   (var name type)
-  (var name type (bound_from1 bound_to1) ... (bound_fromN bound_toN))
+  (var name type [bound_from1 bound_to1] ... [bound_fromN bound_toN])
       TVarStmt, NodeId = "Var".
 
   (vars var1 var2 ... varN)

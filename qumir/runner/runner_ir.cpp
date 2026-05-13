@@ -61,13 +61,19 @@ std::expected<std::optional<std::string>, TError> TIRRunner::Run(std::istream& i
     scope->AllowsRedeclare = true; // TODO: move to options?
     scope->RootLevel = false;
 
+    if (Options.PrintAst) {
+        std::cerr << "=========== AST: ===========\n";
+        std::cerr << ast << std::endl;
+        std::cerr << "============================\n\n";
+    }
+
     auto error = NTransform::Pipeline(ast, Resolver);
     if (!error) {
         return std::unexpected(error.error());
     }
 
-    if (Options.PrintAst) {
-        std::cerr << "=========== AST: ===========\n";
+    if (Options.PrintTransformedAst) {
+        std::cerr << "===== TRANSFORMED AST: =====\n";
         std::cerr << ast << std::endl;
         std::cerr << "============================\n\n";
     }

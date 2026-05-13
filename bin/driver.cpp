@@ -68,9 +68,9 @@ std::shared_ptr<std::ostream> OpenOutputFile(const std::string& filename, bool r
     }
 }
 
-int GenerateAst(const std::string& inputFile, const std::string& outputFile, bool verbose) {
+int GenerateAst(const std::string& inputFile, const std::string& outputFile, bool transformed, bool verbose) {
     if (verbose) {
-        std::cerr << "Generating AST from " << inputFile << " to " << outputFile << "\n";
+        std::cerr << "Generating " << (transformed ? "transformed " : "") << "AST from " << inputFile << " to " << outputFile << "\n";
     }
 
     auto in = OpenInputFile(inputFile);
@@ -105,13 +105,21 @@ int GenerateAst(const std::string& inputFile, const std::string& outputFile, boo
         return 1;
     }
     auto ast = std::move(expected.value());
+    if (transformed) {
+        auto error = NTransform::Pipeline(ast, r);
+        if (!error) {
+            std::cerr << error.error().ToString() << "\n";
+            return 1;
+        }
+    }
+
     auto out = OpenOutputFile(outputFile);
     if (!out) {
         std::cerr << "Failed to open output file: " << outputFile << "\n";
         return 1;
     }
 
-    *out << *ast;
+    *out << ast;
     return 0;
 }
 
@@ -479,6 +487,7 @@ int main(int argc, char** argv) {
     std::string outputFile;
     std::string inputFile;
     bool generateAst = false;
+    bool generateTransformedAst = false;
     bool generateIr = false;
     bool generateLlvm = false;
     bool generateAsm = false;
@@ -500,7 +509,8 @@ int main(int argc, char** argv) {
                          "Options:\n"
                          "  -c            Compile only, do not link\n"
                          "  -o <file>     Write output to <file> (default: " << (compileOnly ? "N/A" : A_OUT) << ")\n"
-                         "  --ast         Generate AST only (no IR, no codegen)\n"
+                         "  --ast         Generate parsed AST only (no IR, no codegen)\n"
+                         "  --transformed-ast Generate transformed AST only (no IR, no codegen)\n"
                          "  --ir          Generate IR only (no codegen)\n"
                          "  --wasm        Target WebAssembly (wasm32-unknown-unknown)\n"
                          "  -S            Generate assembly only (no linking), implies -c\n"
@@ -520,6 +530,8 @@ int main(int argc, char** argv) {
             return 0;
         } else if (!std::strcmp(argv[i], "--ast")) {
             generateAst = true;
+        } else if (!std::strcmp(argv[i], "--transformed-ast")) {
+            generateTransformedAst = true;
         } else if (!std::strcmp(argv[i], "--ir")) {
             generateIr = true;
         } else if (!std::strcmp(argv[i], "--llvm")) {
@@ -562,11 +574,11 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    if (generateAst) {
+    if (generateAst || generateTransformedAst) {
         if (outputFile.empty()) {
             outputFile = OutputFilename(inputFile, ".ast");
         }
-        return GenerateAst(inputFile, outputFile, verbose);
+        return GenerateAst(inputFile, outputFile, generateTransformedAst, verbose);
     }
 
     if (generateIr) {
