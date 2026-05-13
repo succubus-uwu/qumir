@@ -32,14 +32,23 @@ private:
         auto compactOptions = Options;
         compactOptions.Pretty = false;
         std::ostringstream out;
-        TPrinter(out, compactOptions).PrintExpr(std::move(expr), allowTypeWrap, level);
+        TPrinter printer(out, compactOptions);
+        printer.PrintExpr(std::move(expr), allowTypeWrap, level);
         return level * Options.IndentStep + out.str().size() <= Options.LineWidth;
     }
 
     bool ForceMultiline(TExprPtr expr) const {
         return TMaybeNode<TBlockExpr>(expr)
+            || TMaybeNode<TSeqExpr>(expr)
             || TMaybeNode<TVarsBlockExpr>(expr)
             || TMaybeNode<TFunDecl>(expr);
+    }
+
+    void PrintCompact(TExprPtr expr, bool allowTypeWrap, int level) {
+        auto compactOptions = Options;
+        compactOptions.Pretty = false;
+        TPrinter printer(Out, compactOptions);
+        printer.PrintExpr(std::move(expr), allowTypeWrap, level);
     }
 
     void Separator(int level) {
@@ -75,9 +84,7 @@ private:
 
         if (allowTypeWrap && ShouldWrapType(expr)) {
             if (Options.Pretty && !ForceMultiline(expr) && FitsOneLine(expr, allowTypeWrap, level)) {
-                auto compactOptions = Options;
-                compactOptions.Pretty = false;
-                TPrinter(Out, compactOptions).PrintExpr(std::move(expr), allowTypeWrap, level);
+                PrintCompact(std::move(expr), allowTypeWrap, level);
                 return;
             }
             Out << "(: ";
@@ -89,9 +96,7 @@ private:
         }
 
         if (Options.Pretty && !ForceMultiline(expr) && FitsOneLine(expr, allowTypeWrap, level)) {
-            auto compactOptions = Options;
-            compactOptions.Pretty = false;
-            TPrinter(Out, compactOptions).PrintExpr(std::move(expr), allowTypeWrap, level);
+            PrintCompact(std::move(expr), allowTypeWrap, level);
             return;
         }
 
@@ -121,6 +126,8 @@ private:
             Out << ')';
         } else if (auto n = TMaybeNode<TBlockExpr>(expr)) {
             PrintExprList("block", n.Cast()->Stmts, level);
+        } else if (auto n = TMaybeNode<TSeqExpr>(expr)) {
+            PrintExprList("seq", n.Cast()->Stmts, level);
         } else if (auto n = TMaybeNode<TIfStmt>(expr)) {
             PrintIfLike("cond", n.Cast()->Cond, n.Cast()->Then, n.Cast()->Else, level);
         } else if (auto n = TMaybeNode<TIfExpr>(expr)) {

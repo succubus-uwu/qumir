@@ -31,7 +31,11 @@ AST node forms:
       TBinaryExpr, NodeId = "Binary".
 
   (block stmt1 stmt2 ... stmtN)
-      TBlockExpr, NodeId = "Block".
+      TBlockExpr, NodeId = "Block", introduces a nested lexical scope.
+
+  (seq stmt1 stmt2 ... stmtN)
+      TSeqExpr, NodeId = "Seq", evaluates statements in order without
+      introducing a nested lexical scope.
 
   (cond cond then else)
       TIfStmt, NodeId = "IfStmt".

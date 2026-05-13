@@ -304,7 +304,7 @@ std::expected<bool, TError> PostTypeAnnotationTransform(NAst::TExprPtr& expr, NS
                     stmts.push_back(resetFileCall);
                 }
 
-                return std::make_shared<NAst::TBlockExpr>(output->Location, stmts);
+                return std::make_shared<NAst::TSeqExpr>(output->Location, stmts);
             } else if (auto maybeInput = NAst::TMaybeNode<NAst::TInputExpr>(node)) {
                 auto input = maybeInput.Cast();
                 if (input->Args.size() == 0) {
@@ -399,7 +399,7 @@ std::expected<bool, TError> PostTypeAnnotationTransform(NAst::TExprPtr& expr, NS
                     stmts.push_back(resetFileCall);
                 }
 
-                return std::make_shared<NAst::TBlockExpr>(input->Location, std::move(stmts));
+                return std::make_shared<NAst::TSeqExpr>(input->Location, std::move(stmts));
             } else if (auto maybeIndex = NAst::TMaybeNode<NAst::TIndexExpr>(node)) {
                 auto index = maybeIndex.Cast();
                 auto collectionType = UnwrapReferenceType(index->Collection->Type);
@@ -516,11 +516,9 @@ std::expected<bool, TError> PostNameResolutionTransform(NAst::TExprPtr& expr, NS
     };
 
     auto generateBounds = [&](std::shared_ptr<NAst::TVarStmt> var, const NSemantics::TSymbolInfo& symbolInfo) -> auto {
-        auto block = std::make_shared<NAst::TBlockExpr>(var->Location, std::vector<NAst::TExprPtr>{});
+        auto block = std::make_shared<NAst::TSeqExpr>(var->Location, std::vector<NAst::TExprPtr>{});
         auto boundaries = std::move(var->Bounds);
         var->Bounds.clear();
-        block->Scope = symbolInfo.DeclScopeId;
-        block->SkipDestructors = true;
         int i = boundaries.size() - 1;
 
         auto declare = [&](const std::string& name) {
@@ -628,7 +626,7 @@ std::expected<bool, TError> PostNameResolutionTransform(NAst::TExprPtr& expr, NS
                     return node;
                 }
 
-                std::vector<std::shared_ptr<NAst::TBlockExpr>> preBlocks;
+                std::vector<std::shared_ptr<NAst::TSeqExpr>> preBlocks;
                 for (auto& param : funDecl->Params) {
                     if (param->Bounds.empty()) {
                         continue;

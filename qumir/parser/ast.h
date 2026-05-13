@@ -309,6 +309,39 @@ struct TBlockExpr : TExpr {
     }
 };
 
+struct TSeqExpr : TExpr {
+    static constexpr const char* NodeId = "Seq";
+
+    std::vector<TExprPtr> Stmts;
+
+    explicit TSeqExpr(TLocation loc, std::vector<TExprPtr> s)
+        : TExpr(std::move(loc))
+        , Stmts(std::move(s))
+    { }
+
+    std::vector<TExprPtr> Children() const override {
+        std::vector<TExprPtr> result;
+        result.reserve(Stmts.size());
+        for (const auto& stmt : Stmts) {
+            result.push_back(stmt);
+        }
+        return result;
+    }
+
+    std::vector<TExprPtr*> MutableChildren() override {
+        std::vector<TExprPtr*> result;
+        result.reserve(Stmts.size());
+        for (auto& stmt : Stmts) {
+            result.push_back(&stmt);
+        }
+        return result;
+    }
+
+    const std::string_view NodeName() const override {
+        return NodeId;
+    }
+};
+
 struct TIfStmt : TExpr {
     static constexpr const char* NodeId = "IfStmt";
 
