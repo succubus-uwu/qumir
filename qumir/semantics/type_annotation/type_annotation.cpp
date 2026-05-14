@@ -615,9 +615,17 @@ TTask AnnotateArrayAssign(std::shared_ptr<TArrayAssignExpr> arrayAssign, NSemant
     }
 }
 
-TTask AnnotateVar(std::shared_ptr<TVarStmt> var) {
+TTask AnnotateVar(std::shared_ptr<TVarStmt> var, NSemantics::TNameResolver& context, NSemantics::TScopeId scopeId) {
     if (!var->Type) {
         co_return TError(var->Location, "Не указан тип переменной при объявлении: " + var->Name);
+    }
+    for (auto& [from, to] : var->Bounds) {
+        if (from) {
+            from = co_await DoAnnotate(from, context, scopeId);
+        }
+        if (to) {
+            to = co_await DoAnnotate(to, context, scopeId);
+        }
     }
     co_return var;
 }
@@ -1095,7 +1103,7 @@ TTask DoAnnotate(TExprPtr expr, NSemantics::TNameResolver& context, NSemantics::
     } else if (auto maybeMultiIndex = TMaybeNode<TMultiIndexExpr>(expr)) {
         co_return co_await AnnotateMultiIndex(maybeMultiIndex.Cast(), context, scopeId);
     } else if (auto maybeVar = TMaybeNode<TVarStmt>(expr)) {
-        co_return co_await AnnotateVar(maybeVar.Cast());
+        co_return co_await AnnotateVar(maybeVar.Cast(), context, scopeId);
     } else if (auto maybeFunDecl = TMaybeNode<TFunDecl>(expr)) {
         co_return co_await AnnotateFunDecl(maybeFunDecl.Cast(), context, scopeId);
     } else if (auto maybeCall = TMaybeNode<TCallExpr>(expr)) {
