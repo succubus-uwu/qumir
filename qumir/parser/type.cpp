@@ -1,30 +1,15 @@
 #include "type.h"
+#include "qumir/parser/core/printer.h"
 
-#include <iostream>
-#include <sstream>
+#include <memory>
 
 namespace NQumir {
 namespace NAst {
 
-namespace {
-
-std::string Print(const TType& expr) {
-    std::string result = "<";
-    result += expr.TypeName();
-    std::string tail = expr.ToString();
-    if (!tail.empty()) {
-        result += " ";
-        result += tail;
-    }
-    result += ">";
-    return result;
-}
-
-} // namespace
-
 std::ostream& operator<<(std::ostream& os, const TType& expr)
 {
-    os << Print(expr);
+    TTypePtr ptr(const_cast<TType*>(&expr), [](TType*) {});
+    NCore::PrintType(os, std::move(ptr));
     return os;
 }
 

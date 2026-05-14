@@ -446,46 +446,105 @@ struct TLetExpr : TExpr {
     }
 };
 
-struct TLoopStmtExpr : TExpr {
-    static constexpr const char* NodeId = "Loop";
+struct TWhileStmtExpr : TExpr {
+    static constexpr const char* NodeId = "WhileStmt";
 
-    TExprPtr PreCond;
-    TExprPtr PreBody;
+    TExprPtr Cond;
     TExprPtr Body;
-    TExprPtr PostBody;
-    TExprPtr PostCond;
 
-    /*
-    if (PreCond) {
-        while (PreCond) {
-            PreBody
-            Body
-            PostBody
-        }
-    } else {
-        do {
-            PreBody
-            Body
-            PostBody
-        } while (PostCond);
-    }
-    */
-
-    TLoopStmtExpr(TLocation loc, TExprPtr preCond, TExprPtr preBody, TExprPtr body, TExprPtr postBody, TExprPtr postCond)
+    TWhileStmtExpr(TLocation loc, TExprPtr cond, TExprPtr body)
         : TExpr(std::move(loc))
-        , PreCond(std::move(preCond))
-        , PreBody(std::move(preBody))
+        , Cond(std::move(cond))
         , Body(std::move(body))
-        , PostBody(std::move(postBody))
-        , PostCond(std::move(postCond))
     { }
 
     std::vector<TExprPtr> Children() const override {
-        return { PreCond, PostCond, PreBody, Body, PostBody };
+        return { Cond, Body };
     }
 
     std::vector<TExprPtr*> MutableChildren() override {
-        return { &PreCond, &PostCond, &PreBody, &Body, &PostBody };
+        return { &Cond, &Body };
+    }
+
+    const std::string_view NodeName() const override {
+        return NodeId;
+    }
+};
+
+struct TRepeatStmtExpr : TExpr {
+    static constexpr const char* NodeId = "RepeatStmt";
+
+    TExprPtr Body;
+    TExprPtr Cond;
+
+    TRepeatStmtExpr(TLocation loc, TExprPtr body, TExprPtr cond)
+        : TExpr(std::move(loc))
+        , Body(std::move(body))
+        , Cond(std::move(cond))
+    { }
+
+    std::vector<TExprPtr> Children() const override {
+        return { Body, Cond };
+    }
+
+    std::vector<TExprPtr*> MutableChildren() override {
+        return { &Body, &Cond };
+    }
+
+    const std::string_view NodeName() const override {
+        return NodeId;
+    }
+};
+
+struct TForStmtExpr : TExpr {
+    static constexpr const char* NodeId = "ForStmt";
+
+    std::string VarName;
+    TExprPtr From;
+    TExprPtr To;
+    TExprPtr Step;
+    TExprPtr Body;
+
+    TForStmtExpr(TLocation loc, std::string varName, TExprPtr from, TExprPtr to, TExprPtr step, TExprPtr body)
+        : TExpr(std::move(loc))
+        , VarName(std::move(varName))
+        , From(std::move(from))
+        , To(std::move(to))
+        , Step(std::move(step))
+        , Body(std::move(body))
+    { }
+
+    std::vector<TExprPtr> Children() const override {
+        return { From, To, Step, Body };
+    }
+
+    std::vector<TExprPtr*> MutableChildren() override {
+        return { &From, &To, &Step, &Body };
+    }
+
+    const std::string_view NodeName() const override {
+        return NodeId;
+    }
+};
+
+struct TTimesStmtExpr : TExpr {
+    static constexpr const char* NodeId = "TimesStmt";
+
+    TExprPtr Count;
+    TExprPtr Body;
+
+    TTimesStmtExpr(TLocation loc, TExprPtr count, TExprPtr body)
+        : TExpr(std::move(loc))
+        , Count(std::move(count))
+        , Body(std::move(body))
+    { }
+
+    std::vector<TExprPtr> Children() const override {
+        return { Count, Body };
+    }
+
+    std::vector<TExprPtr*> MutableChildren() override {
+        return { &Count, &Body };
     }
 
     const std::string_view NodeName() const override {
@@ -1045,7 +1104,6 @@ bool PreorderTransformAst(TExprPtr& result, TExprPtr node, TransformFunctor f, F
     return changed;
 }
 
-std::ostream& operator<<(std::ostream& os, const TExpr& expr);
 std::ostream& operator<<(std::ostream& os, const TExprPtr& expr);
 
 } // namespace NAst

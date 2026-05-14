@@ -4,5 +4,5 @@
       (var $$return i64)
       (var ф i64)
       (= ф 0)
-      (loop nil nil (block (= ф (+ ф 1))) nil (! (== ф 10)))
+      (repeat (block (= ф (+ ф 1))) (! (== ф 10)))
       (= $$return ф))))

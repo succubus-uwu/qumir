@@ -1,4 +1,2 @@
-Error: Error: runtime error: Runtime assertion failed: (>
-  ($$$return)
-  (10:<Int>)) @ Line: 8, Byte: 4, Column: 4
+Error: Error: runtime error: Runtime assertion failed: (> $$return 10) @ Line: 8, Byte: 4, Column: 4
 

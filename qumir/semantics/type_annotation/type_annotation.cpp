@@ -838,15 +838,52 @@ TTask AnnotateLetExpr(std::shared_ptr<TLetExpr> letExpr, NSemantics::TNameResolv
     co_return letExpr;
 }
 
-TTask AnnotateLoop(std::shared_ptr<TLoopStmtExpr> loop, NSemantics::TNameResolver& context, NSemantics::TScopeId scopeId) {
+TTask AnnotateWhile(std::shared_ptr<TWhileStmtExpr> loop, NSemantics::TNameResolver& context, NSemantics::TScopeId scopeId) {
+    loop->Cond = co_await DoAnnotate(loop->Cond, context, scopeId);
+    loop->Cond = InsertImplicitCastIfNeeded(loop->Cond, std::make_shared<TBoolType>(), &context);
+    loop->Body = co_await DoAnnotate(loop->Body, context, scopeId);
     loop->Type = std::make_shared<TVoidType>();
+    co_return loop;
+}
 
-    for (auto* child : loop->MutableChildren()) {
-        if (*child) {
-            *child = co_await DoAnnotate(*child, context, scopeId);
-        }
+TTask AnnotateRepeat(std::shared_ptr<TRepeatStmtExpr> loop, NSemantics::TNameResolver& context, NSemantics::TScopeId scopeId) {
+    loop->Body = co_await DoAnnotate(loop->Body, context, scopeId);
+    loop->Cond = co_await DoAnnotate(loop->Cond, context, scopeId);
+    loop->Cond = InsertImplicitCastIfNeeded(loop->Cond, std::make_shared<TBoolType>(), &context);
+    loop->Type = std::make_shared<TVoidType>();
+    co_return loop;
+}
+
+TTask AnnotateFor(std::shared_ptr<TForStmtExpr> loop, NSemantics::TNameResolver& context, NSemantics::TScopeId scopeId) {
+    auto intType = std::make_shared<TIntegerType>();
+
+    auto symbolId = context.Lookup(loop->VarName, scopeId);
+    if (!symbolId) {
+        co_return TError(loop->Location, "Переменная цикла не определена: " + loop->VarName);
+    }
+    auto symbol = context.GetSymbolNode(NSemantics::TSymbolId{symbolId->Id});
+    if (!symbol || !TMaybeType<TIntegerType>(symbol->Type)) {
+        co_return TError(loop->Location, "Переменная цикла должна иметь целый тип: " + loop->VarName);
     }
 
+    loop->From = co_await DoAnnotate(loop->From, context, scopeId);
+    loop->From = InsertImplicitCastIfNeeded(loop->From, intType, &context);
+    loop->To = co_await DoAnnotate(loop->To, context, scopeId);
+    loop->To = InsertImplicitCastIfNeeded(loop->To, intType, &context);
+    if (loop->Step) {
+        loop->Step = co_await DoAnnotate(loop->Step, context, scopeId);
+        loop->Step = InsertImplicitCastIfNeeded(loop->Step, intType, &context);
+    }
+    loop->Body = co_await DoAnnotate(loop->Body, context, scopeId);
+    loop->Type = std::make_shared<TVoidType>();
+    co_return loop;
+}
+
+TTask AnnotateTimes(std::shared_ptr<TTimesStmtExpr> loop, NSemantics::TNameResolver& context, NSemantics::TScopeId scopeId) {
+    loop->Count = co_await DoAnnotate(loop->Count, context, scopeId);
+    loop->Count = InsertImplicitCastIfNeeded(loop->Count, std::make_shared<TIntegerType>(), &context);
+    loop->Body = co_await DoAnnotate(loop->Body, context, scopeId);
+    loop->Type = std::make_shared<TVoidType>();
     co_return loop;
 }
 
@@ -1086,9 +1123,14 @@ TTask DoAnnotate(TExprPtr expr, NSemantics::TNameResolver& context, NSemantics::
     } else if (TMaybeNode<TContinueStmt>(expr)) {
         expr->Type = std::make_shared<TVoidType>();
         co_return expr;
-    } else if (auto maybeLoop = TMaybeNode<TLoopStmtExpr>(expr)) {
-        auto loop = maybeLoop.Cast();
-        co_return co_await AnnotateLoop(loop, context, scopeId);
+    } else if (auto maybeLoop = TMaybeNode<TWhileStmtExpr>(expr)) {
+        co_return co_await AnnotateWhile(maybeLoop.Cast(), context, scopeId);
+    } else if (auto maybeLoop = TMaybeNode<TRepeatStmtExpr>(expr)) {
+        co_return co_await AnnotateRepeat(maybeLoop.Cast(), context, scopeId);
+    } else if (auto maybeLoop = TMaybeNode<TForStmtExpr>(expr)) {
+        co_return co_await AnnotateFor(maybeLoop.Cast(), context, scopeId);
+    } else if (auto maybeLoop = TMaybeNode<TTimesStmtExpr>(expr)) {
+        co_return co_await AnnotateTimes(maybeLoop.Cast(), context, scopeId);
     } else {
         if (!expr->Type) {
             // if expr->Type => node was annotated on construction

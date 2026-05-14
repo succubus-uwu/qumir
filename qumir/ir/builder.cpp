@@ -466,6 +466,18 @@ void TBuilder::SetType(TLocal local, int typeId) {
     CurrentFunction->LocalTypes[local.Idx] = typeId;
 }
 
+void TBuilder::ReserveLocals(int count) {
+    if (!CurrentFunction) {
+        throw std::runtime_error("No current function");
+    }
+    if (count < 0) {
+        throw std::runtime_error("Negative local count");
+    }
+    if (count > CurrentFunction->LocalTypes.size()) {
+        CurrentFunction->LocalTypes.resize(count, -1);
+    }
+}
+
 TLocal TBuilder::AllocLocal(int typeId) {
     int idx = (int)CurrentFunction->LocalTypes.size();
     SetType(TLocal{idx}, typeId);

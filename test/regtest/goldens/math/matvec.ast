@@ -41,83 +41,33 @@
       (var res_l2 f64)
       (var res_inf f64)
       (var err f64)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 0)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to (- n 1))
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (block
-              (var $$to i64)
-              (var $$step i64)
-              (var $$next i64)
-              (= j 0)
-              (= $$step 1)
-              (= $$next j)
-              (= $$to (- n 1))
-              (loop
-                (>= (* (- $$to $$next) $$step) 0)
-                (= j $$next)
-                (block
-                  (cond (<= j i) (block (= A [i j] 1)) (block (= A [i j] 0))))
-                (= $$next (+ $$next $$step))))
-            (= x [i] 1))
-          (= $$next (+ $$next $$step))))
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 0)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to (- n 1))
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (= sum 0)
-            (block
-              (var $$to i64)
-              (var $$step i64)
-              (var $$next i64)
-              (= j 0)
-              (= $$step 1)
-              (= $$next j)
-              (= $$to (- n 1))
-              (loop
-                (>= (* (- $$to $$next) $$step) 0)
-                (= j $$next)
-                (block
-                  (= sum (+ sum (* (index [i j] A) (index j x)))))
-                (= $$next (+ $$next $$step))))
-            (= y [i] sum))
-          (= $$next (+ $$next $$step))))
+      (for i
+        0
+        (- n 1)
+        1
+        (block
+          (for j 0 (- n 1) 1 (block (cond (<= j i) (block (= A [i j] 1)) (block (= A [i j] 0)))))
+          (= x [i] 1)))
+      (for i
+        0
+        (- n 1)
+        1
+        (block
+          (= sum 0)
+          (for j 0 (- n 1) 1 (block (= sum (+ sum (* (index [i j] A) (index j x))))))
+          (= y [i] sum)))
       (= res_l2_sq 0)
       (= res_inf 0)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 0)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to (- n 1))
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (= err (- (index i y) (+ (cast i f64) 1)))
-            (= absv err)
-            (cond (< absv 0) (block (= absv (- absv))))
-            (= res_l2_sq (+ res_l2_sq (* err err)))
-            (cond (> absv res_inf) (block (= res_inf absv))))
-          (= $$next (+ $$next $$step))))
+      (for i
+        0
+        (- n 1)
+        1
+        (block
+          (= err (- (index i y) (+ (cast i f64) 1)))
+          (= absv err)
+          (cond (< absv 0) (block (= absv (- absv))))
+          (= res_l2_sq (+ res_l2_sq (* err err)))
+          (cond (> absv res_inf) (block (= res_inf absv)))))
       (= res_l2 (call sqrt res_l2_sq))
       (seq
         (call output_string "matvec: ||e||_2^2 = ")

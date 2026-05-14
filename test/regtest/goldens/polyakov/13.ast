@@ -12,42 +12,17 @@
         (= $$A_dimsize0 (+ (- N 1) 1))
         (= $$A_mulacc0 (* 1 $$A_dimsize0))
         (var A <array i64 1>))
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 1)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to N)
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (= A [i] (+ 180 (* i i))))
-          (= $$next (+ $$next $$step))))
+      (for i 1 N 1 (block (= A [i] (+ 180 (* i i)))))
       (var count i64)
       (= count 0)
       (var sum i64)
       (= sum 0)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 1)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to N)
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (cond
-              (&& (< 180 (index i A)) (< (index i A) 190))
-              (block
-                (= count (+ count 1))
-                (= sum (+ sum (index i A))))))
-          (= $$next (+ $$next $$step))))
+      (for i
+        1
+        N
+        1
+        (block
+          (cond (&& (< 180 (index i A)) (< (index i A) 190)) (block (= count (+ count 1)) (= sum (+ sum (index i A)))))))
       (seq
         (call output_int64 count 0)
         (call output_symbol (cast 32 char))

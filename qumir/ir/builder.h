@@ -282,6 +282,7 @@ public:
     void SetType(TTmp tmp, int typeId);
     int GetType(TTmp tmp) const;
     void SetType(TLocal local, int typeId);
+    void ReserveLocals(int count);
     TLocal AllocLocal(int typeId); // allocates a new unnamed local and returns its index
     void UnifyTypes(TTmp left, TTmp right);
     void SetReturnType(int typeId);

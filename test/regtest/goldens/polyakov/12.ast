@@ -12,64 +12,18 @@
         (= $$A_dimsize0 (+ (- N 1) 1))
         (= $$A_mulacc0 (* 1 $$A_dimsize0))
         (var A <array i64 1>))
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 1)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to N)
-        (loop (>= (* (- $$to $$next) $$step) 0) (= i $$next) (block (= A [i] (* i i))) (= $$next (+ $$next $$step))))
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 1)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to N)
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (seq
-              (call output_int64 (index i A) 0)
-              (call output_symbol (cast 32 char))))
-          (= $$next (+ $$next $$step))))
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 1)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to N)
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (seq
-              (call output_string "A[")
-              (call output_int64 i 0)
-              (call output_string "]=")
-              (call output_string "\n"))
-            (seq
-              (= A [i] (call input_int64))))
-          (= $$next (+ $$next $$step))))
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 1)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to N)
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (seq
-              (call output_int64 (index i A) 0)
-              (call output_symbol (cast 32 char))))
-          (= $$next (+ $$next $$step)))))))
+      (for i 1 N 1 (block (= A [i] (* i i))))
+      (for i 1 N 1 (block (seq (call output_int64 (index i A) 0) (call output_symbol (cast 32 char)))))
+      (for i
+        1
+        N
+        1
+        (block
+          (seq
+            (call output_string "A[")
+            (call output_int64 i 0)
+            (call output_string "]=")
+            (call output_string "\n"))
+          (seq
+            (= A [i] (call input_int64)))))
+      (for i 1 N 1 (block (seq (call output_int64 (index i A) 0) (call output_symbol (cast 32 char))))))))

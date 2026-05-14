@@ -15,9 +15,8 @@
       (var len i64)
       (= len (call длин wOld))
       (= res "")
-      (loop
+      (while
         (> (call длин s) 0)
-        nil
         (block
           (= p (call позиция wOld s))
           (cond (< p 0) (block (= res (call str_concat res s)) break))

@@ -5,8 +5,8 @@
       (var x f64)
       (var y f64)
       (var n i64)
-      (: (var a <named компл <struct (re f64) (im f64)>>) <named компл <struct (re f64) (im f64)>>)
-      (: (var b <named компл <struct (re f64) (im f64)>>) <named компл <struct (re f64) (im f64)>>)
+      (var a <named компл <struct (re f64) (im f64)>>)
+      (var b <named компл <struct (re f64) (im f64)>>)
       (= x 3.5)
       (= a (: (struct ((re x) (im 0))) <named компл <struct (re f64) (im f64)>>))
       (seq

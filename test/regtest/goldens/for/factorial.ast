@@ -5,37 +5,11 @@
       (var ф i64)
       (var i i64)
       (= ф 0)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 1)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to 1000)
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (= ф (call факториал 13)))
-          (= $$next (+ $$next $$step))))
+      (for i 1 1000 1 (block (= ф (call факториал 13))))
       (= $$return ф)))
   (fun факториал i64 ((var число i64)) ()
     (block
       (var $$return i64)
       (var i i64)
       (= $$return 1)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 1)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to число)
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (= $$return (* $$return i)))
-          (= $$next (+ $$next $$step)))))))
+      (for i 1 число 1 (block (= $$return (* $$return i)))))))

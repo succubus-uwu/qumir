@@ -24,51 +24,20 @@
       (= S [8] "John")
       (= S [9] "   01")
       (= S [10] "Нет")
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 1)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to (- N 1))
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
+      (for i
+        1
+        (- N 1)
+        1
+        (block
+          (for j
+            (- N 1)
+            i
+            (- 1)
             (block
-              (var $$to i64)
-              (var $$step i64)
-              (var $$next i64)
-              (= j (- N 1))
-              (= $$step (- 1))
-              (= $$next j)
-              (= $$to i)
-              (loop
-                (>= (* (- $$to $$next) $$step) 0)
-                (= j $$next)
+              (cond
+                (< (call str_compare (index (+ j 1) S) (index j S)) 0)
                 (block
-                  (cond
-                    (< (call str_compare (index (+ j 1) S) (index j S)) 0)
-                    (block
-                      (= s1 (index j S))
-                      (= S [j] (index (+ j 1) S))
-                      (= S [(+ j 1)] s1))))
-                (= $$next (+ $$next $$step)))))
-          (= $$next (+ $$next $$step))))
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 1)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to N)
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (seq
-              (call output_string (index i S))
-              (call output_string "\n")))
-          (= $$next (+ $$next $$step)))))))
+                  (= s1 (index j S))
+                  (= S [j] (index (+ j 1) S))
+                  (= S [(+ j 1)] s1)))))))
+      (for i 1 N 1 (block (seq (call output_string (index i S)) (call output_string "\n")))))))

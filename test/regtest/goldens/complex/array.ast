@@ -11,44 +11,28 @@
         (= $$arr_mulacc0 (* 1 $$arr_dimsize0))
         (var arr <array <named компл <struct (re f64) (im f64)>> 1>))
       (var j i64)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= j 0)
-        (= $$step 1)
-        (= $$next j)
-        (= $$to 2)
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= j $$next)
-          (block
-            (= arr
-              [j]
-              (: (struct ((re (+ (field re (: (struct ((re (cast j f64)) (im 0))) <named компл <struct (re f64) (im f64)>>))
-                      (field re (: (struct ((re 0) (im 1))) <named компл <struct (re f64) (im f64)>>))))
-                    (im (+ (field im (: (struct ((re (cast j f64)) (im 0))) <named компл <struct (re f64) (im f64)>>))
-                      (field im (: (struct ((re 0) (im 1))) <named компл <struct (re f64) (im f64)>>))))))
-                <named компл <struct (re f64) (im f64)>>)))
-          (= $$next (+ $$next $$step))))
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= j 0)
-        (= $$step 1)
-        (= $$next j)
-        (= $$to 2)
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= j $$next)
-          (block
-            (seq
-              (call output_string "arr[")
-              (call output_int64 j 0)
-              (call output_string "] Re=")
-              (call output_double (field re (: (index j arr) <named компл <struct (re f64) (im f64)>>)) 0 -1)
-              (call output_string " Im=")
-              (call output_double (field im (: (index j arr) <named компл <struct (re f64) (im f64)>>)) 0 -1)
-              (call output_string "\n")))
-          (= $$next (+ $$next $$step)))))))
+      (for j
+        0
+        2
+        1
+        (block
+          (= arr
+            [j]
+            (: (struct ((re (+ (field re (: (struct ((re (cast j f64)) (im 0))) <named компл <struct (re f64) (im f64)>>))
+                    (field re (: (struct ((re 0) (im 1))) <named компл <struct (re f64) (im f64)>>))))
+                  (im (+ (field im (: (struct ((re (cast j f64)) (im 0))) <named компл <struct (re f64) (im f64)>>))
+                    (field im (: (struct ((re 0) (im 1))) <named компл <struct (re f64) (im f64)>>))))))
+              <named компл <struct (re f64) (im f64)>>))))
+      (for j
+        0
+        2
+        1
+        (block
+          (seq
+            (call output_string "arr[")
+            (call output_int64 j 0)
+            (call output_string "] Re=")
+            (call output_double (field re (: (index j arr) <named компл <struct (re f64) (im f64)>>)) 0 -1)
+            (call output_string " Im=")
+            (call output_double (field im (: (index j arr) <named компл <struct (re f64) (im f64)>>)) 0 -1)
+            (call output_string "\n")))))))

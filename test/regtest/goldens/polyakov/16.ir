@@ -21,20 +21,16 @@ function Замена а на б () { ; void
     label: label(2)
     load tmp(5,i64) = local(2,i64) 
     load tmp(6,i64) = local(4,i64) 
-    - tmp(7,i64) = tmp(5,i64) tmp(6,i64) 
-    load tmp(8,i64) = local(3,i64) 
-    * tmp(9,i64) = tmp(7,i64) tmp(8,i64) 
+    load tmp(7,i64) = local(3,i64) 
+    - tmp(8,i64) = tmp(5,i64) tmp(6,i64) 
+    * tmp(9,i64) = tmp(8,i64) tmp(7,i64) 
     >= tmp(10,i1) = tmp(9,i64) imm(0,i64) 
-    cmp tmp(10,i1) label(3) label(6) 
+    cmp tmp(10,i1) label(3) label(5) 
   }
   block {
     label: label(3)
     load tmp(11,i64) = local(4,i64) 
     stre local(1,i64) tmp(11,i64) 
-    jmp label(4) 
-  }
-  block {
-    label: label(4)
     load tmp(12,ptr to i8) = local(0,ptr to i8) 
     load tmp(13,i64) = local(1,i64) 
     arg tmp(12,ptr to i8) 
@@ -42,10 +38,10 @@ function Замена а на б () { ; void
     call tmp(14,i32) = str_symbol_at 
     mov tmp(15,i32) = imm(1072,i64) 
     == tmp(16,i1) = tmp(14,i32) tmp(15,i32) 
-    cmp tmp(16,i1) label(7) label(8) 
+    cmp tmp(16,i1) label(6) label(7) 
   }
   block {
-    label: label(5)
+    label: label(4)
     load tmp(22,i64) = local(4,i64) 
     load tmp(23,i64) = local(3,i64) 
     + tmp(24,i64) = tmp(22,i64) tmp(23,i64) 
@@ -53,7 +49,7 @@ function Замена а на б () { ; void
     jmp label(2) 
   }
   block {
-    label: label(7)
+    label: label(6)
     load tmp(17,ptr to i8) = local(0,ptr to i8) 
     mov tmp(18,i32) = imm(1073,i64) 
     load tmp(19,i64) = local(1,i64) 
@@ -65,18 +61,18 @@ function Замена а на б () { ; void
     arg tmp(21,ptr to i8) 
     call str_release 
     stre local(0,ptr to i8) tmp(20,ptr to i8) 
-    jmp label(9) 
+    jmp label(8) 
+  }
+  block {
+    label: label(7)
+    jmp label(8) 
   }
   block {
     label: label(8)
-    jmp label(9) 
+    jmp label(4) 
   }
   block {
-    label: label(9)
-    jmp label(5) 
-  }
-  block {
-    label: label(6)
+    label: label(5)
     load tmp(25,ptr to i8) = local(0,ptr to i8) 
     arg tmp(25,ptr to i8) 
     call output_string 

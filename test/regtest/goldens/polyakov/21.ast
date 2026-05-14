@@ -17,9 +17,8 @@
       (var len i64)
       (= len (call длин sOld))
       (= p (call позиция sOld s))
-      (loop
+      (while
         (> p 0)
-        nil
         (block
           (call удалить s p len)
           (call вставить sNew s p)

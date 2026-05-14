@@ -2,9 +2,9 @@
   (use "Комплексные числа")
   (fun <main> void () ()
     (block
-      (: (var a <named компл <struct (re f64) (im f64)>>) <named компл <struct (re f64) (im f64)>>)
-      (: (var b <named компл <struct (re f64) (im f64)>>) <named компл <struct (re f64) (im f64)>>)
-      (: (var c <named компл <struct (re f64) (im f64)>>) <named компл <struct (re f64) (im f64)>>)
+      (var a <named компл <struct (re f64) (im f64)>>)
+      (var b <named компл <struct (re f64) (im f64)>>)
+      (var c <named компл <struct (re f64) (im f64)>>)
       (= a
         (: (struct ((re (+ (field re (: (struct ((re 1) (im 0))) <named компл <struct (re f64) (im f64)>>))
                 (field re

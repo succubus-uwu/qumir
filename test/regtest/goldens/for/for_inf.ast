@@ -5,9 +5,7 @@
       (var after i64)
       (= i 0)
       (= after 0)
-      (loop
-        nil
-        nil
+      (repeat
         (block
           (= i (+ i 1))
           (seq
@@ -16,7 +14,6 @@
             (call output_string "\n"))
           (cond (== i 3) (block (seq (call output_string "break") (call output_string "\n")) break))
           (= after (+ after 10)))
-        nil
         (cast 1 bool))
       (seq
         (call output_string "loop ended i=")

@@ -2,8 +2,8 @@
   (use "Комплексные числа")
   (fun main void () ()
     (block
-      (: (var a <named компл <struct (re f64) (im f64)>>) <named компл <struct (re f64) (im f64)>>)
-      (: (var b <named компл <struct (re f64) (im f64)>>) <named компл <struct (re f64) (im f64)>>)
+      (var a <named компл <struct (re f64) (im f64)>>)
+      (var b <named компл <struct (re f64) (im f64)>>)
       (= a (: (call make_complex 2 5) <named компл <struct (re f64) (im f64)>>))
       (seq
         (call output_string "arg Re=")
@@ -23,18 +23,18 @@
         (call output_string " Im=")
         (call output_double (field im (: b <named компл <struct (re f64) (im f64)>>)) 0 -1)
         (call output_string "\n"))))
-  (fun real_part f64 ((: (var z <named компл <struct (re f64) (im f64)>>) <named компл <struct (re f64) (im f64)>>)) ()
+  (fun real_part f64 ((var z <named компл <struct (re f64) (im f64)>>)) ()
     (block
       (var $$return f64)
       (= $$return (field re (: z <named компл <struct (re f64) (im f64)>>)))))
-  (fun imag_part f64 ((: (var z <named компл <struct (re f64) (im f64)>>) <named компл <struct (re f64) (im f64)>>)) ()
+  (fun imag_part f64 ((var z <named компл <struct (re f64) (im f64)>>)) ()
     (block
       (var $$return f64)
       (= $$return (field im (: z <named компл <struct (re f64) (im f64)>>)))))
   (fun make_complex <named компл <struct (re f64) (im f64)>> ((var re f64)
       (var im f64)) ()
     (block
-      (: (var $$return <named компл <struct (re f64) (im f64)>>) <named компл <struct (re f64) (im f64)>>)
+      (var $$return <named компл <struct (re f64) (im f64)>>)
       (= $$return
         (: (struct ((re (+ (field re (: (struct ((re re) (im 0))) <named компл <struct (re f64) (im f64)>>))
                 (field re
@@ -59,10 +59,10 @@
                             (field re (: (struct ((re 0) (im 1))) <named компл <struct (re f64) (im f64)>>)))))))
                     <named компл <struct (re f64) (im f64)>>))))))
           <named компл <struct (re f64) (im f64)>>))))
-  (fun add_twice <named компл <struct (re f64) (im f64)>> ((: (var a <named компл <struct (re f64) (im f64)>>) <named компл <struct (re f64) (im f64)>>)
-      (: (var b <named компл <struct (re f64) (im f64)>>) <named компл <struct (re f64) (im f64)>>)) ()
+  (fun add_twice <named компл <struct (re f64) (im f64)>> ((var a <named компл <struct (re f64) (im f64)>>)
+      (var b <named компл <struct (re f64) (im f64)>>)) ()
     (block
-      (: (var $$return <named компл <struct (re f64) (im f64)>>) <named компл <struct (re f64) (im f64)>>)
+      (var $$return <named компл <struct (re f64) (im f64)>>)
       (= $$return
         (: (struct ((re (+ (field re
                   (: (struct ((re (+ (field re (: a <named компл <struct (re f64) (im f64)>>))

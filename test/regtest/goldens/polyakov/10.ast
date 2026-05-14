@@ -4,20 +4,12 @@
       (var n i64)
       (var count i64)
       (var k i64)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= n 2)
-        (= $$step 1)
-        (= $$next n)
-        (= $$to 1000)
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= n $$next)
-          (block
-            (= count 0)
-            (= k 2)
-            (loop (<= (* k k) n) nil (block (cond (== (call mod n k) 0) (block (= count (+ count 1)))) (= k (+ k 1))))
-            (cond (== count 0) (block (seq (call output_int64 n 0) (call output_string "\n")))))
-          (= $$next (+ $$next $$step)))))))
+      (for n
+        2
+        1000
+        1
+        (block
+          (= count 0)
+          (= k 2)
+          (while (<= (* k k) n) (block (cond (== (call mod n k) 0) (block (= count (+ count 1)))) (= k (+ k 1))))
+          (cond (== count 0) (block (seq (call output_int64 n 0) (call output_string "\n")))))))))

@@ -67,9 +67,11 @@ private:
         if (!expr || !expr->Type) {
             return false;
         }
+        if (TMaybeNode<TVarStmt>(expr)) {
+            return false;
+        }
         if (Options.TypeMode == ETypePrintMode::All) {
-            return !TMaybeNode<TVarStmt>(expr)
-                && !TMaybeNode<TFunDecl>(expr)
+            return !TMaybeNode<TFunDecl>(expr)
                 && !TMaybeNode<TCastExpr>(expr);
         }
         return TMaybeType<TNamedType>(expr->Type)
@@ -134,8 +136,14 @@ private:
             PrintIfLike("if", n.Cast()->Cond, n.Cast()->Then, n.Cast()->Else, level);
         } else if (auto n = TMaybeNode<TLetExpr>(expr)) {
             PrintLet(n.Cast(), level);
-        } else if (auto n = TMaybeNode<TLoopStmtExpr>(expr)) {
-            PrintLoop(n.Cast(), level);
+        } else if (auto n = TMaybeNode<TWhileStmtExpr>(expr)) {
+            PrintWhile(n.Cast(), level);
+        } else if (auto n = TMaybeNode<TRepeatStmtExpr>(expr)) {
+            PrintRepeat(n.Cast(), level);
+        } else if (auto n = TMaybeNode<TForStmtExpr>(expr)) {
+            PrintFor(n.Cast(), level);
+        } else if (auto n = TMaybeNode<TTimesStmtExpr>(expr)) {
+            PrintTimes(n.Cast(), level);
         } else if (TMaybeNode<TBreakStmt>(expr)) {
             Out << "break";
         } else if (TMaybeNode<TContinueStmt>(expr)) {
@@ -345,18 +353,45 @@ private:
         Out << ')';
     }
 
-    void PrintLoop(const std::shared_ptr<TLoopStmtExpr>& node, int level) {
-        std::vector<TExprPtr> items = {
-            node->PreCond,
-            node->PreBody,
-            node->Body,
-            node->PostBody,
-            node->PostCond,
-        };
-        while (!items.empty() && !items.back()) {
-            items.pop_back();
-        }
-        PrintExprList("loop", items, level);
+    void PrintWhile(const std::shared_ptr<TWhileStmtExpr>& node, int level) {
+        Out << "(while";
+        Separator(level + 1);
+        PrintExpr(node->Cond, true, level + 1);
+        Separator(level + 1);
+        PrintExpr(node->Body, true, level + 1);
+        Out << ')';
+    }
+
+    void PrintRepeat(const std::shared_ptr<TRepeatStmtExpr>& node, int level) {
+        Out << "(repeat";
+        Separator(level + 1);
+        PrintExpr(node->Body, true, level + 1);
+        Separator(level + 1);
+        PrintExpr(node->Cond, true, level + 1);
+        Out << ')';
+    }
+
+    void PrintFor(const std::shared_ptr<TForStmtExpr>& node, int level) {
+        Out << "(for ";
+        PrintIdentifier(node->VarName);
+        Separator(level + 1);
+        PrintExpr(node->From, true, level + 1);
+        Separator(level + 1);
+        PrintExpr(node->To, true, level + 1);
+        Separator(level + 1);
+        PrintExpr(node->Step, true, level + 1);
+        Separator(level + 1);
+        PrintExpr(node->Body, true, level + 1);
+        Out << ')';
+    }
+
+    void PrintTimes(const std::shared_ptr<TTimesStmtExpr>& node, int level) {
+        Out << "(times";
+        Separator(level + 1);
+        PrintExpr(node->Count, true, level + 1);
+        Separator(level + 1);
+        PrintExpr(node->Body, true, level + 1);
+        Out << ')';
     }
 
     void PrintVar(const std::shared_ptr<TVarStmt>& node, int level) {

@@ -1,4 +1,2 @@
-Error: Error: runtime error: Runtime assertion failed: (<
-  ($й)
-  (10:<Int>)) @ Line: 7, Byte: 4, Column: 4
+Error: Error: runtime error: Runtime assertion failed: (< й 10) @ Line: 7, Byte: 4, Column: 4
 

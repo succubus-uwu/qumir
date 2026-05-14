@@ -41,8 +41,20 @@ private:
         TScopeId scopeId,
         const TAssignedSet& inAssigned);
 
-    std::expected<TAssignedSet, TError> CheckLoop(
-        const std::shared_ptr<NAst::TLoopStmtExpr>& loop,
+    std::expected<TAssignedSet, TError> CheckWhile(
+        const std::shared_ptr<NAst::TWhileStmtExpr>& loop,
+        TScopeId scopeId,
+        const TAssignedSet& inAssigned);
+    std::expected<TAssignedSet, TError> CheckRepeat(
+        const std::shared_ptr<NAst::TRepeatStmtExpr>& loop,
+        TScopeId scopeId,
+        const TAssignedSet& inAssigned);
+    std::expected<TAssignedSet, TError> CheckFor(
+        const std::shared_ptr<NAst::TForStmtExpr>& loop,
+        TScopeId scopeId,
+        const TAssignedSet& inAssigned);
+    std::expected<TAssignedSet, TError> CheckTimes(
+        const std::shared_ptr<NAst::TTimesStmtExpr>& loop,
         TScopeId scopeId,
         const TAssignedSet& inAssigned);
 

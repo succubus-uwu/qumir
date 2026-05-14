@@ -12,18 +12,10 @@
       (var i i64)
       (var w string)
       (= w (call str_slice w0 1 (call длин w0)))
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 1)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to (call длин A))
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (= w (call str_replace_sym w (call str_symbol_at A i) (+ N 1)))
-            (call TumbaWords A w (+ N 1)))
-          (= $$next (+ $$next $$step)))))))
+      (for i
+        1
+        (call длин A)
+        1
+        (block
+          (= w (call str_replace_sym w (call str_symbol_at A i) (+ N 1)))
+          (call TumbaWords A w (+ N 1)))))))

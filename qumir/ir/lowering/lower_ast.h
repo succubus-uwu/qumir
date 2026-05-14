@@ -50,10 +50,10 @@ private:
 
     TExpectedTask<TValueWithBlock, TError, TLocation> Lower(const NAst::TExprPtr& expr, TBlockScope scope);
 
-    TExpectedTask<TValueWithBlock, TError, TLocation> LowerLoop(std::shared_ptr<NAst::TLoopStmtExpr> loop, TBlockScope scope);
-    TExpectedTask<TValueWithBlock, TError, TLocation> LowerWhileLoop(std::shared_ptr<NAst::TLoopStmtExpr> loop, TBlockScope scope);
-    TExpectedTask<TValueWithBlock, TError, TLocation> LowerForLoop(std::shared_ptr<NAst::TLoopStmtExpr> loop, TBlockScope scope);
-    TExpectedTask<TValueWithBlock, TError, TLocation> LowerRepeatLoop(std::shared_ptr<NAst::TLoopStmtExpr> loop, TBlockScope scope);
+    TExpectedTask<TValueWithBlock, TError, TLocation> LowerWhile(std::shared_ptr<NAst::TWhileStmtExpr> loop, TBlockScope scope);
+    TExpectedTask<TValueWithBlock, TError, TLocation> LowerFor(std::shared_ptr<NAst::TForStmtExpr> loop, TBlockScope scope);
+    TExpectedTask<TValueWithBlock, TError, TLocation> LowerRepeat(std::shared_ptr<NAst::TRepeatStmtExpr> loop, TBlockScope scope);
+    TExpectedTask<TValueWithBlock, TError, TLocation> LowerTimes(std::shared_ptr<NAst::TTimesStmtExpr> loop, TBlockScope scope);
     TExpectedTask<TValueWithBlock, TError, TLocation> LowerIndices(const std::string& name, const std::vector<NAst::TExprPtr>& indices, TBlockScope scope, int elemSize = 8);
     TExpectedTask<TTmp, TError, TLocation> LoadVar(const std::string& name, TBlockScope scope, const TLocation& loc, bool ref = false);
 

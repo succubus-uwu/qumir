@@ -3,92 +3,84 @@
     (block
       (var m i64)
       (= m 10)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= m 1)
-        (= $$step 1)
-        (= $$next m)
-        (= $$to 12)
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= m $$next)
-          (block
+      (for m
+        1
+        12
+        1
+        (block
+          (cond
+            (== m 1)
+            (block
+              (seq
+                (call output_string "январь")
+                (call output_string "\n")))
             (cond
-              (== m 1)
+              (== m 2)
               (block
                 (seq
-                  (call output_string "январь")
+                  (call output_string "февраль")
                   (call output_string "\n")))
               (cond
-                (== m 2)
+                (== m 3)
                 (block
                   (seq
-                    (call output_string "февраль")
+                    (call output_string "март")
                     (call output_string "\n")))
                 (cond
-                  (== m 3)
+                  (== m 4)
                   (block
                     (seq
-                      (call output_string "март")
+                      (call output_string "апрель")
                       (call output_string "\n")))
                   (cond
-                    (== m 4)
+                    (== m 5)
                     (block
                       (seq
-                        (call output_string "апрель")
+                        (call output_string "май")
                         (call output_string "\n")))
                     (cond
-                      (== m 5)
+                      (== m 6)
                       (block
                         (seq
-                          (call output_string "май")
+                          (call output_string "июнь")
                           (call output_string "\n")))
                       (cond
-                        (== m 6)
+                        (== m 7)
                         (block
                           (seq
-                            (call output_string "июнь")
+                            (call output_string "июль")
                             (call output_string "\n")))
                         (cond
-                          (== m 7)
+                          (== m 8)
                           (block
                             (seq
-                              (call output_string "июль")
+                              (call output_string "август")
                               (call output_string "\n")))
                           (cond
-                            (== m 8)
+                            (== m 9)
                             (block
                               (seq
-                                (call output_string "август")
+                                (call output_string "сентябрь")
                                 (call output_string "\n")))
                             (cond
-                              (== m 9)
+                              (== m 10)
                               (block
                                 (seq
-                                  (call output_string "сентябрь")
+                                  (call output_string "октябрь")
                                   (call output_string "\n")))
                               (cond
-                                (== m 10)
+                                (== m 11)
                                 (block
                                   (seq
-                                    (call output_string "октябрь")
+                                    (call output_string "ноябрь")
                                     (call output_string "\n")))
                                 (cond
-                                  (== m 11)
+                                  (== m 12)
                                   (block
                                     (seq
-                                      (call output_string "ноябрь")
+                                      (call output_string "декабрь")
                                       (call output_string "\n")))
-                                  (cond
-                                    (== m 12)
-                                    (block
-                                      (seq
-                                        (call output_string "декабрь")
-                                        (call output_string "\n")))
-                                    (block
-                                      (seq
-                                        (call output_string "ошибка")
-                                        (call output_string "\n"))))))))))))))))
-          (= $$next (+ $$next $$step)))))))
+                                  (block
+                                    (seq
+                                      (call output_string "ошибка")
+                                      (call output_string "\n"))))))))))))))))))))

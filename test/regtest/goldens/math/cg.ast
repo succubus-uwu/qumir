@@ -55,56 +55,25 @@
       (var pAp f64)
       (var rnorm f64)
       (var vabs f64)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 0)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to (- n 1))
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (= b [i] 1)
-            (= x [i] 0))
-          (= $$next (+ $$next $$step))))
+      (for i 0 (- n 1) 1 (block (= b [i] 1) (= x [i] 0)))
       (call compute_residual n x b r Ap)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 0)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to (- n 1))
-        (loop (>= (* (- $$to $$next) $$step) 0) (= i $$next) (block (= p [i] (index i r))) (= $$next (+ $$next $$step))))
+      (for i 0 (- n 1) 1 (block (= p [i] (index i r))))
       (= rsold (call dot n r r))
       (= it 0)
-      (loop
+      (while
         (< it maxIter)
-        nil
         (block
           (call matvec n p Ap)
           (= pAp (call dot n p Ap))
           (cond (== pAp 0) (block break))
           (= alpha (/ rsold pAp))
-          (block
-            (var $$to i64)
-            (var $$step i64)
-            (var $$next i64)
-            (= i 0)
-            (= $$step 1)
-            (= $$next i)
-            (= $$to (- n 1))
-            (loop
-              (>= (* (- $$to $$next) $$step) 0)
-              (= i $$next)
-              (block
-                (= x [i] (+ (index i x) (* alpha (index i p))))
-                (= r [i] (- (index i r) (* alpha (index i Ap)))))
-              (= $$next (+ $$next $$step))))
+          (for i
+            0
+            (- n 1)
+            1
+            (block
+              (= x [i] (+ (index i x) (* alpha (index i p))))
+              (= r [i] (- (index i r) (* alpha (index i Ap))))))
           (= rnorm (call norm2 n r))
           (cond (<= rnorm tol) (block break))
           (= rsnew (call dot n r r))
@@ -113,35 +82,9 @@
             (block
               (var beta f64)
               (= beta (/ rsnew rsold))
-              (block
-                (var $$to i64)
-                (var $$step i64)
-                (var $$next i64)
-                (= i 0)
-                (= $$step 1)
-                (= $$next i)
-                (= $$to (- n 1))
-                (loop
-                  (>= (* (- $$to $$next) $$step) 0)
-                  (= i $$next)
-                  (block
-                    (= p [i] (+ (index i r) (* beta (index i p)))))
-                  (= $$next (+ $$next $$step)))))
+              (for i 0 (- n 1) 1 (block (= p [i] (+ (index i r) (* beta (index i p)))))))
             (block
-              (block
-                (var $$to i64)
-                (var $$step i64)
-                (var $$next i64)
-                (= i 0)
-                (= $$step 1)
-                (= $$next i)
-                (= $$to (- n 1))
-                (loop
-                  (>= (* (- $$to $$next) $$step) 0)
-                  (= i $$next)
-                  (block
-                    (= p [i] (index i r)))
-                  (= $$next (+ $$next $$step))))))
+              (for i 0 (- n 1) 1 (block (= p [i] (index i r))))))
           (= rsold rsnew)
           (= it (+ it 1))))
       (call compute_residual n x b r Ap)
@@ -150,23 +93,15 @@
       (var res_inf f64)
       (= res_l2_sq 0)
       (= res_inf 0)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 0)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to (- n 1))
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (= vabs (index i r))
-            (cond (< vabs 0) (block (= vabs (- vabs))))
-            (= res_l2_sq (+ res_l2_sq (* (index i r) (index i r))))
-            (cond (> vabs res_inf) (block (= res_inf vabs))))
-          (= $$next (+ $$next $$step))))
+      (for i
+        0
+        (- n 1)
+        1
+        (block
+          (= vabs (index i r))
+          (cond (< vabs 0) (block (= vabs (- vabs))))
+          (= res_l2_sq (+ res_l2_sq (* (index i r) (index i r))))
+          (cond (> vabs res_inf) (block (= res_inf vabs)))))
       (= res_l2 (call sqrt res_l2_sq))
       (seq
         (call output_string "cg: n=")
@@ -205,35 +140,14 @@
       (var i i64)
       (var j i64)
       (var sum f64)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 0)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to (- n 1))
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (= sum 0)
-            (block
-              (var $$to i64)
-              (var $$step i64)
-              (var $$next i64)
-              (= j 0)
-              (= $$step 1)
-              (= $$next j)
-              (= $$to (- n 1))
-              (loop
-                (>= (* (- $$to $$next) $$step) 0)
-                (= j $$next)
-                (block
-                  (= sum (+ sum (* (/ 1 (+ (cast (+ i j) f64) 1)) (index j v)))))
-                (= $$next (+ $$next $$step))))
-            (= w [i] sum))
-          (= $$next (+ $$next $$step))))))
+      (for i
+        0
+        (- n 1)
+        1
+        (block
+          (= sum 0)
+          (for j 0 (- n 1) 1 (block (= sum (+ sum (* (/ 1 (+ (cast (+ i j) f64) 1)) (index j v))))))
+          (= w [i] sum)))))
   (fun norm2 f64 ((var n i64)
       (var v <array f64 1>)) ()
     (block
@@ -247,20 +161,7 @@
       (var i i64)
       (var sum f64)
       (= sum 0)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 0)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to (- n 1))
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (= sum (+ sum (* (index i v) (index i v)))))
-          (= $$next (+ $$next $$step))))
+      (for i 0 (- n 1) 1 (block (= sum (+ sum (* (index i v) (index i v))))))
       (= $$return (call sqrt sum))))
   (fun dot f64 ((var n i64)
       (var a <array f64 1>)
@@ -282,20 +183,7 @@
       (var i i64)
       (var sum f64)
       (= sum 0)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 0)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to (- n 1))
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (= sum (+ sum (* (index i a) (index i b)))))
-          (= $$next (+ $$next $$step))))
+      (for i 0 (- n 1) 1 (block (= sum (+ sum (* (index i a) (index i b))))))
       (= $$return sum)))
   (fun compute_residual void ((var n i64)
       (var x <array f64 1>)
@@ -329,17 +217,4 @@
       (= $$w_mulacc0 (* 1 $$w_dimsize0))
       (var i i64)
       (call matvec n x w)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 0)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to (- n 1))
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (= r [i] (- (index i b) (index i w))))
-          (= $$next (+ $$next $$step)))))))
+      (for i 0 (- n 1) 1 (block (= r [i] (- (index i b) (index i w))))))))

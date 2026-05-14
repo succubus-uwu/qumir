@@ -179,6 +179,13 @@ TNameResolver::TTask TNameResolver::Resolve(TExprPtr node, TScopePtr scope, TSco
             auto suggestionMsg = suggestionMessage(asg->Name, scope->Id.Id, /*includeFunctions=*/ false);
             errors.emplace_back(TError(asg->Location, TErrorString::Get<EErrorId::UNDEFINED_IDENTIFIER>(asg->Name) + suggestionMsg));
         }
+    } else if (auto maybeFor = TMaybeNode<TForStmtExpr>(node)) {
+        auto forExpr = maybeFor.Cast();
+        auto found = Lookup(forExpr->VarName, scope->Id);
+        if (!found) {
+            auto suggestionMsg = suggestionMessage(forExpr->VarName, scope->Id.Id, /*includeFunctions=*/ false);
+            errors.emplace_back(TError(forExpr->Location, TErrorString::Get<EErrorId::UNDEFINED_IDENTIFIER>(forExpr->VarName) + suggestionMsg));
+        }
     } else if (auto maybeVarStmt = TMaybeNode<TVarStmt>(node)) {
         auto varStmt = maybeVarStmt.Cast();
         if (auto err = resolveTypeRefOuter(varStmt->Type, varStmt->Location)) {

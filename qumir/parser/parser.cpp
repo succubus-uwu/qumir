@@ -637,40 +637,18 @@ TAstTask for_loop(TParserContext& context) {
 
     auto body = co_await stmt_list(context, { EKeyword::LoopEnd } );
 
-    auto block = std::make_shared<TBlockExpr>(location, std::vector<TExprPtr>{});
-
     auto endTok = stream.Next();
     if (!isKeyword(endTok, EKeyword::LoopEnd)) {
         co_return TError(endTok.Location, "ожидалось 'кц' в конце оператора 'для'");
     }
 
-    block->Stmts.push_back(std::make_shared<TVarStmt>(location, "$$to", std::make_shared<TIntegerType>()));
-    block->Stmts.push_back(std::make_shared<TVarStmt>(location, "$$step", std::make_shared<TIntegerType>()));
-    block->Stmts.push_back(std::make_shared<TVarStmt>(location, "$$next", std::make_shared<TIntegerType>()));
-    block->Stmts.push_back(std::make_shared<TAssignExpr>(varTok.Location, varTok.Name, fromExpr)); // var = from
-    block->Stmts.push_back(std::make_shared<TAssignExpr>(location, "$$step", stepExpr)); // $$step = step
-    block->Stmts.push_back(std::make_shared<TAssignExpr>(location, "$$next", ident(location, varTok.Name))); // $$next = var
-
-    block->Stmts.push_back(std::make_shared<TAssignExpr>(location, "$$to", toExpr)); // $$to = to
-
-    // ($$to - $$next) * $$step >= 0
-    // works for any step sign: product is negative only when $$next has overshot $$to
-    auto preCond = binary(location, TOperator(">="),
-        binary(location, TOperator("*"),
-            binary(location, TOperator("-"), ident(location, "$$to"), ident(location, "$$next")),
-            ident(location, "$$step")),
-        num(location, (int64_t)0));
-
-    // pre-body: var = $$next
-    auto preBody = std::make_shared<TAssignExpr>(location, varTok.Name, ident(location, "$$next"));
-    // post-body: $$next = $$next + $$step
-    auto postBody = std::make_shared<TAssignExpr>(location, "$$next",
-        binary(location, TOperator("+"), ident(location, "$$next"), ident(location, "$$step"))
-    );
-
-    block->Stmts.push_back(std::make_shared<TLoopStmtExpr>(location, preCond, preBody, body, postBody, nullptr));
-
-    co_return block;
+    co_return std::make_shared<TForStmtExpr>(
+        location,
+        varTok.Name,
+        fromExpr,
+        toExpr,
+        stepExpr,
+        body);
 }
 
 /*
@@ -692,36 +670,7 @@ TAstTask for_times(TParserContext& context, TExprPtr countExpr, TLocation loopLo
         co_return TError(endTok.Location, "ожидалось 'кц' в конце оператора 'нц'");
     }
 
-    auto block = std::make_shared<TBlockExpr>(location, std::vector<TExprPtr>{});
-
-    std::string counterName = "$$i";
-
-    block->Stmts.push_back(std::make_shared<TVarStmt>(location, "$$to", std::make_shared<TIntegerType>()));
-    block->Stmts.push_back(std::make_shared<TVarStmt>(location, "$$step", std::make_shared<TIntegerType>()));
-    block->Stmts.push_back(std::make_shared<TVarStmt>(location, "$$next", std::make_shared<TIntegerType>()));
-    block->Stmts.push_back(std::make_shared<TVarStmt>(location, counterName, std::make_shared<TIntegerType>()));
-
-    auto fromExpr = num(location, (int64_t)1);
-
-    block->Stmts.push_back(std::make_shared<TAssignExpr>(location, counterName, fromExpr));
-    block->Stmts.push_back(std::make_shared<TAssignExpr>(location, "$$step", num(location, (int64_t)1)));
-    block->Stmts.push_back(std::make_shared<TAssignExpr>(location, "$$next", ident(location, counterName)));
-
-    block->Stmts.push_back(std::make_shared<TAssignExpr>(location, "$$to",
-        binary(location, TOperator("+"), std::move(countExpr), ident(location, "$$step"))
-    ));
-
-    auto preCond = binary(location, TOperator("!="), ident(location, "$$next"), ident(location, "$$to"));
-
-    auto preBody = std::make_shared<TAssignExpr>(location, counterName, ident(location, "$$next"));
-
-    auto postBody = std::make_shared<TAssignExpr>(location, "$$next",
-        binary(location, TOperator("+"), ident(location, "$$next"), ident(location, "$$step"))
-    );
-
-    block->Stmts.push_back(std::make_shared<TLoopStmtExpr>(location, preCond, preBody, body, postBody, nullptr));
-
-    co_return block;
+    co_return std::make_shared<TTimesStmtExpr>(location, std::move(countExpr), body);
 }
 
 /*
@@ -743,7 +692,7 @@ TAstTask while_loop(TParserContext& context) {
         co_return TError(endTok.Location, "ожидалось 'кц' в конце оператора 'пока'");
     }
 
-    co_return std::make_shared<TLoopStmtExpr>(location, cond, nullptr, body, nullptr, nullptr);
+    co_return std::make_shared<TWhileStmtExpr>(location, cond, body);
 }
 
 /*
@@ -790,7 +739,7 @@ TAstTask repeat_until_loop( TParserContext& context) {
         condExpr = unary(location, TOperator("!"), condExpr);
     }
 
-    co_return std::make_shared<TLoopStmtExpr>(location, nullptr, nullptr, body, nullptr, condExpr);
+    co_return std::make_shared<TRepeatStmtExpr>(location, body, condExpr);
 }
 
 /*

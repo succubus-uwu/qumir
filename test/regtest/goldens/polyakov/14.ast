@@ -18,22 +18,7 @@
       (= A [4] 7)
       (= A [5] 2)
       (call qSort 1 5)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 1)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to N)
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (seq
-              (call output_int64 (index i A) 0)
-              (call output_symbol (cast 32 char))))
-          (= $$next (+ $$next $$step))))))
+      (for i 1 N 1 (block (seq (call output_int64 (index i A) 0) (call output_symbol (cast 32 char)))))))
   (fun qSort void ((var nStart i64)
       (var nEnd i64)) ()
     (block
@@ -45,12 +30,11 @@
       (= L nStart)
       (= R nEnd)
       (= X (index (call div (+ L R) 2) A))
-      (loop
+      (while
         (<= L R)
-        nil
         (block
-          (loop (< (index L A) X) nil (block (= L (+ L 1))))
-          (loop (> (index R A) X) nil (block (= R (- R 1))))
+          (while (< (index L A) X) (block (= L (+ L 1))))
+          (while (> (index R A) X) (block (= R (- R 1))))
           (cond (<= L R) (block (= c (index L A)) (= A [L] (index R A)) (= A [R] c) (= L (+ L 1)) (= R (- R 1))))))
       (call qSort nStart R)
       (call qSort L nEnd))))

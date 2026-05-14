@@ -1,6 +1,7 @@
 #include "lower_ast.h"
 #include "qumir/ir/builder.h"
 #include "qumir/parser/parser.h"
+#include "qumir/parser/core/printer.h"
 #include "qumir/parser/type.h"
 #include "qumir/error.h"
 
@@ -8,51 +9,28 @@
 #include <sstream>
 #include <cassert>
 #include <functional>
+#include <algorithm>
 
 namespace NQumir {
 namespace NIR {
 
 using namespace NLiterals;
 
-TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::LowerLoop(std::shared_ptr<NAst::TLoopStmtExpr> loop, TBlockScope scope)
+TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::LowerWhile(std::shared_ptr<NAst::TWhileStmtExpr> loop, TBlockScope scope)
 {
-    if (loop->PreBody == nullptr && loop->PostBody == nullptr && loop->PostCond == nullptr) {
-        // while-style loop
-        co_return co_await LowerWhileLoop(loop, scope);
-    }
-
-    if (loop->PreBody == nullptr && loop->PostBody == nullptr && loop->PreCond == nullptr) {
-        // repeat-until style loop
-        co_return co_await LowerRepeatLoop(loop, scope);
-    }
-
-    // Otherwise treat as for-style loop
-    co_return co_await LowerForLoop(loop, scope);
-}
-
-TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::LowerWhileLoop(std::shared_ptr<NAst::TLoopStmtExpr> loop, TBlockScope scope)
-{
-    if (loop->PreCond == nullptr) {
-        co_return TError(loop->Location, TErrorString::Get<EErrorId::WHILE_MISSING_CONDITION>());
-    }
-
     auto entryId = Builder.CurrentBlockIdx();
     auto [condLabel, condId] = Builder.NewBlock();
     auto [bodyLabel, bodyId] = Builder.NewBlock();
-    // Reserve end label now; place the actual end block at the end
     auto endLabel = Builder.NewLabel();
 
-    // Jump to condition check first
     Builder.SetCurrentBlock(entryId);
     Builder.Emit0("jmp"_op, {condLabel});
 
-    // Condition check
     Builder.SetCurrentBlock(condId);
-    auto cond = co_await Lower(loop->PreCond, scope);
-    if (!cond.Value) co_return TError(loop->PreCond->Location, TErrorString::Get<EErrorId::WHILE_CONDITION_NOT_NUMBER>());
+    auto cond = co_await Lower(loop->Cond, scope);
+    if (!cond.Value) co_return TError(loop->Cond->Location, TErrorString::Get<EErrorId::WHILE_CONDITION_NOT_NUMBER>());
     Builder.Emit0("cmp"_op, {*cond.Value, bodyLabel, endLabel});
 
-    // Body
     Builder.SetCurrentBlock(bodyId);
     co_await Lower(loop->Body, TBlockScope {
         .FuncIdx = scope.FuncIdx,
@@ -60,133 +38,196 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
         .BreakLabel = endLabel,
         .ContinueLabel = condLabel
     });
-    // After body, go back to condition if body didn't already jump/return
     if (!Builder.IsCurrentBlockTerminated()) {
         Builder.Emit0("jmp"_op, {condLabel});
     }
 
-    // End: materialize the end block at the very end
     Builder.NewBlock(endLabel);
     co_return TValueWithBlock{ std::nullopt, Builder.CurrentBlockLabel() };
 }
 
-TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::LowerForLoop(std::shared_ptr<NAst::TLoopStmtExpr> loop, TBlockScope scope)
+TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::LowerRepeat(std::shared_ptr<NAst::TRepeatStmtExpr> loop, TBlockScope scope)
 {
-    // for semantics:
-    // entry -> cond -> (true) -> preBody -> body -> postBody -> cond
-    //                    (false) -> end
-    // continue should jump to PostBody (or cond if PostBody is absent)
+    auto entryId = Builder.CurrentBlockIdx();
+    auto [bodyLabel, bodyId] = Builder.NewBlock();
+    auto [condLabel, condId] = Builder.NewBlock();
+    auto endLabel = Builder.NewLabel();
 
-    if (loop->PreCond == nullptr) {
-        co_return TError(loop->Location, TErrorString::Get<EErrorId::FOR_MISSING_PRECONDITION>());
+    Builder.SetCurrentBlock(entryId);
+    Builder.Emit0("jmp"_op, {bodyLabel});
+
+    Builder.SetCurrentBlock(bodyId);
+    co_await Lower(loop->Body, TBlockScope {
+        .FuncIdx = scope.FuncIdx,
+        .Id = scope.Id,
+        .BreakLabel = endLabel,
+        .ContinueLabel = condLabel
+    });
+    if (!Builder.IsCurrentBlockTerminated()) {
+        Builder.Emit0("jmp"_op, {condLabel});
     }
-    if (loop->PreBody == nullptr) {
-        co_return TError(loop->Location, TErrorString::Get<EErrorId::FOR_MISSING_PREBODY>());
+
+    Builder.SetCurrentBlock(condId);
+    auto cond = co_await Lower(loop->Cond, scope);
+    if (!cond.Value) co_return TError(loop->Cond->Location, TErrorString::Get<EErrorId::REPEAT_CONDITION_NOT_NUMBER>());
+    Builder.Emit0("cmp"_op, {*cond.Value, bodyLabel, endLabel});
+
+    Builder.NewBlock(endLabel);
+    co_return TValueWithBlock{ std::nullopt, Builder.CurrentBlockLabel() };
+}
+
+TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::LowerFor(std::shared_ptr<NAst::TForStmtExpr> loop, TBlockScope scope)
+{
+    const auto i64 = Module.Types.I(EKind::I64);
+
+    auto sidOpt = Context.Lookup(loop->VarName, scope.Id);
+    if (!sidOpt) {
+        co_return TError(loop->Location, TErrorString::Get<EErrorId::ASSIGNMENT_TO_UNDEFINED>());
     }
-    if (loop->PostBody == nullptr) {
-        co_return TError(loop->Location, TErrorString::Get<EErrorId::FOR_MISSING_POSTBODY>());
+    TOperand varOperand = sidOpt->FunctionLevelIdx >= 0
+        ? TOperand{TLocal{sidOpt->FunctionLevelIdx}}
+        : TOperand{TSlot{sidOpt->Id}};
+    if (sidOpt->FunctionLevelIdx >= 0) {
+        Builder.SetType(TLocal{sidOpt->FunctionLevelIdx}, i64);
     }
+
+    auto toLocal = Builder.AllocLocal(i64);
+    auto stepLocal = Builder.AllocLocal(i64);
+    auto nextLocal = Builder.AllocLocal(i64);
+
+    auto storeLocal = [&](TLocal local, TOperand value) {
+        Builder.Emit0("stre"_op, {TOperand{local}, value});
+    };
+    auto loadLocal = [&](TLocal local) {
+        auto tmp = Builder.Emit1("load"_op, {TOperand{local}});
+        Builder.SetType(tmp, i64);
+        return tmp;
+    };
+
+    auto from = co_await Lower(loop->From, scope);
+    if (!from.Value) co_return TError(loop->From->Location, TErrorString::Get<EErrorId::RIGHT_HAND_SIDE_NOT_NUMBER>());
+    Builder.Emit0("stre"_op, {varOperand, *from.Value});
+
+    if (loop->Step) {
+        auto step = co_await Lower(loop->Step, scope);
+        if (!step.Value) co_return TError(loop->Step->Location, TErrorString::Get<EErrorId::RIGHT_HAND_SIDE_NOT_NUMBER>());
+        storeLocal(stepLocal, *step.Value);
+    } else {
+        storeLocal(stepLocal, TImm{1, i64});
+    }
+
+    auto initialNext = Builder.Emit1("load"_op, {varOperand});
+    Builder.SetType(initialNext, i64);
+    storeLocal(nextLocal, initialNext);
+
+    auto to = co_await Lower(loop->To, scope);
+    if (!to.Value) co_return TError(loop->To->Location, TErrorString::Get<EErrorId::RIGHT_HAND_SIDE_NOT_NUMBER>());
+    storeLocal(toLocal, *to.Value);
 
     auto entryId = Builder.CurrentBlockIdx();
     auto [condLabel, condId] = Builder.NewBlock();
-    auto [preLabel, preId] = Builder.NewBlock();
     auto [bodyLabel, bodyId] = Builder.NewBlock();
     auto [postLabel, postId] = Builder.NewBlock();
     auto endLabel = Builder.NewLabel();
 
-    // Jump to condition first
     Builder.SetCurrentBlock(entryId);
     Builder.Emit0("jmp"_op, {condLabel});
 
-    // Condition
     Builder.SetCurrentBlock(condId);
-    auto cond = co_await Lower(loop->PreCond, scope);
-    if (!cond.Value) co_return TError(loop->PreCond->Location, TErrorString::Get<EErrorId::FOR_CONDITION_NOT_NUMBER>());
-    // If true -> pre or body depending on PreBody presence; if false -> end
-    auto trueTarget = preLabel;
-    Builder.Emit0("cmp"_op, {*cond.Value, trueTarget, endLabel});
+    auto toValue = loadLocal(toLocal);
+    auto nextValue = loadLocal(nextLocal);
+    auto stepValue = loadLocal(stepLocal);
+    auto diff = Builder.Emit1("-"_op, {toValue, nextValue});
+    Builder.SetType(diff, i64);
+    auto product = Builder.Emit1("*"_op, {diff, stepValue});
+    Builder.SetType(product, i64);
+    auto condValue = Builder.Emit1(">="_op, {product, TImm{0, i64}});
+    Builder.SetType(condValue, Module.Types.I(EKind::I1));
+    Builder.Emit0("cmp"_op, {condValue, bodyLabel, endLabel});
 
-    // PreBody (if present)
-    Builder.SetCurrentBlock(preId);
-    auto continueTarget = postLabel;
-    co_await Lower(loop->PreBody, TBlockScope{
+    Builder.SetCurrentBlock(bodyId);
+    auto current = loadLocal(nextLocal);
+    Builder.Emit0("stre"_op, {varOperand, current});
+    co_await Lower(loop->Body, TBlockScope{
         .FuncIdx = scope.FuncIdx,
         .Id = scope.Id,
         .BreakLabel = endLabel,
-        .ContinueLabel = continueTarget
+        .ContinueLabel = postLabel
     });
-
     if (!Builder.IsCurrentBlockTerminated()) {
-        Builder.Emit0("jmp"_op, {bodyLabel});
+        Builder.Emit0("jmp"_op, {postLabel});
     }
 
-    // Body
+    Builder.SetCurrentBlock(postId);
+    auto postNext = loadLocal(nextLocal);
+    auto postStep = loadLocal(stepLocal);
+    auto updated = Builder.Emit1("+"_op, {postNext, postStep});
+    Builder.SetType(updated, i64);
+    storeLocal(nextLocal, updated);
+    if (!Builder.IsCurrentBlockTerminated()) {
+        Builder.Emit0("jmp"_op, {condLabel});
+    }
+
+    Builder.NewBlock(endLabel);
+    co_return TValueWithBlock{ std::nullopt, Builder.CurrentBlockLabel() };
+}
+
+TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::LowerTimes(std::shared_ptr<NAst::TTimesStmtExpr> loop, TBlockScope scope)
+{
+    const auto i64 = Module.Types.I(EKind::I64);
+
+    auto toLocal = Builder.AllocLocal(i64);
+    auto nextLocal = Builder.AllocLocal(i64);
+
+    auto count = co_await Lower(loop->Count, scope);
+    if (!count.Value) co_return TError(loop->Count->Location, TErrorString::Get<EErrorId::RIGHT_HAND_SIDE_NOT_NUMBER>());
+    Builder.Emit0("stre"_op, {TOperand{nextLocal}, TImm{1, i64}});
+    auto toValue = Builder.Emit1("+"_op, {*count.Value, TImm{1, i64}});
+    Builder.SetType(toValue, i64);
+    Builder.Emit0("stre"_op, {TOperand{toLocal}, toValue});
+
+    auto loadLocal = [&](TLocal local) {
+        auto tmp = Builder.Emit1("load"_op, {TOperand{local}});
+        Builder.SetType(tmp, i64);
+        return tmp;
+    };
+
+    auto entryId = Builder.CurrentBlockIdx();
+    auto [condLabel, condId] = Builder.NewBlock();
+    auto [bodyLabel, bodyId] = Builder.NewBlock();
+    auto [postLabel, postId] = Builder.NewBlock();
+    auto endLabel = Builder.NewLabel();
+
+    Builder.SetCurrentBlock(entryId);
+    Builder.Emit0("jmp"_op, {condLabel});
+
+    Builder.SetCurrentBlock(condId);
+    auto nextValue = loadLocal(nextLocal);
+    auto limitValue = loadLocal(toLocal);
+    auto condValue = Builder.Emit1("!="_op, {nextValue, limitValue});
+    Builder.SetType(condValue, Module.Types.I(EKind::I1));
+    Builder.Emit0("cmp"_op, {condValue, bodyLabel, endLabel});
+
     Builder.SetCurrentBlock(bodyId);
     co_await Lower(loop->Body, TBlockScope{
         .FuncIdx = scope.FuncIdx,
         .Id = scope.Id,
         .BreakLabel = endLabel,
-        .ContinueLabel = continueTarget
+        .ContinueLabel = postLabel
     });
     if (!Builder.IsCurrentBlockTerminated()) {
-        Builder.Emit0("jmp"_op, { postLabel });
+        Builder.Emit0("jmp"_op, {postLabel});
     }
 
-    // PostBody, then back to condition
     Builder.SetCurrentBlock(postId);
-    co_await Lower(loop->PostBody, TBlockScope{
-        .FuncIdx = scope.FuncIdx,
-        .Id = scope.Id,
-        .BreakLabel = endLabel,
-        // Inside post body, continue should proceed to condition
-        .ContinueLabel = condLabel
-    });
-
+    auto postNext = loadLocal(nextLocal);
+    auto updated = Builder.Emit1("+"_op, {postNext, TImm{1, i64}});
+    Builder.SetType(updated, i64);
+    Builder.Emit0("stre"_op, {TOperand{nextLocal}, updated});
     if (!Builder.IsCurrentBlockTerminated()) {
         Builder.Emit0("jmp"_op, {condLabel});
     }
 
-    // End block
-    Builder.NewBlock(endLabel);
-    co_return TValueWithBlock{ std::nullopt, Builder.CurrentBlockLabel() };
-}
-
-TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::LowerRepeatLoop(std::shared_ptr<NAst::TLoopStmtExpr> loop, TBlockScope scope)
-{
-    if (loop->PostCond == nullptr) {
-        co_return TError(loop->Location, TErrorString::Get<EErrorId::REPEAT_MISSING_CONDITION>());
-    }
-
-    // Create blocks for body and condition
-    auto entryId = Builder.CurrentBlockIdx();
-    auto [bodyLabel, bodyId] = Builder.NewBlock();
-    auto [condLabel, condId] = Builder.NewBlock();
-    auto endLabel = Builder.NewLabel();
-
-    // Jump to body first (do-while: body executes at least once)
-    Builder.SetCurrentBlock(entryId);
-    Builder.Emit0("jmp"_op, {bodyLabel});
-
-    // Body block
-    Builder.SetCurrentBlock(bodyId);
-    co_await Lower(loop->Body, TBlockScope {
-        .FuncIdx = scope.FuncIdx,
-        .Id = scope.Id,
-        .BreakLabel = endLabel,
-        .ContinueLabel = condLabel
-    });
-    if (!Builder.IsCurrentBlockTerminated()) {
-        Builder.Emit0("jmp"_op, {condLabel});
-    }
-
-    // Condition block
-    Builder.SetCurrentBlock(condId);
-    auto cond = co_await Lower(loop->PostCond, scope);
-    if (!cond.Value) co_return TError(loop->PostCond->Location, TErrorString::Get<EErrorId::REPEAT_CONDITION_NOT_NUMBER>());
-    // If condition is true, repeat; if false, exit
-    Builder.Emit0("cmp"_op, {*cond.Value, bodyLabel, endLabel});
-
-    // End block
     Builder.NewBlock(endLabel);
     co_return TValueWithBlock{ std::nullopt, Builder.CurrentBlockLabel() };
 }
@@ -587,9 +628,14 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
         Builder.NewBlock(endLabel);
         co_return TValueWithBlock{ std::nullopt, Builder.CurrentBlockLabel() };
 
-    } else if (auto maybeLoop = NAst::TMaybeNode<NAst::TLoopStmtExpr>(expr)) {
-        auto loop = maybeLoop.Cast();
-        co_return co_await LowerLoop(loop, scope);
+    } else if (auto maybeLoop = NAst::TMaybeNode<NAst::TWhileStmtExpr>(expr)) {
+        co_return co_await LowerWhile(maybeLoop.Cast(), scope);
+    } else if (auto maybeLoop = NAst::TMaybeNode<NAst::TRepeatStmtExpr>(expr)) {
+        co_return co_await LowerRepeat(maybeLoop.Cast(), scope);
+    } else if (auto maybeLoop = NAst::TMaybeNode<NAst::TForStmtExpr>(expr)) {
+        co_return co_await LowerFor(maybeLoop.Cast(), scope);
+    } else if (auto maybeLoop = NAst::TMaybeNode<NAst::TTimesStmtExpr>(expr)) {
+        co_return co_await LowerTimes(maybeLoop.Cast(), scope);
     } else if (NAst::TMaybeNode<NAst::TBreakStmt>(expr)) {
         if (!scope.BreakLabel) {
             co_return TError(expr->Location, TErrorString::Get<EErrorId::BREAK_NOT_IN_LOOP>());
@@ -1016,6 +1062,7 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
             co_return TError(fun->Location, TErrorString::Get<EErrorId::UNBOUND_FUNCTION_SYMBOL>(fun->Name, scope.Id.Id));
         }
         auto funScope = fun->Body->Scope;
+        auto functionScope = fun->Scope;
         std::vector<TLocal> args; args.reserve(params.size());
         int i = 0;
         for (auto& p : params) {
@@ -1035,6 +1082,13 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
         for (auto& a : args) {
             Builder.SetType(a, FromAstType(type->ParamTypes[&a - &args[0]], Module.Types));
         }
+        int localCount = 0;
+        for (const auto& symbol : Context.GetSymbols()) {
+            if (symbol.FuncScopeId.Id == functionScope && symbol.FunctionLevelIdx >= 0) {
+                localCount = std::max(localCount, symbol.FunctionLevelIdx + 1);
+            }
+        }
+        Builder.ReserveLocals(localCount);
         if (NAst::TMaybeType<NAst::TStringType>(fun->RetType)) {
             // TODO: remove me
             // clutch: support string returnType
@@ -1175,7 +1229,7 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
             NAst::TMaybeType<NAst::TStringType>(returnType) ? EOwnership::Owned : EOwnership::Unkwnown };
     } else {
         std::ostringstream oss;
-        oss << *expr;
+        oss << expr;
         co_return TError(expr->Location, TErrorString::Get<EErrorId::NOT_IMPLEMENTED_LOWERING>(oss.str()));
     }
 }

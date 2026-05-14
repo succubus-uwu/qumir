@@ -39,185 +39,64 @@
       (var sum f64)
       (var rowmax f64)
       (var scale f64)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 0)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to (- n 1))
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
+      (for i 0 (- n 1) 1 (block (for j 0 (- n 1) 1 (block (= A [i j] (/ 1 (+ (cast (+ i j) f64) 1))))) (= B [i] 1)))
+      (for k
+        0
+        (- n 1)
+        1
+        (block
+          (= _imax k)
+          (= bestSq (* (index [k k] A) (index [k k] A)))
+          (for i
+            (+ k 1)
+            (- n 1)
+            1
             (block
-              (var $$to i64)
-              (var $$step i64)
-              (var $$next i64)
-              (= j 0)
-              (= $$step 1)
-              (= $$next j)
-              (= $$to (- n 1))
-              (loop
-                (>= (* (- $$to $$next) $$step) 0)
-                (= j $$next)
-                (block
-                  (= A [i j] (/ 1 (+ (cast (+ i j) f64) 1))))
-                (= $$next (+ $$next $$step))))
-            (= B [i] 1))
-          (= $$next (+ $$next $$step))))
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= k 0)
-        (= $$step 1)
-        (= $$next k)
-        (= $$to (- n 1))
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= k $$next)
-          (block
-            (= _imax k)
-            (= bestSq (* (index [k k] A) (index [k k] A)))
+              (= curSq (* (index [i k] A) (index [i k] A)))
+              (cond (> curSq bestSq) (block (= bestSq curSq) (= _imax i)))))
+          (cond
+            (!= _imax k)
             (block
-              (var $$to i64)
-              (var $$step i64)
-              (var $$next i64)
-              (= i (+ k 1))
-              (= $$step 1)
-              (= $$next i)
-              (= $$to (- n 1))
-              (loop
-                (>= (* (- $$to $$next) $$step) 0)
-                (= i $$next)
-                (block
-                  (= curSq (* (index [i k] A) (index [i k] A)))
-                  (cond (> curSq bestSq) (block (= bestSq curSq) (= _imax i))))
-                (= $$next (+ $$next $$step))))
-            (cond
-              (!= _imax k)
-              (block
-                (block
-                  (var $$to i64)
-                  (var $$step i64)
-                  (var $$next i64)
-                  (= j k)
-                  (= $$step 1)
-                  (= $$next j)
-                  (= $$to (- n 1))
-                  (loop
-                    (>= (* (- $$to $$next) $$step) 0)
-                    (= j $$next)
-                    (block
-                      (= tmp (index [k j] A))
-                      (= A [k j] (index [_imax j] A))
-                      (= A [_imax j] tmp))
-                    (= $$next (+ $$next $$step))))
-                (= tmp (index k B))
-                (= B [k] (index _imax B))
-                (= B [_imax] tmp)))
-            (= p (index [k k] A))
-            (= rowmax 0)
+              (for j k (- n 1) 1 (block (= tmp (index [k j] A)) (= A [k j] (index [_imax j] A)) (= A [_imax j] tmp)))
+              (= tmp (index k B))
+              (= B [k] (index _imax B))
+              (= B [_imax] tmp)))
+          (= p (index [k k] A))
+          (= rowmax 0)
+          (for j
+            k
+            (- n 1)
+            1
             (block
-              (var $$to i64)
-              (var $$step i64)
-              (var $$next i64)
-              (= j k)
-              (= $$step 1)
-              (= $$next j)
-              (= $$to (- n 1))
-              (loop
-                (>= (* (- $$to $$next) $$step) 0)
-                (= j $$next)
-                (block
-                  (= sum (index [k j] A))
-                  (cond (< sum 0) (block (= sum (- sum))))
-                  (cond (> sum rowmax) (block (= rowmax sum))))
-                (= $$next (+ $$next $$step))))
-            (= scale (* Eps rowmax))
-            (= sum p)
-            (cond (< sum 0) (block (= sum (- sum))))
-            (cond (<= sum scale) (block break))
+              (= sum (index [k j] A))
+              (cond (< sum 0) (block (= sum (- sum))))
+              (cond (> sum rowmax) (block (= rowmax sum)))))
+          (= scale (* Eps rowmax))
+          (= sum p)
+          (cond (< sum 0) (block (= sum (- sum))))
+          (cond (<= sum scale) (block break))
+          (for j k (- n 1) 1 (block (= A [k j] (/ (index [k j] A) p))))
+          (= B [k] (/ (index k B) p))
+          (for i
+            (+ k 1)
+            (- n 1)
+            1
             (block
-              (var $$to i64)
-              (var $$step i64)
-              (var $$next i64)
-              (= j k)
-              (= $$step 1)
-              (= $$next j)
-              (= $$to (- n 1))
-              (loop
-                (>= (* (- $$to $$next) $$step) 0)
-                (= j $$next)
+              (= tmp (index [i k] A))
+              (cond
+                (!= tmp 0)
                 (block
-                  (= A [k j] (/ (index [k j] A) p)))
-                (= $$next (+ $$next $$step))))
-            (= B [k] (/ (index k B) p))
-            (block
-              (var $$to i64)
-              (var $$step i64)
-              (var $$next i64)
-              (= i (+ k 1))
-              (= $$step 1)
-              (= $$next i)
-              (= $$to (- n 1))
-              (loop
-                (>= (* (- $$to $$next) $$step) 0)
-                (= i $$next)
-                (block
-                  (= tmp (index [i k] A))
-                  (cond
-                    (!= tmp 0)
-                    (block
-                      (block
-                        (var $$to i64)
-                        (var $$step i64)
-                        (var $$next i64)
-                        (= j k)
-                        (= $$step 1)
-                        (= $$next j)
-                        (= $$to (- n 1))
-                        (loop
-                          (>= (* (- $$to $$next) $$step) 0)
-                          (= j $$next)
-                          (block
-                            (= A [i j] (- (index [i j] A) (* (index [k j] A) tmp))))
-                          (= $$next (+ $$next $$step))))
-                      (= B [i] (- (index i B) (* (index k B) tmp))))))
-                (= $$next (+ $$next $$step)))))
-          (= $$next (+ $$next $$step))))
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= t 0)
-        (= $$step 1)
-        (= $$next t)
-        (= $$to (- n 1))
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= t $$next)
-          (block
-            (= i (- (- n 1) t))
-            (= sum (index i B))
-            (block
-              (var $$to i64)
-              (var $$step i64)
-              (var $$next i64)
-              (= j (+ i 1))
-              (= $$step 1)
-              (= $$next j)
-              (= $$to (- n 1))
-              (loop
-                (>= (* (- $$to $$next) $$step) 0)
-                (= j $$next)
-                (block
-                  (= sum (- sum (* (index [i j] A) (index j B)))))
-                (= $$next (+ $$next $$step))))
-            (cond (!= (index [i i] A) 0) (block (= B [i] (/ sum (index [i i] A)))) (block (= B [i] 0))))
-          (= $$next (+ $$next $$step))))
+                  (for j k (- n 1) 1 (block (= A [i j] (- (index [i j] A) (* (index [k j] A) tmp)))))
+                  (= B [i] (- (index i B) (* (index k B) tmp)))))))))
+      (for t
+        0
+        (- n 1)
+        1
+        (block
+          (= i (- (- n 1) t))
+          (= sum (index i B))
+          (for j (+ i 1) (- n 1) 1 (block (= sum (- sum (* (index [i j] A) (index j B))))))
+          (cond (!= (index [i i] A) 0) (block (= B [i] (/ sum (index [i i] A)))) (block (= B [i] 0)))))
       (var res_l2_sq f64)
       (var res_l2 f64)
       (var res_inf f64)
@@ -225,39 +104,18 @@
       (var absv f64)
       (= res_l2_sq 0)
       (= res_inf 0)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 0)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to (- n 1))
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (= sum 0)
-            (block
-              (var $$to i64)
-              (var $$step i64)
-              (var $$next i64)
-              (= j 0)
-              (= $$step 1)
-              (= $$next j)
-              (= $$to (- n 1))
-              (loop
-                (>= (* (- $$to $$next) $$step) 0)
-                (= j $$next)
-                (block
-                  (= sum (+ sum (* (/ 1 (+ (cast (+ i j) f64) 1)) (index j B)))))
-                (= $$next (+ $$next $$step))))
-            (= r (- sum 1))
-            (= absv r)
-            (cond (< absv 0) (block (= absv (- absv))))
-            (= res_l2_sq (+ res_l2_sq (* r r)))
-            (cond (> absv res_inf) (block (= res_inf absv))))
-          (= $$next (+ $$next $$step))))
+      (for i
+        0
+        (- n 1)
+        1
+        (block
+          (= sum 0)
+          (for j 0 (- n 1) 1 (block (= sum (+ sum (* (/ 1 (+ (cast (+ i j) f64) 1)) (index j B))))))
+          (= r (- sum 1))
+          (= absv r)
+          (cond (< absv 0) (block (= absv (- absv))))
+          (= res_l2_sq (+ res_l2_sq (* r r)))
+          (cond (> absv res_inf) (block (= res_inf absv)))))
       (= res_l2 (call sqrt res_l2_sq))
       (seq
         (call output_string "||r||_2^2 = ")

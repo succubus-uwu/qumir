@@ -4,22 +4,14 @@
       (var s string)
       (= s "ABCDабсвайЙЙ")
       (var i i64)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 1)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to (call длин s))
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (cond
-              (== (call str_symbol_at s i) (cast 1072 char))
-              (block
-                (= s (call str_replace_sym s (cast 1073 char) i)))))
-          (= $$next (+ $$next $$step))))
+      (for i
+        1
+        (call длин s)
+        1
+        (block
+          (cond
+            (== (call str_symbol_at s i) (cast 1072 char))
+            (block
+              (= s (call str_replace_sym s (cast 1073 char) i))))))
       (seq
         (call output_string s)))))

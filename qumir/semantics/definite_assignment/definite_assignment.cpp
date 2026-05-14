@@ -127,8 +127,20 @@ TDefiniteAssignmentChecker::CheckExpr(
         return CheckLetExpr(maybeLet.Cast(), scopeId, inAssigned);
     }
 
-    if (auto maybeLoop = TMaybeNode<TLoopStmtExpr>(expr)) {
-        return CheckLoop(maybeLoop.Cast(), scopeId, inAssigned);
+    if (auto maybeLoop = TMaybeNode<TWhileStmtExpr>(expr)) {
+        return CheckWhile(maybeLoop.Cast(), scopeId, inAssigned);
+    }
+
+    if (auto maybeLoop = TMaybeNode<TRepeatStmtExpr>(expr)) {
+        return CheckRepeat(maybeLoop.Cast(), scopeId, inAssigned);
+    }
+
+    if (auto maybeLoop = TMaybeNode<TForStmtExpr>(expr)) {
+        return CheckFor(maybeLoop.Cast(), scopeId, inAssigned);
+    }
+
+    if (auto maybeLoop = TMaybeNode<TTimesStmtExpr>(expr)) {
+        return CheckTimes(maybeLoop.Cast(), scopeId, inAssigned);
     }
 
     if (auto maybeAssign = TMaybeNode<TAssignExpr>(expr)) {
@@ -370,24 +382,84 @@ TDefiniteAssignmentChecker::CheckLetExpr(
 }
 
 std::expected<TDefiniteAssignmentChecker::TAssignedSet, TError>
-TDefiniteAssignmentChecker::CheckLoop(
-    const std::shared_ptr<TLoopStmtExpr>& loop,
+TDefiniteAssignmentChecker::CheckWhile(
+    const std::shared_ptr<TWhileStmtExpr>& loop,
+    TScopeId scopeId,
+    const TAssignedSet& inAssigned)
+{
+    auto condRes = CheckExpr(loop->Cond, scopeId, inAssigned);
+    if (!condRes) {
+        return std::unexpected(condRes.error());
+    }
+    auto bodyRes = CheckExpr(loop->Body, scopeId, *condRes);
+    if (!bodyRes) {
+        return std::unexpected(bodyRes.error());
+    }
+    return inAssigned;
+}
+
+std::expected<TDefiniteAssignmentChecker::TAssignedSet, TError>
+TDefiniteAssignmentChecker::CheckRepeat(
+    const std::shared_ptr<TRepeatStmtExpr>& loop,
+    TScopeId scopeId,
+    const TAssignedSet& inAssigned)
+{
+    auto bodyRes = CheckExpr(loop->Body, scopeId, inAssigned);
+    if (!bodyRes) {
+        return std::unexpected(bodyRes.error());
+    }
+    auto condRes = CheckExpr(loop->Cond, scopeId, *bodyRes);
+    if (!condRes) {
+        return std::unexpected(condRes.error());
+    }
+    return inAssigned;
+}
+
+std::expected<TDefiniteAssignmentChecker::TAssignedSet, TError>
+TDefiniteAssignmentChecker::CheckFor(
+    const std::shared_ptr<TForStmtExpr>& loop,
     TScopeId scopeId,
     const TAssignedSet& inAssigned)
 {
     TAssignedSet state = inAssigned;
-
-    for (auto childPtr : loop->Children()) {
-        if (!childPtr) {
+    for (const auto& expr : {loop->From, loop->To, loop->Step}) {
+        if (!expr) {
             continue;
         }
-        auto res = CheckExpr(childPtr, scopeId, state);
+        auto res = CheckExpr(expr, scopeId, state);
         if (!res) {
             return std::unexpected(res.error());
         }
         state = std::move(*res);
     }
 
+    auto symbolId = GetSymbolId(loop->VarName, scopeId, loop);
+    if (!symbolId) {
+        return std::unexpected(symbolId.error());
+    }
+    state.insert(*symbolId);
+
+    auto bodyRes = CheckExpr(loop->Body, scopeId, state);
+    if (!bodyRes) {
+        return std::unexpected(bodyRes.error());
+    }
+    return inAssigned;
+}
+
+std::expected<TDefiniteAssignmentChecker::TAssignedSet, TError>
+TDefiniteAssignmentChecker::CheckTimes(
+    const std::shared_ptr<TTimesStmtExpr>& loop,
+    TScopeId scopeId,
+    const TAssignedSet& inAssigned)
+{
+    auto countRes = CheckExpr(loop->Count, scopeId, inAssigned);
+    if (!countRes) {
+        return std::unexpected(countRes.error());
+    }
+    auto bodyRes = CheckExpr(loop->Body, scopeId, *countRes);
+    if (!bodyRes) {
+        return std::unexpected(bodyRes.error());
+    }
     return inAssigned;
 }
 

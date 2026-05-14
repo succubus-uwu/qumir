@@ -1,6 +1,7 @@
 #include "transform.h"
 #include "qumir/error.h"
 #include "qumir/parser/ast.h"
+#include "qumir/parser/core/printer.h"
 
 #include <qumir/semantics/type_annotation/type_annotation.h>
 #include <qumir/semantics/definite_assignment/definite_assignment.h>
@@ -48,7 +49,7 @@ std::expected<bool, TError> PreNameResolutionTransform(NAst::TExprPtr& expr)
                 auto assertStmt = maybeAssert.Cast();
                 std::ostringstream oss;
                 if (assertStmt->Expr) {
-                    oss << *assertStmt->Expr;
+                    oss << assertStmt->Expr;
                 } else {
                     oss << "<empty>";
                 }

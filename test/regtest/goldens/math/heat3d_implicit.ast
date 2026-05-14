@@ -67,221 +67,98 @@
       (var oldv f64)
       (var change f64)
       (var denom f64)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 0)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to (- Nx 1))
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (= x (* (cast i f64) h))
+      (for i
+        0
+        (- Nx 1)
+        1
+        (block
+          (= x (* (cast i f64) h))
+          (for j
+            0
+            (- Ny 1)
+            1
             (block
-              (var $$to i64)
-              (var $$step i64)
-              (var $$next i64)
-              (= j 0)
-              (= $$step 1)
-              (= $$next j)
-              (= $$to (- Ny 1))
-              (loop
-                (>= (* (- $$to $$next) $$step) 0)
-                (= j $$next)
+              (= y (* (cast j f64) h))
+              (for k
+                0
+                (- Nz 1)
+                1
                 (block
-                  (= y (* (cast j f64) h))
-                  (block
-                    (var $$to i64)
-                    (var $$step i64)
-                    (var $$next i64)
-                    (= k 0)
-                    (= $$step 1)
-                    (= $$next k)
-                    (= $$to (- Nz 1))
-                    (loop
-                      (>= (* (- $$to $$next) $$step) 0)
-                      (= k $$next)
-                      (block
-                        (= z (* (cast k f64) h))
-                        (= u [0 i j k] (* (* (call sin (* pi x)) (call sin (* pi y))) (call sin (* pi z)))))
-                      (= $$next (+ $$next $$step)))))
-                (= $$next (+ $$next $$step)))))
-          (= $$next (+ $$next $$step))))
+                  (= z (* (cast k f64) h))
+                  (= u [0 i j k] (* (* (call sin (* pi x)) (call sin (* pi y))) (call sin (* pi z))))))))))
       (= maxIt 200)
       (= denom (+ 1 (* 6 lam)))
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= n 0)
-        (= $$step 1)
-        (= $$next n)
-        (= $$to (- nt 1))
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= n $$next)
-          (block
+      (for n
+        0
+        (- nt 1)
+        1
+        (block
+          (for i
+            0
+            (- Nx 1)
+            1
             (block
-              (var $$to i64)
-              (var $$step i64)
-              (var $$next i64)
-              (= i 0)
-              (= $$step 1)
-              (= $$next i)
-              (= $$to (- Nx 1))
-              (loop
-                (>= (* (- $$to $$next) $$step) 0)
-                (= i $$next)
-                (block
-                  (block
-                    (var $$to i64)
-                    (var $$step i64)
-                    (var $$next i64)
-                    (= j 0)
-                    (= $$step 1)
-                    (= $$next j)
-                    (= $$to (- Ny 1))
-                    (loop
-                      (>= (* (- $$to $$next) $$step) 0)
-                      (= j $$next)
-                      (block
-                        (block
-                          (var $$to i64)
-                          (var $$step i64)
-                          (var $$next i64)
-                          (= k 0)
-                          (= $$step 1)
-                          (= $$next k)
-                          (= $$to (- Nz 1))
-                          (loop
-                            (>= (* (- $$to $$next) $$step) 0)
-                            (= k $$next)
-                            (block
-                              (= u [(+ n 1) i j k] (index [n i j k] u)))
-                            (= $$next (+ $$next $$step)))))
-                      (= $$next (+ $$next $$step)))))
-                (= $$next (+ $$next $$step))))
+              (for j 0 (- Ny 1) 1 (block (for k 0 (- Nz 1) 1 (block (= u [(+ n 1) i j k] (index [n i j k] u))))))))
+          (for it
+            0
+            (- maxIt 1)
+            1
             (block
-              (var $$to i64)
-              (var $$step i64)
-              (var $$next i64)
-              (= it 0)
-              (= $$step 1)
-              (= $$next it)
-              (= $$to (- maxIt 1))
-              (loop
-                (>= (* (- $$to $$next) $$step) 0)
-                (= it $$next)
+              (= change 0)
+              (for i
+                1
+                (- Nx 2)
+                1
                 (block
-                  (= change 0)
-                  (block
-                    (var $$to i64)
-                    (var $$step i64)
-                    (var $$next i64)
-                    (= i 1)
-                    (= $$step 1)
-                    (= $$next i)
-                    (= $$to (- Nx 2))
-                    (loop
-                      (>= (* (- $$to $$next) $$step) 0)
-                      (= i $$next)
-                      (block
+                  (for j
+                    1
+                    (- Ny 2)
+                    1
+                    (block
+                      (for k
+                        1
+                        (- Nz 2)
+                        1
                         (block
-                          (var $$to i64)
-                          (var $$step i64)
-                          (var $$next i64)
-                          (= j 1)
-                          (= $$step 1)
-                          (= $$next j)
-                          (= $$to (- Ny 2))
-                          (loop
-                            (>= (* (- $$to $$next) $$step) 0)
-                            (= j $$next)
-                            (block
-                              (block
-                                (var $$to i64)
-                                (var $$step i64)
-                                (var $$next i64)
-                                (= k 1)
-                                (= $$step 1)
-                                (= $$next k)
-                                (= $$to (- Nz 2))
-                                (loop
-                                  (>= (* (- $$to $$next) $$step) 0)
-                                  (= k $$next)
-                                  (block
-                                    (= oldv (index [(+ n 1) i j k] u))
-                                    (= rhs (index [n i j k] u))
-                                    (= newv
-                                      (/ (+ rhs
-                                          (* lam
-                                            (+ (+ (+ (+ (+ (index [(+ n 1) (+ i 1) j k] u) (index [(+ n 1) (- i 1) j k] u))
-                                                    (index [(+ n 1) i (+ j 1) k] u))
-                                                  (index [(+ n 1) i (- j 1) k] u))
-                                                (index [(+ n 1) i j (+ k 1)] u))
-                                              (index [(+ n 1) i j (- k 1)] u))))
-                                        denom))
-                                    (= u [(+ n 1) i j k] newv)
-                                    (= diff (let (($$value (- newv oldv))) (if (< $$value 0) (- $$value) $$value)))
-                                    (= change
-                                      (let (($$left change) ($$right diff)) (if (> $$left $$right) $$left $$right))))
-                                  (= $$next (+ $$next $$step)))))
-                            (= $$next (+ $$next $$step)))))
-                      (= $$next (+ $$next $$step))))
-                  (cond (< change 1e-06) (block break)))
-                (= $$next (+ $$next $$step)))))
-          (= $$next (+ $$next $$step))))
+                          (= oldv (index [(+ n 1) i j k] u))
+                          (= rhs (index [n i j k] u))
+                          (= newv
+                            (/ (+ rhs
+                                (* lam
+                                  (+ (+ (+ (+ (+ (index [(+ n 1) (+ i 1) j k] u) (index [(+ n 1) (- i 1) j k] u))
+                                          (index [(+ n 1) i (+ j 1) k] u))
+                                        (index [(+ n 1) i (- j 1) k] u))
+                                      (index [(+ n 1) i j (+ k 1)] u))
+                                    (index [(+ n 1) i j (- k 1)] u))))
+                              denom))
+                          (= u [(+ n 1) i j k] newv)
+                          (= diff (let (($$value (- newv oldv))) (if (< $$value 0) (- $$value) $$value)))
+                          (= change (let (($$left change) ($$right diff)) (if (> $$left $$right) $$left $$right)))))))))
+              (cond (< change 1e-06) (block break))))))
       (= t (* (cast nt f64) dt))
       (= decay (call exp (* (* (* (- 3) pi) pi) t)))
       (= err 0)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (= i 0)
-        (= $$step 1)
-        (= $$next i)
-        (= $$to (- Nx 1))
-        (loop
-          (>= (* (- $$to $$next) $$step) 0)
-          (= i $$next)
-          (block
-            (= x (* (cast i f64) h))
+      (for i
+        0
+        (- Nx 1)
+        1
+        (block
+          (= x (* (cast i f64) h))
+          (for j
+            0
+            (- Ny 1)
+            1
             (block
-              (var $$to i64)
-              (var $$step i64)
-              (var $$next i64)
-              (= j 0)
-              (= $$step 1)
-              (= $$next j)
-              (= $$to (- Ny 1))
-              (loop
-                (>= (* (- $$to $$next) $$step) 0)
-                (= j $$next)
+              (= y (* (cast j f64) h))
+              (for k
+                0
+                (- Nz 1)
+                1
                 (block
-                  (= y (* (cast j f64) h))
-                  (block
-                    (var $$to i64)
-                    (var $$step i64)
-                    (var $$next i64)
-                    (= k 0)
-                    (= $$step 1)
-                    (= $$next k)
-                    (= $$to (- Nz 1))
-                    (loop
-                      (>= (* (- $$to $$next) $$step) 0)
-                      (= k $$next)
-                      (block
-                        (= z (* (cast k f64) h))
-                        (= uex (* (* (* decay (call sin (* pi x))) (call sin (* pi y))) (call sin (* pi z))))
-                        (= diff (let (($$value (- (index [nt i j k] u) uex))) (if (< $$value 0) (- $$value) $$value)))
-                        (= err (let (($$left err) ($$right diff)) (if (> $$left $$right) $$left $$right))))
-                      (= $$next (+ $$next $$step)))))
-                (= $$next (+ $$next $$step)))))
-          (= $$next (+ $$next $$step))))
+                  (= z (* (cast k f64) h))
+                  (= uex (* (* (* decay (call sin (* pi x))) (call sin (* pi y))) (call sin (* pi z))))
+                  (= diff (let (($$value (- (index [nt i j k] u) uex))) (if (< $$value 0) (- $$value) $$value)))
+                  (= err (let (($$left err) ($$right diff)) (if (> $$left $$right) $$left $$right)))))))))
       (seq
         (call output_string "Heat3D implicit (4D): N=")
         (call output_int64 Nx 0)

@@ -2,7 +2,7 @@
   (use "Комплексные числа")
   (fun main void () ()
     (block
-      (: (var z <named компл <struct (re f64) (im f64)>>) <named компл <struct (re f64) (im f64)>>)
+      (var z <named компл <struct (re f64) (im f64)>>)
       (var re f64)
       (var im f64)
       (call make_by_ref 4 6 (: z <named компл <struct (re f64) (im f64)>>))
@@ -23,7 +23,7 @@
         (call output_string " Im=")
         (call output_double (field im (: z <named компл <struct (re f64) (im f64)>>)) 0 -1)
         (call output_string "\n"))))
-  (fun split void ((: (var z <named компл <struct (re f64) (im f64)>>) <named компл <struct (re f64) (im f64)>>)
+  (fun split void ((var z <named компл <struct (re f64) (im f64)>>)
       (var re <ref f64>)
       (var im <ref f64>)) ()
     (block
@@ -58,7 +58,7 @@
                     <named компл <struct (re f64) (im f64)>>))))))
           <named компл <struct (re f64) (im f64)>>))))
   (fun add_in_place void ((var z <ref <named компл <struct (re f64) (im f64)>>>)
-      (: (var delta <named компл <struct (re f64) (im f64)>>) <named компл <struct (re f64) (im f64)>>)) ()
+      (var delta <named компл <struct (re f64) (im f64)>>)) ()
     (block
       (= z
         (: (struct ((re (+ (field re z) (field re (: delta <named компл <struct (re f64) (im f64)>>))))

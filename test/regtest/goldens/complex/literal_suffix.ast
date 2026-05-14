@@ -2,7 +2,7 @@
   (use "Комплексные числа")
   (fun <main> void () ()
     (block
-      (: (var z <named компл <struct (re f64) (im f64)>>) <named компл <struct (re f64) (im f64)>>)
+      (var z <named компл <struct (re f64) (im f64)>>)
       (= z (: (struct ((re 0) (im 2))) <named компл <struct (re f64) (im f64)>>))
       (seq
         (call output_string "2i: Re=")

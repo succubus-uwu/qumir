@@ -49,8 +49,17 @@ AST node forms:
       TLetExpr, NodeId = "LetExpr". Bindings are visible in body only;
       bindings are not visible to each other.
 
-  (loop pre_cond pre_body body post_body post_cond)
-      TLoopStmtExpr, NodeId = "Loop".
+  (while cond body)
+      TWhileStmtExpr, NodeId = "WhileStmt".
+
+  (repeat body cond)
+      TRepeatStmtExpr, NodeId = "RepeatStmt".
+
+  (for name from to step body)
+      TForStmtExpr, NodeId = "ForStmt"; step is nil when omitted.
+
+  (times count body)
+      TTimesStmtExpr, NodeId = "TimesStmt".
 
   break // treat as a keyword
       TBreakStmt, NodeId = "Break".

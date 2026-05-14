@@ -2,8 +2,8 @@
   (use "Комплексные числа")
   (fun <main> void () ()
     (block
-      (: (var a <named компл <struct (re f64) (im f64)>>) <named компл <struct (re f64) (im f64)>>)
-      (: (var b <named компл <struct (re f64) (im f64)>>) <named компл <struct (re f64) (im f64)>>)
+      (var a <named компл <struct (re f64) (im f64)>>)
+      (var b <named компл <struct (re f64) (im f64)>>)
       (var same bool)
       (var different bool)
       (= a

@@ -3,13 +3,4 @@
     (block
       (var $$return i64)
       (= $$return 0)
-      (block
-        (var $$to i64)
-        (var $$step i64)
-        (var $$next i64)
-        (var $$i i64)
-        (= $$i 1)
-        (= $$step 1)
-        (= $$next $$i)
-        (= $$to (+ (+ 8 2) $$step))
-        (loop (!= $$next $$to) (= $$i $$next) (block (= $$return (+ $$return 1))) (= $$next (+ $$next $$step)))))))
+      (times (+ 8 2) (block (= $$return (+ $$return 1)))))))
