@@ -78,16 +78,43 @@ TNameResolver::TTask TNameResolver::Resolve(TExprPtr node, TScopePtr scope, TSco
                 return TError(loc, "Неизвестный тип: " + named->Name);
             }
             named->UnderlyingType = it->second;
+            return self(self, named->UnderlyingType, loc);
         } else if (auto maybeRef = TMaybeType<TReferenceType>(type)) {
             return self(self, maybeRef.Cast()->ReferencedType, loc);
         } else if (auto maybePtr = TMaybeType<TPointerType>(type)) {
             return self(self, maybePtr.Cast()->PointeeType, loc);
+        } else if (auto maybeArray = TMaybeType<TArrayType>(type)) {
+            return self(self, maybeArray.Cast()->ElementType, loc);
+        } else if (auto maybeFun = TMaybeType<TFunctionType>(type)) {
+            auto fun = maybeFun.Cast();
+            if (auto err = self(self, fun->ReturnType, loc)) {
+                return err;
+            }
+            for (auto& param : fun->ParamTypes) {
+                if (auto err = self(self, param, loc)) {
+                    return err;
+                }
+            }
+        } else if (auto maybeStruct = TMaybeType<TStructType>(type)) {
+            for (auto& [_, fieldType] : maybeStruct.Cast()->Fields) {
+                if (auto err = self(self, fieldType, loc)) {
+                    return err;
+                }
+            }
         }
         return {};
     };
     auto resolveTypeRefOuter = [&](NAst::TTypePtr& type, const TLocation& loc) -> std::optional<TError> {
         return resolveTypeRef(resolveTypeRef, type, loc);
     };
+
+    // TODO: resolveTypeRefOuter on every node is O(n*depth); consider resolving types
+    // only at declaration sites (TVarStmt, TFunDecl params) rather than all nodes.
+    if (node->Type) {
+        if (auto err = resolveTypeRefOuter(node->Type, node->Location)) {
+            co_return *err;
+        }
+    }
 
     if (auto maybeFdecl = TMaybeNode<TFunDecl>(node)) {
         auto fdecl = maybeFdecl.Cast();
@@ -555,10 +582,9 @@ std::vector<NRegistry::TLiteralSuffix> TNameResolver::GetAllImportedLiteralSuffi
     return result;
 }
 
-std::expected<NRegistry::IModule*, std::string> TNameResolver::ImportModule(const std::string& name) {
+std::expected<bool, std::string> TNameResolver::ImportModule(const std::string& name) {
     if (implicitImports.count(name) || ImportedModules.count(name)) {
-        auto it = Modules.find(name);
-        return it != Modules.end() ? it->second : nullptr;  // already imported — idempotent
+        return false;
     }
     auto it = Modules.find(name);
     if (it == Modules.end()) {
@@ -637,7 +663,7 @@ std::expected<NRegistry::IModule*, std::string> TNameResolver::ImportModule(cons
         ImportedTypes[type.Name] = type.Type;
     }
 
-    return module;
+    return true;
 }
 
 

@@ -2,6 +2,8 @@
 
 #include <exception>
 #include <qumir/parser/lexer.h>
+#include <qumir/parser/core/lexer.h>
+#include <qumir/parser/core/parser.h>
 #include <qumir/parser/core/printer.h>
 #include <qumir/semantics/transform/transform.h>
 #include <qumir/modules/system/system.h>
@@ -50,9 +52,16 @@ TIRRunner::TIRRunner(
 }
 
 std::expected<std::optional<std::string>, TError> TIRRunner::Run(std::istream& input) {
-    TTokenStream ts(input);
-    TParser p;
-    auto parsed = p.parse(ts, &Resolver);
+    std::expected<TExprPtr, TError> parsed;
+    if (Options.CoreInput) {
+        NCore::TTokenStream ts(input);
+        NCore::TParser p;
+        parsed = p.Parse(ts);
+    } else {
+        TTokenStream ts(input);
+        TParser p;
+        parsed = p.parse(ts, &Resolver);
+    }
     if (!parsed) {
         return std::unexpected(parsed.error());
     }

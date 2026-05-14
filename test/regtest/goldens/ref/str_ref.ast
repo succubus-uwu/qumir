@@ -5,6 +5,6 @@
       (var s string)
       (call инит s)
       (= $$return s)))
-  (fun инит void ((var s <ref string>)) ()
+  (fun инит void ((var s <ref <string (mutable)>>)) ()
     (block
       (= s "abc"))))

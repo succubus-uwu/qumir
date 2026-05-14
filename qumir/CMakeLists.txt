@@ -23,6 +23,8 @@ add_library(qumir
     parser/lexer_base.cpp
     parser/core/lexer.h
     parser/core/lexer.cpp
+    parser/core/parser.h
+    parser/core/parser.cpp
     parser/core/printer.h
     parser/core/printer.cpp
     parser/operator.h

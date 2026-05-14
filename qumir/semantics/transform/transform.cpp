@@ -70,6 +70,31 @@ std::expected<bool, TError> PreNameResolutionTransform(NAst::TExprPtr& expr)
     return changed;
 }
 
+std::expected<bool, TError> ImportPendingCoreUses(NAst::TExprPtr& expr, NSemantics::TNameResolver& context)
+{
+    std::list<TError> errors;
+    bool changed = false;
+    TransformAst(expr, expr,
+        [&](const NAst::TExprPtr& node) -> NAst::TExprPtr {
+            if (auto maybeUse = NAst::TMaybeNode<NAst::TUseExpr>(node)) {
+                auto result = context.ImportModule(maybeUse.Cast()->ModuleName);
+                if (!result) {
+                    errors.push_back(TError(node->Location, result.error()));
+                } else if (result.value()) {
+                    changed = true;
+                }
+            }
+            return node;
+        },
+        [](const NAst::TExprPtr& node) {
+            return true;
+        });
+    if (!errors.empty()) {
+        return std::unexpected(TError(expr->Location, errors));
+    }
+    return changed;
+}
+
 std::expected<bool, TError> PostTypeAnnotationTransform(NAst::TExprPtr& expr, NSemantics::TNameResolver& context)
 {
     std::list<TError> errors;
@@ -570,6 +595,10 @@ std::expected<std::monostate, TError> Pipeline(NAst::TExprPtr& expr, NSemantics:
 
     auto nameResolution = [&](NAst::TExprPtr& e) -> std::expected<std::monostate, TError>{
         if (auto error = PreNameResolutionTransform(e); !error) {
+            return std::unexpected(error.error());
+        }
+
+        if (auto error = ImportPendingCoreUses(e, r); !error) {
             return std::unexpected(error.error());
         }
 

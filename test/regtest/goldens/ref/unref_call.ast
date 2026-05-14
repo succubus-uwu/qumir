@@ -12,7 +12,7 @@
       (var k i64)
       (= k (+ 1 (call g i)))
       (= i 10)))
-  (fun g i64 ((var i i64)) ()
+  (fun g i64 ((var i <i64 (readable)>)) ()
     (block
       (var $$return i64)
       (= $$return i))))

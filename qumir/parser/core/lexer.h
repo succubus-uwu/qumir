@@ -18,6 +18,7 @@ public:
 
 private:
     void Read() override;
+    bool AfterOpenParen_ = false; // track previous token to disambiguate >> inside (>> a b)
 };
 
 } // namespace NCore

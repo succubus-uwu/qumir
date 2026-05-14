@@ -7,8 +7,8 @@
       (seq
         (call output_string s))))
   (fun replaceAll void ((var s <ref string>)
-      (var wOld string)
-      (var wNew string)) ()
+      (var wOld <string (readable)>)
+      (var wNew <string (readable)>)) ()
     (block
       (var res string)
       (var p i64)

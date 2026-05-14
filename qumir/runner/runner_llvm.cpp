@@ -1,6 +1,8 @@
 #include "runner_llvm.h"
 
 #include <qumir/parser/lexer.h>
+#include <qumir/parser/core/lexer.h>
+#include <qumir/parser/core/parser.h>
 #include <qumir/parser/core/printer.h>
 #include <qumir/semantics/transform/transform.h>
 #include <qumir/modules/system/system.h>
@@ -45,9 +47,16 @@ TLLVMRunner::TLLVMRunner(TLLVMRunnerOptions options)
 
 std::expected<std::optional<std::string>, TError> TLLVMRunner::Run(std::istream& input) {
     // Parse source into AST
-    NAst::TTokenStream ts(input);
-    NAst::TParser p;
-    auto parsed = p.parse(ts, &Resolver);
+    std::expected<NAst::TExprPtr, TError> parsed;
+    if (Options.CoreInput) {
+        NAst::NCore::TTokenStream ts(input);
+        NAst::NCore::TParser p;
+        parsed = p.Parse(ts);
+    } else {
+        NAst::TTokenStream ts(input);
+        NAst::TParser p;
+        parsed = p.parse(ts, &Resolver);
+    }
     if (!parsed) {
         return std::unexpected(parsed.error());
     }

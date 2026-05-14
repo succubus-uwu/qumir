@@ -6,9 +6,9 @@
       (= s (call replaceBad s "12" "A12B"))
       (seq
         (call output_string s))))
-  (fun replaceBad string ((var s0 string)
-      (var sOld string)
-      (var sNew string)) ()
+  (fun replaceBad string ((var s0 <string (readable)>)
+      (var sOld <string (readable)>)
+      (var sNew <string (readable)>)) ()
     (block
       (var $$return string)
       (var s string)

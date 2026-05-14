@@ -22,9 +22,9 @@ public:
     virtual ~IModuleManager() = default;
 
     // Import a module by name.
-    // Returns the module pointer on success, or a fully-formatted error message on failure
-    // (unknown module or name conflict between modules).
-    virtual std::expected<NRegistry::IModule*, std::string> ImportModule(const std::string& name) = 0;
+    // Returns true if freshly imported, false if already imported (idempotent).
+    // Returns error string on failure (unknown module or name conflict).
+    virtual std::expected<bool, std::string> ImportModule(const std::string& name) = 0;
     virtual NAst::TTypePtr LookupType(const std::string& name) const = 0;
     // All type names currently imported (including transitive dependencies)
     virtual std::vector<std::string> GetAllImportedTypeNames() const = 0;

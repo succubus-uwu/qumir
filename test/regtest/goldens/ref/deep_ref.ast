@@ -6,9 +6,9 @@
       (= i 1)
       (call ф i)
       (= $$return i)))
-  (fun ф void ((var i <ref i64>)) ()
+  (fun ф void ((var i <ref <i64 (mutable)>>)) ()
     (block
       (call р i)))
-  (fun р void ((var i <ref i64>)) ()
+  (fun р void ((var i <ref <i64 (mutable)>>)) ()
     (block
       (= i 31337))))

@@ -234,16 +234,34 @@ static const std::unordered_set<int> Operators = {
     '<',
     '>',
     ':',
+    '[',
+    ']',
 };
+
+bool IsSymbolicIdentChar(char ch) {
+    switch (ch) {
+        case '+':
+        case '-':
+        case '*':
+        case '/':
+        case '=':
+        case '!':
+        case '&':
+        case '^':
+            return true;
+        default:
+            return false;
+    }
+}
 
 bool IsIdentStart(char ch) {
     const auto uch = static_cast<unsigned char>(ch);
-    return std::isalpha(uch) || ch == '_' || uch >= 0x80;
+    return std::isalpha(uch) || ch == '_' || ch == '$' || uch >= 0x80;
 }
 
 bool IsIdentContinue(char ch) {
     const auto uch = static_cast<unsigned char>(ch);
-    return std::isalnum(uch) || ch == '_' || uch >= 0x80;
+    return std::isalnum(uch) || ch == '_' || ch == '$' || ch == ':' || uch >= 0x80;
 }
 
 } // namespace
@@ -261,6 +279,7 @@ void TTokenStream::Read() {
     };
 
     auto emitOperator = [&](TOperator op, const std::string& rawValue, TLocation location) {
+        AfterOpenParen_ = (rawValue == "(");
         Tokens.emplace_back(TToken {
             .Value = {.i64 = (int64_t)op},
             .RawValue = rawValue,
@@ -270,6 +289,7 @@ void TTokenStream::Read() {
     };
 
     auto emitIdentifier = [&](const std::string& name, TLocation location) {
+        AfterOpenParen_ = false;
         Tokens.emplace_back(TToken {
             .Name = name,
             .RawValue = name,
@@ -305,6 +325,10 @@ void TTokenStream::Read() {
     auto readNumber = [&](TLocation location) {
         std::string rawValue;
         bool isFloat = false;
+
+        if (In.peek() == '-') {
+            rawValue += take();
+        }
 
         if (In.peek() == '.') {
             isFloat = true;
@@ -363,10 +387,51 @@ void TTokenStream::Read() {
 
         TLocation tokenLocation = CurrentLocation;
 
-        if (Operators.contains(next)) {
-            emitOperator(TOperator((uint64_t)next), std::string(1, take()), tokenLocation);
-        } else if (std::isdigit(next) || next == '.') {
+        if ((next == '<' || next == '>') && AfterOpenParen_ && [&]() {
+            In.get();
+            auto second = In.peek();
+            In.unget();
+            return second == '=' || second == next;
+        }()) {
+            // Two-char operator (>>, >=, <<, <=) only valid as operator head after '('
+            std::string name;
+            name += take();
+            name += take();
+            emitIdentifier(name, tokenLocation);
+        } else if (Operators.contains(next)) {
+            auto ch = take();
+            emitOperator(TOperator((uint64_t)ch), std::string(1, ch), tokenLocation);
+        } else if (std::isdigit(next) || next == '.' || (next == '-' && [&]() {
+            In.get();
+            auto second = In.peek();
+            In.unget();
+            return std::isdigit(second) || second == '.';
+        }())) {
             readNumber(tokenLocation);
+        } else if (next == '|') {
+            take();
+            if (In.peek() == '|') {
+                take();
+                emitIdentifier("||", tokenLocation);
+            } else if (In.peek() == Eof || std::isspace(In.peek()) || In.peek() == ')') {
+                emitIdentifier("|", tokenLocation);
+            } else {
+                std::string name;
+                while (In.peek() != Eof && In.peek() != '|') {
+                    name += take();
+                }
+                if (In.peek() != '|') {
+                    throw std::runtime_error("unterminated bar identifier at " + tokenLocation.ToString());
+                }
+                take();
+                emitIdentifier(name, tokenLocation);
+            }
+        } else if (IsSymbolicIdentChar(next)) {
+            std::string name;
+            do {
+                name += take();
+            } while (In.peek() != Eof && IsSymbolicIdentChar(static_cast<char>(In.peek())));
+            emitIdentifier(name, tokenLocation);
         } else if (next == '#') {
             take();
             char value = take();
@@ -401,17 +466,6 @@ void TTokenStream::Read() {
                 .Type = TToken::Char,
                 .Location = tokenLocation,
             });
-        } else if (next == '|') {
-            take();
-            std::string name;
-            while (In.peek() != Eof && In.peek() != '|') {
-                name += take();
-            }
-            if (In.peek() != '|') {
-                throw std::runtime_error("unterminated bar identifier at " + tokenLocation.ToString());
-            }
-            take();
-            emitIdentifier(name, tokenLocation);
         } else if (IsIdentStart(next)) {
             std::string name;
             do {

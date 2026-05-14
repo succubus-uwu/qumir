@@ -13,7 +13,12 @@
 #include <qumir/semantics/type_annotation/type_annotation.h>
 #include <qumir/semantics/transform/transform.h>
 #include <qumir/modules/system/system.h>
+#include <qumir/modules/turtle/turtle.h>
+#include <qumir/modules/robot/robot.h>
+#include <qumir/modules/drawer/drawer.h>
+#include <qumir/modules/painter/painter.h>
 #include <qumir/modules/complex/complex.h>
+#include <qumir/modules/colors/colors.h>
 #include <qumir/ir/lowering/lower_ast.h>
 #include <qumir/ir/builder.h>
 
@@ -33,6 +38,25 @@ fs::path GoldensDir = RootDir / "goldens";
 
 bool updateGoldens = false;
 bool printOutput = false;
+
+void RegisterRuntimeModules(NSemantics::TNameResolver& resolver) {
+    static NRegistry::SystemModule system;
+    static NRegistry::TurtleModule turtle;
+    static NRegistry::RobotModule robot;
+    static NRegistry::DrawerModule drawer;
+    static NRegistry::PainterModule painter;
+    static NRegistry::ComplexModule complex;
+    static NRegistry::ColorsModule colors;
+
+    resolver.RegisterModule(&system);
+    resolver.RegisterModule(&turtle);
+    resolver.RegisterModule(&robot);
+    resolver.RegisterModule(&drawer);
+    resolver.RegisterModule(&painter);
+    resolver.RegisterModule(&complex);
+    resolver.RegisterModule(&colors);
+    resolver.ImportModule(system.Name());
+}
 
 std::string ReadAll(const fs::path& p) {
     std::ifstream in(p, std::ios::binary);
@@ -78,11 +102,7 @@ std::string NameFromPath(const fs::path& p) {
 std::string BuildAst(NAst::TTokenStream& ts) {
     NAst::TParser p;
     NSemantics::TNameResolver nr;
-    NRegistry::SystemModule sys;
-    NRegistry::ComplexModule complex;
-    nr.RegisterModule(&sys);
-    nr.RegisterModule(&complex);
-    nr.ImportModule(sys.Name());
+    RegisterRuntimeModules(nr);
 
     auto parsed = p.parse(ts, &nr);
     if (!parsed) {
@@ -100,14 +120,29 @@ std::string BuildAst(NAst::TTokenStream& ts) {
     return out.str();
 }
 
+std::string BuildCoreSource(NAst::TTokenStream& ts) {
+    NAst::TParser p;
+    NSemantics::TNameResolver nr;
+    RegisterRuntimeModules(nr);
+
+    auto parsed = p.parse(ts, &nr);
+    if (!parsed) {
+        return "Error: " + parsed.error().ToString() + "\n";
+    }
+
+    auto expr = parsed.value();
+    auto error = NTransform::Pipeline(expr, nr);
+    if (!error) {
+        return "Error: " + error.error().ToString() + "\n";
+    }
+
+    return NAst::NCore::PrintAst(expr, {.TypeMode = NAst::NCore::ETypePrintMode::All});
+}
+
 // TODO: move to utils
 std::string BuildIR(NAst::TTokenStream& ts) {
     NSemantics::TNameResolver resolver;
-    NRegistry::SystemModule sys;
-    NRegistry::ComplexModule complex;
-    resolver.RegisterModule(&sys);
-    resolver.RegisterModule(&complex);
-    resolver.ImportModule(sys.Name());
+    RegisterRuntimeModules(resolver);
 
     NAst::TParser p;
     auto parsed = p.parse(ts, &resolver);
@@ -138,6 +173,54 @@ std::string BuildIR(NAst::TTokenStream& ts) {
 
 class RegAst : public ::testing::TestWithParam<ProgCase> {};
 class RegExec : public ::testing::TestWithParam<ProgCase> {};
+
+std::string ResultString(const std::expected<std::optional<std::string>, TError>& res) {
+    if (!res) {
+        return "Error: " + res.error().ToString() + "\n";
+    }
+    std::ostringstream out;
+    if (res.value().has_value()) {
+        out << *(res.value());
+    }
+    return out.str();
+}
+
+void CheckExecGoldens(
+    const fs::path& src,
+    const fs::path& golden,
+    const fs::path& goldenStdOut,
+    const std::string& got,
+    const std::string& stdoutText,
+    std::string_view label)
+{
+    if (printOutput) {
+        std::cout << "=== Output " << label << " for " << src << " ===\n";
+        std::cout << "Result: " << got << "\n";
+        std::cout << "StdOut: " << stdoutText << "\n";
+        std::cout << "=== End of output ===\n";
+    }
+
+    if (updateGoldens) {
+        WriteAll(golden, got);
+        if (!stdoutText.empty()) {
+            WriteAll(goldenStdOut, stdoutText);
+        }
+    }
+    if (!fs::exists(golden)) {
+        std::cerr << "Missing golden " << label << " file: " << golden << "\n";
+        FAIL();
+    }
+    if (!fs::exists(goldenStdOut) && !stdoutText.empty()) {
+        std::cerr << "Missing golden " << label << " stdout file: " << goldenStdOut << "\n";
+        FAIL();
+    }
+    const auto exp = ReadAll(golden);
+    EXPECT_EQ(got, exp);
+    if (fs::exists(goldenStdOut)) {
+        const auto expOut = ReadAll(goldenStdOut);
+        EXPECT_EQ(stdoutText, expOut);
+    }
+}
 
 TEST_P(RegAst, Ast) {
     const fs::path src = fs::path(CasesDir / GetParam().base).replace_extension(".kum");
@@ -220,46 +303,9 @@ TEST_P(RegExec, ExecIR) {
 
     TIRRunner runner(std::cout, std::cin, {});
     auto res = runner.Run(input);
-    std::string got;
-    if (!res) {
-        got = "Error: " + res.error().ToString() + "\n";
-    } else {
-        std::ostringstream out;
-        if (res.value().has_value()) {
-            out << *(res.value());
-        }
-        got = out.str();
-    }
+    auto got = ResultString(res);
 
-    if (printOutput) {
-        std::cout << "=== Output IR RUN for " << src << " ===\n";
-        std::cout << "Result: " << got << "\n";
-        std::cout << "StdOut: " << out.str() << "\n";
-        std::cout << "=== End of output ===\n";
-    }
-
-    if (updateGoldens) {
-        WriteAll(golden, got);
-        if (!out.str().empty()) {
-            WriteAll(goldenStdOut, out.str());
-        }
-    }
-    if (!fs::exists(golden)) {
-        // fail if golden missing
-        std::cerr << "Missing golden IR RUN file: " << golden << "\n";
-        FAIL();
-    }
-    if (!fs::exists(goldenStdOut) && !out.str().empty()) {
-        // fail if golden missing
-        std::cerr << "Missing golden IR RUN stdout file: " << goldenStdOut << "\n";
-        FAIL();
-    }
-    const auto exp = ReadAll(golden);
-    EXPECT_EQ(got, exp);
-    if (fs::exists(goldenStdOut)) {
-        const auto expOut = ReadAll(goldenStdOut);
-        EXPECT_EQ(out.str(), expOut);
-    }
+    CheckExecGoldens(src, golden, goldenStdOut, got, out.str(), "IR RUN");
 }
 
 TEST_P(RegExec, ExecIROPT) {
@@ -287,46 +333,9 @@ TEST_P(RegExec, ExecIROPT) {
 
     TIRRunner runner(std::cout, std::cin, {.OptLevel = 1});
     auto res = runner.Run(input);
-    std::string got;
-    if (!res) {
-        got = "Error: " + res.error().ToString() + "\n";
-    } else {
-        std::ostringstream out;
-        if (res.value().has_value()) {
-            out << *(res.value());
-        }
-        got = out.str();
-    }
+    auto got = ResultString(res);
 
-    if (printOutput) {
-        std::cout << "=== Output IR RUN for " << src << " ===\n";
-        std::cout << "Result: " << got << "\n";
-        std::cout << "StdOut: " << out.str() << "\n";
-        std::cout << "=== End of output ===\n";
-    }
-
-    if (updateGoldens) {
-        WriteAll(golden, got);
-        if (!out.str().empty()) {
-            WriteAll(goldenStdOut, out.str());
-        }
-    }
-    if (!fs::exists(golden)) {
-        // fail if golden missing
-        std::cerr << "Missing golden IR RUN file: " << golden << "\n";
-        FAIL();
-    }
-    if (!fs::exists(goldenStdOut) && !out.str().empty()) {
-        // fail if golden missing
-        std::cerr << "Missing golden IR RUN stdout file: " << goldenStdOut << "\n";
-        FAIL();
-    }
-    const auto exp = ReadAll(golden);
-    EXPECT_EQ(got, exp);
-    if (fs::exists(goldenStdOut)) {
-        const auto expOut = ReadAll(goldenStdOut);
-        EXPECT_EQ(out.str(), expOut);
-    }
+    CheckExecGoldens(src, golden, goldenStdOut, got, out.str(), "IR OPT RUN");
 }
 
 TEST_P(RegExec, ExecLLVM) {
@@ -354,46 +363,47 @@ TEST_P(RegExec, ExecLLVM) {
 
     TLLVMRunner runner;
     auto res = runner.Run(input);
-    std::string got;
-    if (!res) {
-        got = "Error: " + res.error().ToString() + "\n";
-    } else {
-        std::ostringstream out;
-        if (res.value().has_value()) {
-            out << *(res.value());
-        }
-        got = out.str();
+    auto got = ResultString(res);
+
+    CheckExecGoldens(src, golden, goldenStdOut, got, out.str(), "LLVM RUN");
+}
+
+TEST_P(RegExec, CoreExec) {
+    const fs::path src = fs::path(CasesDir / GetParam().base).replace_extension(".kum");
+    const fs::path stdin = fs::path(CasesDir / GetParam().base).replace_extension(".stdin");
+    const fs::path golden = fs::path(GoldensDir / GetParam().base).replace_extension(".result");
+    const fs::path goldenStdOut = fs::path(GoldensDir / GetParam().base).replace_extension(".result.stdout");
+
+    const auto code = ReadAll(src);
+    auto header = code.substr(0, code.find('\n'));
+    if (header.find("disable_exec") != std::string::npos) {
+        GTEST_SKIP() << "Execution disabled for this test case";
     }
 
-    if (printOutput) {
-        std::cout << "=== Output IR RUN for " << src << " ===\n";
-        std::cout << "Result: " << got << "\n";
-        std::cout << "StdOut: " << out.str() << "\n";
-        std::cout << "=== End of output ===\n";
+    std::istringstream kumirInput(code);
+    NAst::TTokenStream ts(kumirInput);
+    auto coreSource = BuildCoreSource(ts);
+    if (coreSource.starts_with("Error: ")) {
+        CheckExecGoldens(src, golden, goldenStdOut, coreSource, "", "CORE RUN");
+        return;
     }
 
-    if (updateGoldens) {
-        WriteAll(golden, got);
-        if (!out.str().empty()) {
-            WriteAll(goldenStdOut, out.str());
-        }
+    std::istringstream coreInput(coreSource);
+    std::ostringstream out;
+    NRuntime::SetOutputStream(&out);
+    std::istream* inStream = nullptr;
+    std::ifstream fin;
+    if (fs::exists(stdin)) {
+        fin.open(stdin, std::ios::binary);
+        inStream = &fin;
     }
-    if (!fs::exists(golden)) {
-        // fail if golden missing
-        std::cerr << "Missing golden LLVM RUN file: " << golden << "\n";
-        FAIL();
-    }
-    if (!fs::exists(goldenStdOut) && !out.str().empty()) {
-        // fail if golden missing
-        std::cerr << "Missing golden IR RUN stdout file: " << goldenStdOut << "\n";
-        FAIL();
-    }
-    const auto exp = ReadAll(golden);
-    EXPECT_EQ(got, exp);
-    if (fs::exists(goldenStdOut)) {
-        const auto expOut = ReadAll(goldenStdOut);
-        EXPECT_EQ(out.str(), expOut);
-    }
+    NRuntime::SetInputStream(inStream);
+
+    TIRRunner runner(std::cout, std::cin, {.CoreInput = true});
+    auto res = runner.Run(coreInput);
+    auto got = ResultString(res);
+
+    CheckExecGoldens(src, golden, goldenStdOut, got, out.str(), "CORE RUN");
 }
 
 INSTANTIATE_TEST_SUITE_P(

@@ -4,7 +4,7 @@
       (var $$return i64)
       (call ф 10)
       (= $$return 1)))
-  (fun ф void ((var i i64)) ()
+  (fun ф void ((var i <i64 (readable)>)) ()
     (block
       (seq
         (call output_int64 i 0)))))

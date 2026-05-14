@@ -3,7 +3,7 @@
     (block
       (var i i64)
       (= i (call ф 8))))
-  (fun ф i64 ((var й i64)) ()
+  (fun ф i64 ((var й <i64 (readable)>)) ((expect_after (call __ensure (> $$return 10) "(> $$return 10) @ Line: 8, Byte: 4, Column: 4")))
     (block
       (var $$return i64)
       (= $$return (+ й 1)))))

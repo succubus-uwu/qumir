@@ -2,6 +2,6 @@
   (fun q void () ()
     (block
       (var a f64)
-      (= a 123.123)
+      (= a 123.123456)
       (seq
         (call output_double a 10 2)))))

@@ -1,5 +1,7 @@
 #include "printer.h"
 
+#include <iomanip>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 
@@ -209,23 +211,54 @@ private:
         }
     }
 
+    // Appends " (readable mutable)" before '>' of composite types, skipped when both default.
+    void PrintTypeAttrs(TTypePtr type) {
+        if (type->Mutable && type->Readable) {
+            return;
+        }
+        Out << " (";
+        bool first = true;
+        if (type->Readable) {
+            Out << "readable";
+            first = false;
+        }
+        if (type->Mutable) {
+            if (!first) {
+                Out << ' ';
+            }
+            Out << "mutable";
+        }
+        Out << ')';
+    }
+
+    // Prints a simple (scalar) type, wrapping in <> with attrs if flags are non-default.
+    void PrintScalarType(const char* name, TTypePtr type) {
+        if (type->Mutable && type->Readable) {
+            Out << name;
+        } else {
+            Out << '<' << name;
+            PrintTypeAttrs(type);
+            Out << '>';
+        }
+    }
+
     void PrintType(TTypePtr type, int level) {
         if (!type) {
             Out << "nil";
         } else if (TMaybeType<TIntegerType>(type)) {
-            Out << "i64";
+            PrintScalarType("i64", type);
         } else if (TMaybeType<TFloatType>(type)) {
-            Out << "f64";
+            PrintScalarType("f64", type);
         } else if (TMaybeType<TBoolType>(type)) {
-            Out << "bool";
+            PrintScalarType("bool", type);
         } else if (TMaybeType<TStringType>(type)) {
-            Out << "string";
+            PrintScalarType("string", type);
         } else if (TMaybeType<TSymbolType>(type)) {
-            Out << "char";
+            PrintScalarType("char", type);
         } else if (TMaybeType<TFileType>(type)) {
-            Out << "file";
+            PrintScalarType("file", type);
         } else if (TMaybeType<TVoidType>(type)) {
-            Out << "void";
+            PrintScalarType("void", type);
         } else if (auto t = TMaybeType<TFunctionType>(type)) {
             PrintFunctionType(t.Cast(), level);
         } else if (auto t = TMaybeType<TArrayType>(type)) {
@@ -235,10 +268,12 @@ private:
         } else if (auto t = TMaybeType<TPointerType>(type)) {
             Out << "<ptr ";
             PrintType(t.Cast()->PointeeType, level);
+            PrintTypeAttrs(type);
             Out << '>';
         } else if (auto t = TMaybeType<TReferenceType>(type)) {
             Out << "<ref ";
             PrintType(t.Cast()->ReferencedType, level);
+            PrintTypeAttrs(type);
             Out << '>';
         } else if (auto t = TMaybeType<TNamedType>(type)) {
             if (Options.ShortNamedTypes.contains(t.Cast()->Name)) {
@@ -248,6 +283,7 @@ private:
                 PrintIdentifier(t.Cast()->Name);
                 Out << ' ';
                 PrintType(t.Cast()->UnderlyingType, level);
+                PrintTypeAttrs(type);
                 Out << '>';
             }
         } else if (auto t = TMaybeType<TStructType>(type)) {
@@ -286,7 +322,10 @@ private:
         } else if (TMaybeType<TSymbolType>(node->Type)) {
             PrintString(std::string(1, static_cast<char>(node->IntValue)), '\'');
         } else if (node->IsFloat) {
+            const auto oldPrecision = Out.precision();
+            Out << std::setprecision(std::numeric_limits<double>::max_digits10);
             Out << node->FloatValue;
+            Out.precision(oldPrecision);
         } else {
             Out << node->IntValue;
         }
@@ -425,7 +464,13 @@ private:
         }
         Out << ')';
         Space();
-        Out << "()";
+        Out << '(';
+        if (node->LastAssert) {
+            Out << "(expect_after ";
+            PrintExpr(node->LastAssert, true, level + 2);
+            Out << ')';
+        }
+        Out << ')';
         Separator(level + 1);
         PrintExpr(node->Body, true, level + 1);
         Out << ')';
@@ -449,15 +494,13 @@ private:
             if (!arg.Width && !arg.Precision) {
                 PrintExpr(arg.Expr, true, level + 1);
             } else {
-                Out << '(';
-                PrintExpr(arg.Expr, true, level + 1);
-                if (arg.Width || arg.Precision) {
-                    Space();
-                    PrintExpr(arg.Width, true, level + 1);
-                }
+                Out << "(fmt ";
+                PrintExpr(arg.Expr, true, level + 2);
+                Space();
+                PrintExpr(arg.Width, true, level + 2);
                 if (arg.Precision) {
                     Space();
-                    PrintExpr(arg.Precision, true, level + 1);
+                    PrintExpr(arg.Precision, true, level + 2);
                 }
                 Out << ')';
             }

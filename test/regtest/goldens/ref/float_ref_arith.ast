@@ -6,6 +6,6 @@
       (= x 1.5)
       (call g x)
       (= $$return (* x 2))))
-  (fun g void ((var x <ref f64>)) ()
+  (fun g void ((var x <ref <f64 (mutable)>>)) ()
     (block
       (= x 3.25))))

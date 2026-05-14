@@ -4,7 +4,7 @@
       (var $$return string)
       (call g "строка")
       (= $$return "ok")))
-  (fun g void ((var й string)) ()
+  (fun g void ((var й <string (readable)>)) ()
     (block
       (var к string)
       (= к й))))
