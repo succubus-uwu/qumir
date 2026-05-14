@@ -82,7 +82,7 @@ public:
             response.SetStatus(200);
             response.SetHeader("Access-Control-Allow-Origin", "*");
             response.SetHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-            response.SetHeader("Access-Control-Allow-Headers", "Content-Type, X-Qumir-O");
+            response.SetHeader("Access-Control-Allow-Headers", "Content-Type, X-Qumir-O, X-Qumir-Syntax");
             response.SetHeader("Content-Length", "0");
             co_await response.SendHeaders();
         } else if (request.Method() == "GET") {
@@ -306,7 +306,14 @@ private:
         }
         if (olevel < 0) olevel = 0; if (olevel > 3) olevel = 3;
 
-        // qumirc: BinaryBaseCanonical / qumirc
+        bool coreInput = false;
+        {
+            auto sit = request.Headers().find("X-Qumir-Syntax");
+            if (sit != request.Headers().end() && sit->second == "core") {
+                coreInput = true;
+            }
+        }
+
         auto qumirc = (BinaryBaseCanonical / "qumirc").generic_string();
         std::vector<std::string> args;
 
@@ -331,6 +338,9 @@ private:
                 args = {"-S", "-O" + std::to_string(olevel), "-o", "-", "-"};
             } else if (target == "wasm-text") {
                 args = {"--wasm", "-S", "-O" + std::to_string(olevel), "-o", "-", "-"};
+            }
+            if (coreInput && !args.empty()) {
+                args.insert(args.begin(), "--core");
             }
 
             printCmd();
@@ -375,6 +385,9 @@ private:
         std::string contentType = "application/wasm";
         dst = src + ".wasm";
         args = {"--wasm", "-O" + std::to_string(olevel), "-o", dst, src};
+        if (coreInput) {
+            args.insert(args.begin(), "--core");
+        }
 
         printCmd();
         auto [output, exitCode] = co_await ReadPipe(qumirc, args, /*stderr*/ false, /*searchExe*/ false, /*stderrToStdout*/ true);

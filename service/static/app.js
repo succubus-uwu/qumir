@@ -46,10 +46,12 @@ let __projectNewBtn = null;
 let __projectsRenderPending = false;
 let __successfulRunsCount = 0;
 const api = async (path, body, asBinary, signal) => {
-  // New protocol: send raw code as text/plain and pass optimization level via X-Qumir-O
   const code = body.code || '';
   const O = body.O || '0';
-  const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'text/plain', 'X-Qumir-O': String(O) }, body: code, signal });
+  const syntaxMode = document.getElementById('syntax-mode');
+  const headers = { 'Content-Type': 'text/plain', 'X-Qumir-O': String(O) };
+  if (syntaxMode && syntaxMode.value === 'core') headers['X-Qumir-Syntax'] = 'core';
+  const r = await fetch(path, { method: 'POST', headers, body: code, signal });
   if (!r.ok) {
     let msg;
     try { const j = await r.json(); msg = j.error || r.statusText; } catch { msg = r.statusText; }
@@ -4021,6 +4023,12 @@ const debounceShow = () => {
 };
 // Textarea fallback listener is not needed when CodeMirror is used
 
+// Restore syntax mode before first compile so api() sends the correct header
+{
+  const sel = document.getElementById('syntax-mode');
+  if (sel) sel.value = localStorage.getItem('qumir-syntax-mode') || 'kumir';
+}
+
 // Auto show on first load
 show($('#view').value);
 
@@ -4278,6 +4286,17 @@ if (btnShare) {
         ioSelect.dispatchEvent(new Event('change'));
       }
     }
+  });
+})();
+
+// Syntax mode select
+(function setupSyntaxMode() {
+  const sel = document.getElementById('syntax-mode');
+  if (!sel) return;
+  sel.addEventListener('change', () => {
+    localStorage.setItem('qumir-syntax-mode', sel.value);
+    saveState();
+    show($('#view').value);
   });
 })();
 

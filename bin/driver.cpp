@@ -4,6 +4,8 @@
 #include <cstdlib>
 
 #include <qumir/parser/parser.h>
+#include <qumir/parser/core/lexer.h>
+#include <qumir/parser/core/parser.h>
 #include <qumir/ir/lowering/lower_ast.h>
 #include <qumir/ir/builder.h>
 #include <qumir/ir/passes/transforms/pipeline.h>
@@ -33,6 +35,17 @@ static constexpr std::string A_OUT = "a.out";
 using namespace NQumir;
 
 namespace {
+
+std::expected<NAst::TExprPtr, TError> ParseInput(std::istream& in, NSemantics::TNameResolver& r, bool coreInput) {
+    if (coreInput) {
+        NAst::NCore::TTokenStream ts(in);
+        NAst::NCore::TParser p;
+        return p.Parse(ts);
+    }
+    NAst::TTokenStream ts(in);
+    NAst::TParser p;
+    return p.parse(ts, &r);
+}
 
 std::shared_ptr<std::istream> OpenInputFile(const std::string& filename) {
     if (filename == "-") {
@@ -68,7 +81,7 @@ std::shared_ptr<std::ostream> OpenOutputFile(const std::string& filename, bool r
     }
 }
 
-int GenerateAst(const std::string& inputFile, const std::string& outputFile, bool transformed, bool verbose) {
+int GenerateAst(const std::string& inputFile, const std::string& outputFile, bool transformed, bool coreInput, bool verbose) {
     if (verbose) {
         std::cerr << "Generating " << (transformed ? "transformed " : "") << "AST from " << inputFile << " to " << outputFile << "\n";
     }
@@ -79,8 +92,6 @@ int GenerateAst(const std::string& inputFile, const std::string& outputFile, boo
         return 1;
     }
 
-    NAst::TTokenStream ts(*in);
-    NAst::TParser p;
     NSemantics::TNameResolver r;
     NRegistry::SystemModule sys;
     r.RegisterModule(&sys);
@@ -98,8 +109,7 @@ int GenerateAst(const std::string& inputFile, const std::string& outputFile, boo
     NRegistry::ColorsModule colors;
     r.RegisterModule(&colors);
 
-
-    auto&& expected = p.parse(ts, &r);
+    auto expected = ParseInput(*in, r, coreInput);
     if (!expected.has_value()) {
         std::cerr << expected.error().ToString() << std::endl;
         return 1;
@@ -123,7 +133,7 @@ int GenerateAst(const std::string& inputFile, const std::string& outputFile, boo
     return 0;
 }
 
-int GenerateIr(const std::string& inputFile, const std::string& outputFile, int optLevel, bool verbose) {
+int GenerateIr(const std::string& inputFile, const std::string& outputFile, int optLevel, bool coreInput, bool verbose) {
     if (verbose) {
         std::cerr << "Generating IR from " << inputFile << " to " << outputFile << "\n";
     }
@@ -134,8 +144,6 @@ int GenerateIr(const std::string& inputFile, const std::string& outputFile, int 
         return 1;
     }
 
-    NAst::TTokenStream ts(*in);
-    NAst::TParser p;
     NSemantics::TNameResolver r;
     NRegistry::SystemModule sys;
     r.RegisterModule(&sys);
@@ -153,7 +161,7 @@ int GenerateIr(const std::string& inputFile, const std::string& outputFile, int 
     NRegistry::ColorsModule colors;
     r.RegisterModule(&colors);
 
-    auto&& expected = p.parse(ts, &r);
+    auto expected = ParseInput(*in, r, coreInput);
     if (!expected.has_value()) {
         std::cerr << expected.error().ToString() << std::endl;
         return 1;
@@ -189,7 +197,7 @@ int GenerateIr(const std::string& inputFile, const std::string& outputFile, int 
     return 0;
 }
 
-int GenerateLlvm(const std::string& inputFile, const std::string& outputFile, int optLevel, bool verbose) {
+int GenerateLlvm(const std::string& inputFile, const std::string& outputFile, int optLevel, bool coreInput, bool verbose) {
     if (verbose) {
         std::cerr << "Generating LLVM IR from " << inputFile << " to " << outputFile << "\n";
     }
@@ -200,8 +208,6 @@ int GenerateLlvm(const std::string& inputFile, const std::string& outputFile, in
         return 1;
     }
 
-    NAst::TTokenStream ts(*in);
-    NAst::TParser p;
     NSemantics::TNameResolver r;
     NRegistry::SystemModule sys;
     r.RegisterModule(&sys);
@@ -219,7 +225,7 @@ int GenerateLlvm(const std::string& inputFile, const std::string& outputFile, in
     NRegistry::ColorsModule colors;
     r.RegisterModule(&colors);
 
-    auto&& expected = p.parse(ts, &r);
+    auto expected = ParseInput(*in, r, coreInput);
     if (!expected.has_value()) {
         std::cerr << expected.error().ToString() << std::endl;
         return 1;
@@ -370,7 +376,7 @@ void GenerateObjFromAsm(const std::string& asmCode, std::ostream& objOut) {
 }
 #endif
 
-int Generate(const std::string& inputFile, const std::string& outputFile, bool compileOnly, bool generateAsm, int optLevel, bool targetWasm, bool verbose) {
+int Generate(const std::string& inputFile, const std::string& outputFile, bool compileOnly, bool generateAsm, int optLevel, bool targetWasm, bool coreInput, bool verbose) {
     if (verbose) {
         std::cerr << "Compiling " << inputFile << " to " << outputFile << "\n";
     }
@@ -381,8 +387,6 @@ int Generate(const std::string& inputFile, const std::string& outputFile, bool c
         return 1;
     }
 
-    NAst::TTokenStream ts(*in);
-    NAst::TParser p;
     NSemantics::TNameResolver r;
     NRegistry::SystemModule sys;
     r.RegisterModule(&sys);
@@ -400,7 +404,7 @@ int Generate(const std::string& inputFile, const std::string& outputFile, bool c
     NRegistry::ColorsModule colors;
     r.RegisterModule(&colors);
 
-    auto&& expected = p.parse(ts, &r);
+    auto expected = ParseInput(*in, r, coreInput);
     if (!expected.has_value()) {
         std::cerr << expected.error().ToString() << std::endl;
         return 1;
@@ -493,6 +497,7 @@ int main(int argc, char** argv) {
     bool generateAsm = false;
     int optLevel = 0;
     bool targetWasm = false;
+    bool coreInput = false;
     bool verbose = false;
     for (int i = 1; i < argc; ++i) {
         if (!std::strcmp(argv[i], "-c")) {
@@ -560,6 +565,8 @@ int main(int argc, char** argv) {
             optLevel = 2;
         } else if (!std::strcmp(argv[i], "-O3")) {
             optLevel = 3;
+        } else if (!std::strcmp(argv[i], "--core")) {
+            coreInput = true;
         } else if (!std::strcmp(argv[i], "--verbose")) {
             verbose = true;
         } else if (argv[i][0] == '-' && argv[i][1] != '\0') {
@@ -578,21 +585,21 @@ int main(int argc, char** argv) {
         if (outputFile.empty()) {
             outputFile = OutputFilename(inputFile, ".ast");
         }
-        return GenerateAst(inputFile, outputFile, generateTransformedAst, verbose);
+        return GenerateAst(inputFile, outputFile, generateTransformedAst, coreInput, verbose);
     }
 
     if (generateIr) {
         if (outputFile.empty()) {
             outputFile = OutputFilename(inputFile, ".ir");
         }
-        return GenerateIr(inputFile, outputFile, optLevel, verbose);
+        return GenerateIr(inputFile, outputFile, optLevel, coreInput, verbose);
     }
 
     if (generateLlvm) {
         if (outputFile.empty()) {
             outputFile = OutputFilename(inputFile, ".ll");
         }
-        return GenerateLlvm(inputFile, outputFile, optLevel, verbose);
+        return GenerateLlvm(inputFile, outputFile, optLevel, coreInput, verbose);
     }
 
     if (!compileOnly && outputFile.empty()) {
@@ -608,5 +615,5 @@ int main(int argc, char** argv) {
             : outputFile;
     }
 
-    return Generate(inputFile, finalOutput, compileOnly, generateAsm, optLevel, targetWasm, verbose);
+    return Generate(inputFile, finalOutput, compileOnly, generateAsm, optLevel, targetWasm, coreInput, verbose);
 }
