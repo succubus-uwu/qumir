@@ -265,7 +265,11 @@ private:
 
     TFuture<void> Post(TRequest& request, TResponse& response) {
         auto&& path = request.Uri().Path();
-        if (path == "/api/compile-ir") {
+        if (path == "/api/compile-ast") {
+            co_await Compile(request, response, "ast");
+        } else if (path == "/api/compile-transformed-ast") {
+            co_await Compile(request, response, "transformed-ast");
+        } else if (path == "/api/compile-ir") {
             co_await Compile(request, response, "ir");
         } else if (path == "/api/compile-llvm") {
             co_await Compile(request, response, "llvm");
@@ -315,7 +319,11 @@ private:
         // Stream for all but wasm binary (wasm-ld does not support streaming)
 
         if (target != "wasm") {
-            if (target == "ir") {
+            if (target == "ast") {
+                args = {"--ast", "-o", "-", "-"};
+            } else if (target == "transformed-ast") {
+                args = {"--transformed-ast", "-o", "-", "-"};
+            } else if (target == "ir") {
                 args = {"--ir", "-O" + std::to_string(olevel), "-o", "-", "-"};
             } else if (target == "llvm") {
                 args = {"--llvm", "-O" + std::to_string(olevel), "-o", "-", "-"};

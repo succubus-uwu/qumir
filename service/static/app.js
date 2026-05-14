@@ -1455,6 +1455,8 @@ async function show(mode, { clearErrorsOnSuccess = true } = {}) {
   const code = getCode();
   const O = $('#opt').value;
   const map = {
+    ast: ['/api/compile-ast', false],
+    tast: ['/api/compile-transformed-ast', false],
     ir: ['/api/compile-ir', false],
     llvm: ['/api/compile-llvm', false],
     asm: ['/api/compile-asm', false],
