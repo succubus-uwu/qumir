@@ -23,14 +23,14 @@
         (call output_string " Im=")
         (call output_double (field im (: z <named компл <struct (re f64) (im f64)>>)) 0 -1)
         (call output_string "\n"))))
-  (fun split void ((var z <named компл <struct (re f64) (im f64)> (readable)>)
+  (fun split void ((var z <named компл <struct (re f64) (im f64)>>)
       (var re <ref <f64 (mutable)>>)
       (var im <ref <f64 (mutable)>>)) ()
     (block
-      (= re (field re (: z <named компл <struct (re f64) (im f64)> (readable)>)))
-      (= im (field im (: z <named компл <struct (re f64) (im f64)> (readable)>)))))
-  (fun make_by_ref void ((var re <f64 (readable)>)
-      (var im <f64 (readable)>)
+      (= re (field re (: z <named компл <struct (re f64) (im f64)>>)))
+      (= im (field im (: z <named компл <struct (re f64) (im f64)>>)))))
+  (fun make_by_ref void ((var re f64)
+      (var im f64)
       (var z <ref <named компл <struct (re f64) (im f64)> (mutable)>>)) ()
     (block
       (= z
@@ -58,9 +58,9 @@
                     <named компл <struct (re f64) (im f64)>>))))))
           <named компл <struct (re f64) (im f64)>>))))
   (fun add_in_place void ((var z <ref <named компл <struct (re f64) (im f64)>>>)
-      (var delta <named компл <struct (re f64) (im f64)> (readable)>)) ()
+      (var delta <named компл <struct (re f64) (im f64)>>)) ()
     (block
       (= z
-        (: (struct ((re (+ (field re z) (field re (: delta <named компл <struct (re f64) (im f64)> (readable)>))))
-              (im (+ (field im z) (field im (: delta <named компл <struct (re f64) (im f64)> (readable)>))))))
+        (: (struct ((re (+ (field re z) (field re (: delta <named компл <struct (re f64) (im f64)>>))))
+              (im (+ (field im z) (field im (: delta <named компл <struct (re f64) (im f64)>>))))))
           <named компл <struct (re f64) (im f64)>>)))))

@@ -12,8 +12,8 @@
       (= A [5] 2)
       (call qSort 1 5)
       (for i 1 N 1 (block (seq (call output_int64 (index i A) 0) (call output_symbol (cast 32 char)))))))
-  (fun qSort void ((var nStart <i64 (readable)>)
-      (var nEnd <i64 (readable)>)) ()
+  (fun qSort void ((var nStart i64)
+      (var nEnd i64)) ()
     (block
       (var L i64)
       (var R i64)

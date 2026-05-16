@@ -6,7 +6,7 @@
       (= s (call str_concat "11 " "10"))
       (= s (call ф 10))
       (= $$return s)))
-  (fun ф string ((var k <i64 (readable)>)) ()
+  (fun ф string ((var k i64)) ()
     (block
       (var $$return string)
       (var стр string)

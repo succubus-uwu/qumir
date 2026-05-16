@@ -211,21 +211,17 @@ private:
         }
     }
 
-    // Appends " (readable mutable)" before '>' of composite types, skipped when both default.
+    bool HasPrintableTypeAttrs(TTypePtr type) const {
+        return type && type->Mutable && !type->Readable;
+    }
+
+    // Appends non-default attrs before '>'. Readable is the default and is omitted.
     void PrintTypeAttrs(TTypePtr type) {
-        if (type->Mutable && type->Readable) {
+        if (!HasPrintableTypeAttrs(type)) {
             return;
         }
         Out << " (";
-        bool first = true;
-        if (type->Readable) {
-            Out << "readable";
-            first = false;
-        }
         if (type->Mutable) {
-            if (!first) {
-                Out << ' ';
-            }
             Out << "mutable";
         }
         Out << ')';
@@ -233,12 +229,12 @@ private:
 
     // Prints a simple (scalar) type, wrapping in <> with attrs if flags are non-default.
     void PrintScalarType(const char* name, TTypePtr type) {
-        if (type->Mutable && type->Readable) {
-            Out << name;
-        } else {
+        if (HasPrintableTypeAttrs(type)) {
             Out << '<' << name;
             PrintTypeAttrs(type);
             Out << '>';
+        } else {
+            Out << name;
         }
     }
 
