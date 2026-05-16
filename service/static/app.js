@@ -3704,6 +3704,12 @@ const viewSel = $('#view');
 if (viewSel) viewSel.addEventListener('change', () => { saveState(); show(viewSel.value); });
 const optSel = $('#opt');
 if (optSel) optSel.addEventListener('change', () => { saveState(); show($('#view').value); });
+const syntaxModeSel = $('#syntax-mode');
+if (syntaxModeSel) syntaxModeSel.addEventListener('change', () => {
+  writePersistedValue('qumir-syntax-mode', syntaxModeSel.value || 'kumir');
+  saveState();
+  show($('#view').value);
+});
 
 // Best-effort save on page unload to avoid losing recent edits
 if (typeof window !== 'undefined') {
@@ -4026,7 +4032,10 @@ const debounceShow = () => {
 // Restore syntax mode before first compile so api() sends the correct header
 {
   const sel = document.getElementById('syntax-mode');
-  if (sel) sel.value = localStorage.getItem('qumir-syntax-mode') || 'kumir';
+  if (sel) {
+    const syntaxMode = readPersistedValue('qumir-syntax-mode') || 'kumir';
+    sel.value = syntaxMode === 'core' ? 'core' : 'kumir';
+  }
 }
 
 // Auto show on first load
@@ -4286,17 +4295,6 @@ if (btnShare) {
         ioSelect.dispatchEvent(new Event('change'));
       }
     }
-  });
-})();
-
-// Syntax mode select
-(function setupSyntaxMode() {
-  const sel = document.getElementById('syntax-mode');
-  if (!sel) return;
-  sel.addEventListener('change', () => {
-    localStorage.setItem('qumir-syntax-mode', sel.value);
-    saveState();
-    show($('#view').value);
   });
 })();
 
