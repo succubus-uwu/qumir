@@ -7,6 +7,8 @@ import { initDocs } from './docs.js';
 
 const $ = sel => document.querySelector(sel);
 let currentAbort = null;
+// Set to true by the Stop button; cleared at the start of each run.
+let __coroStopRequested = false;
 // Output view selection for the compiler pane (text or turtle)
 let __compilerOutputMode = 'text';
 let __turtleCanvas = null;
@@ -69,6 +71,14 @@ const apiGet = async (path) => {
   if (ct.includes('application/json')) return await r.json();
   return await r.text();
 };
+
+function requestStopRunningProgram() {
+  const stopBtn = document.getElementById('btn-stop');
+  __coroStopRequested = true;
+  if (stopBtn && stopBtn.style.display !== 'none') {
+    stopBtn.click();
+  }
+}
 
 const sample = `алг цел цикл\nнач\n    | пример комментария: горячий цикл для теста производительности\n    цел ф, i\n    ф := 1\n    нц для i от 1 до 10000000\n        ф := факториал(13)\n    кц\n    знач := ф\nкон\n\nалг цел факториал(цел число)\nнач\n    | пример комментария внутри функции\n    цел i\n    знач := 1\n    нц для i от 1 до число\n        знач := знач * i\n    кц\nкон\n`;
 
@@ -359,6 +369,7 @@ function tryUpdateRobotFieldPreview() {
 
 function setActiveProject(projectId, { silent = false } = {}) {
   if (!projectId || projectId === __activeProjectId) return;
+  requestStopRunningProgram();
   // console.log('[projects] setActiveProject start', {
   //   from: __activeProjectId,
   //   to: projectId
@@ -394,6 +405,9 @@ function setActiveProject(projectId, { silent = false } = {}) {
 }
 
 function createProject(initial = {}, { activate = true } = {}) {
+  if (activate && __activeProjectId) {
+    requestStopRunningProgram();
+  }
   const name = typeof initial.name === 'string' && initial.name.trim() ? initial.name.trim() : `Проект ${__projects.length + 1}`;
   const project = {
     id: generateProjectId(),
@@ -440,6 +454,7 @@ function deleteProject(projectId) {
     return;
   }
   if (__activeProjectId === projectId) {
+    requestStopRunningProgram();
     const fallback = __projects[idx] || __projects[idx - 1] || __projects[0];
     __activeProjectId = fallback.id;
     persistProjects();
@@ -2783,9 +2798,6 @@ async function runWasm() {
   }
 }
 
-// Set to true by the Stop button; cleared at the start of each run.
-let __coroStopRequested = false;
-
 function setCoroRunning(running) {
   const stopBtn = document.getElementById('btn-stop');
   const runBtn = document.getElementById('btn-run');
@@ -2823,6 +2835,9 @@ async function runWasmCoroutine({ instance, entryFn, args, usesRobot, usesTurtle
     }
     if (usesTurtle && __turtleModule && typeof __turtleModule.__getAnimationDelay === 'function') {
       return __turtleModule.__getAnimationDelay();
+    }
+    if (usesPainter && __painterModule && typeof __painterModule.__getAnimationDelay === 'function') {
+      return __painterModule.__getAnimationDelay();
     }
     return 0;
   };
@@ -3874,6 +3889,7 @@ setupPreviewDocking();
     const examplePath = params.get('example');
     if (!examplePath) return;
 
+    requestStopRunningProgram();
     const data = await apiGet('/api/example?path=' + encodeURIComponent(examplePath));
     const displayName = deriveExampleProjectName(examplePath);
     const code = data.code || '';
@@ -3947,6 +3963,7 @@ const examplesSel = $('#examples');
 if (examplesSel) examplesSel.addEventListener('change', async () => {
   const path = examplesSel.value || '';
   if (!path) return;
+  requestStopRunningProgram();
   try {
     // Load example (code + optional metadata + files)
     const data = await apiGet('/api/example?path=' + encodeURIComponent(path));

@@ -28,6 +28,9 @@ let currentOy = 0;
 let currentScale = 1;
 
 let rafScheduled = false;
+let rafId = 0;
+let pendingSheet = null;
+let hasDrawnSinceSheet = false;
 
 const state = {
   sheetW: 800, sheetH: 600,
@@ -95,10 +98,20 @@ function applyFill() {
 function scheduleDraw() {
   if (rafScheduled || !ctx || !canvas || !offscreen) return;
   rafScheduled = true;
-  requestAnimationFrame(() => {
+  rafId = requestAnimationFrame(() => {
     rafScheduled = false;
+    rafId = 0;
     draw();
   });
+}
+
+function drawNow() {
+  if (rafScheduled && rafId) {
+    cancelAnimationFrame(rafId);
+  }
+  rafScheduled = false;
+  rafId = 0;
+  draw();
 }
 
 function draw() {
@@ -132,7 +145,38 @@ function fitCanvas() {
 
 function makeOffscreen(w, h) {
   if (typeof OffscreenCanvas !== 'undefined') return new OffscreenCanvas(w, h);
+  if (typeof document !== 'undefined') {
+    const cnv = document.createElement('canvas');
+    cnv.width = w;
+    cnv.height = h;
+    return cnv;
+  }
   return null;
+}
+
+function applySheet(w, h, color) {
+  const sw = Number(w), sh = Number(h);
+  if (sw <= 0 || sh <= 0 || sw > 32767 || sh > 32767) return false;
+  state.sheetW = sw; state.sheetH = sh;
+  offscreen = makeOffscreen(sw, sh);
+  offCtx = offscreen ? offscreen.getContext('2d') : null;
+  if (offCtx) {
+    offCtx.fillStyle = argbToStyle(color);
+    offCtx.fillRect(0, 0, sw, sh);
+  }
+  pendingSheet = null;
+  hasDrawnSinceSheet = false;
+  return true;
+}
+
+function ensureActiveSheet() {
+  if (!pendingSheet) return;
+  const next = pendingSheet;
+  applySheet(next.w, next.h, next.color);
+}
+
+function markDrawn() {
+  hasDrawnSinceSheet = true;
 }
 
 // ── Scanline flood fill ───────────────────────────────────────────────────────
@@ -233,12 +277,8 @@ export function __resetPainter() {
   state.fontFamily = 'Arial'; state.fontSize = 12;
   state.fontBold = false; state.fontItalic = false;
   state.curX = 0; state.curY = 0;
-  offscreen = makeOffscreen(state.sheetW, state.sheetH);
-  offCtx = offscreen ? offscreen.getContext('2d') : null;
-  if (offCtx) {
-    offCtx.fillStyle = '#ffffff';
-    offCtx.fillRect(0, 0, state.sheetW, state.sheetH);
-  }
+  pendingSheet = null;
+  applySheet(state.sheetW, state.sheetH, 0xFFFFFFFFn);
   scheduleDraw();
 }
 
@@ -254,14 +294,19 @@ export function __fitPainterView() {
   scheduleDraw();
 }
 
+export function __getAnimationDelay() {
+  return 16;
+}
+
 // ── Sheet info ────────────────────────────────────────────────────────────────
 
-export function painter_sheet_width()  { return BigInt(state.sheetW); }
-export function painter_sheet_height() { return BigInt(state.sheetH); }
-export function painter_center_x()     { return BigInt(Math.floor(state.sheetW / 2)); }
-export function painter_center_y()     { return BigInt(Math.floor(state.sheetH / 2)); }
+export function painter_sheet_width()  { ensureActiveSheet(); return BigInt(state.sheetW); }
+export function painter_sheet_height() { ensureActiveSheet(); return BigInt(state.sheetH); }
+export function painter_center_x()     { ensureActiveSheet(); return BigInt(Math.floor(state.sheetW / 2)); }
+export function painter_center_y()     { ensureActiveSheet(); return BigInt(Math.floor(state.sheetH / 2)); }
 
 export function painter_text_width(charPtr) {
+  ensureActiveSheet();
   const text = readCString(charPtr);
   if (!offCtx) return BigInt(text.length * Math.floor(state.fontSize / 2));
   offCtx.save();
@@ -272,6 +317,7 @@ export function painter_text_width(charPtr) {
 }
 
 export function painter_get_pixel(x, y) {
+  ensureActiveSheet();
   if (!offCtx) return 0n;
   const px = Number(x), py = Number(y);
   if (px < 0 || py < 0 || px >= state.sheetW || py >= state.sheetH) return 0n;
@@ -309,11 +355,13 @@ export function painter_font(familyPtr, size, bold, italic) {
 // ── Drawing commands ──────────────────────────────────────────────────────────
 
 export function painter_move_to(x, y) {
+  ensureActiveSheet();
   state.curX = Number(x);
   state.curY = Number(y);
 }
 
 export function painter_line(x1, y1, x2, y2) {
+  ensureActiveSheet();
   if (!offCtx) return;
   offCtx.save();
   applyStroke();
@@ -323,9 +371,11 @@ export function painter_line(x1, y1, x2, y2) {
   offCtx.lineTo(Number(x2), Number(y2));
   offCtx.stroke();
   offCtx.restore();
+  markDrawn();
 }
 
 export function painter_line_to(x, y) {
+  ensureActiveSheet();
   if (!offCtx) return;
   const nx = Number(x), ny = Number(y);
   offCtx.save();
@@ -337,9 +387,11 @@ export function painter_line_to(x, y) {
   offCtx.stroke();
   offCtx.restore();
   state.curX = nx; state.curY = ny;
+  markDrawn();
 }
 
 export function painter_polygon(n, xsPtr, ysPtr) {
+  ensureActiveSheet();
   if (!offCtx) return;
   const count = Number(n);
   if (count < 2) return;
@@ -355,15 +407,19 @@ export function painter_polygon(n, xsPtr, ysPtr) {
   if (state.hasBrush) offCtx.fill();
   offCtx.stroke();
   offCtx.restore();
+  markDrawn();
 }
 
 export function painter_pixel(x, y, color) {
+  ensureActiveSheet();
   if (!offCtx) return;
   offCtx.fillStyle = argbToStyle(color);
   offCtx.fillRect(Number(x), Number(y), 1, 1);
+  markDrawn();
 }
 
 export function painter_rect(x1, y1, x2, y2) {
+  ensureActiveSheet();
   if (!offCtx) return;
   const x = Math.min(Number(x1), Number(x2));
   const y = Math.min(Number(y1), Number(y2));
@@ -375,9 +431,11 @@ export function painter_rect(x1, y1, x2, y2) {
   if (state.hasBrush) offCtx.fillRect(x, y, w, h);
   offCtx.strokeRect(x, y, w, h);
   offCtx.restore();
+  markDrawn();
 }
 
 export function painter_ellipse(x1, y1, x2, y2) {
+  ensureActiveSheet();
   if (!offCtx) return;
   const cx = (Number(x1) + Number(x2)) / 2;
   const cy = (Number(y1) + Number(y2)) / 2;
@@ -391,9 +449,11 @@ export function painter_ellipse(x1, y1, x2, y2) {
   if (state.hasBrush) offCtx.fill();
   offCtx.stroke();
   offCtx.restore();
+  markDrawn();
 }
 
 export function painter_circle(x, y, r) {
+  ensureActiveSheet();
   if (!offCtx) return;
   const radius = Number(r);
   offCtx.save();
@@ -404,9 +464,11 @@ export function painter_circle(x, y, r) {
   if (state.hasBrush) offCtx.fill();
   offCtx.stroke();
   offCtx.restore();
+  markDrawn();
 }
 
 export function painter_text(x, y, charPtr) {
+  ensureActiveSheet();
   if (!offCtx) return;
   const text = readCString(charPtr);
   offCtx.save();
@@ -415,9 +477,11 @@ export function painter_text(x, y, charPtr) {
   offCtx.fillStyle = argbToStyle(state.penColor);
   offCtx.fillText(text, Number(x), Number(y));
   offCtx.restore();
+  markDrawn();
 }
 
 export function painter_fill(x, y) {
+  ensureActiveSheet();
   if (!offCtx) return;
   const px = Number(x), py = Number(y);
   if (px < 0 || py < 0 || px >= state.sheetW || py >= state.sheetH) return;
@@ -431,6 +495,7 @@ export function painter_fill(x, y) {
   const imageData = offCtx.getImageData(0, 0, state.sheetW, state.sheetH);
   floodFill(imageData, px, py, fr, fg, fb, fa);
   offCtx.putImageData(imageData, 0, 0);
+  markDrawn();
 }
 
 // ── Sheet management ──────────────────────────────────────────────────────────
@@ -438,16 +503,17 @@ export function painter_fill(x, y) {
 export function painter_new_sheet(w, h, color) {
   const sw = Number(w), sh = Number(h);
   if (sw <= 0 || sh <= 0 || sw > 32767 || sh > 32767) return;
-  state.sheetW = sw; state.sheetH = sh;
-  offscreen = makeOffscreen(sw, sh);
-  offCtx = offscreen ? offscreen.getContext('2d') : null;
-  if (offCtx) {
-    offCtx.fillStyle = argbToStyle(color);
-    offCtx.fillRect(0, 0, sw, sh);
+  if (offscreen && hasDrawnSinceSheet) {
+    drawNow();
+    pendingSheet = { w: sw, h: sh, color };
+    hasDrawnSinceSheet = false;
+    return;
   }
+  applySheet(sw, sh, color);
 }
 
 export function __flushPainter() {
+  if (pendingSheet) return;
   scheduleDraw();
 }
 

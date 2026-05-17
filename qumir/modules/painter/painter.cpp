@@ -275,6 +275,7 @@ PainterModule::PainterModule() {
             },
             .ArgTypes = { integerType, integerType, colorType },
             .ReturnType = voidType,
+            .MaySuspend = true,
         },
         {
             .Name = "загрузить лист",
