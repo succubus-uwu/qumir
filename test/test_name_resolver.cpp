@@ -192,6 +192,91 @@ TEST(TypeAnnotation, CoroutineAnalysisMarksDirectAndTransitiveCallers) {
     EXPECT_TRUE(TMaybeType<TVoidType>(helperFuture->ResultType));
     EXPECT_TRUE(TMaybeType<TVoidType>(callerFuture->ResultType));
     EXPECT_FALSE(TMaybeType<TFutureType>(pure->RetType));
+
+    auto robotAwait = findAwaitCall(helper->Body, "вверх");
+    auto helperAwait = findAwaitCall(caller->Body, "helper");
+    ASSERT_TRUE(robotAwait);
+    ASSERT_TRUE(helperAwait);
+    EXPECT_TRUE(TMaybeType<TVoidType>(robotAwait->Type));
+    EXPECT_TRUE(TMaybeType<TVoidType>(helperAwait->Type));
+
+    auto robotCall = TMaybeNode<TCallExpr>(robotAwait->Operand).Cast();
+    ASSERT_TRUE(robotCall);
+    auto robotCalleeType = TMaybeType<TFunctionType>(robotCall->Callee->Type).Cast();
+    ASSERT_TRUE(robotCalleeType);
+    EXPECT_TRUE(TMaybeType<TFutureType>(robotCalleeType->ReturnType));
+}
+
+TEST(TypeAnnotation, CoroutineCallProducesInnerValueType) {
+    auto ast = annotateWithRobotCoroutines(R"__(
+алг цел f
+нач
+    вверх()
+    знач := 42
+кон
+
+алг цел g
+нач
+    знач := f()
+кон
+)__");
+    ASSERT_NE(ast, nullptr);
+
+    auto f = findFunction(ast, "f");
+    auto g = findFunction(ast, "g");
+    ASSERT_TRUE(f);
+    ASSERT_TRUE(g);
+
+    auto fFuture = TMaybeType<TFutureType>(f->RetType).Cast();
+    auto gFuture = TMaybeType<TFutureType>(g->RetType).Cast();
+    ASSERT_TRUE(fFuture);
+    ASSERT_TRUE(gFuture);
+    EXPECT_TRUE(TMaybeType<TIntegerType>(fFuture->ResultType));
+    EXPECT_TRUE(TMaybeType<TIntegerType>(gFuture->ResultType));
+
+    auto awaitCall = findAwaitCall(g->Body, "f");
+    ASSERT_TRUE(awaitCall);
+    EXPECT_TRUE(TMaybeType<TIntegerType>(awaitCall->Type));
+}
+
+TEST(TypeAnnotation, NestedCoroutineCallArgumentIsAwaited) {
+    auto ast = annotateWithRobotCoroutines(R"__(
+алг цел f
+нач
+    вверх()
+    знач := 7
+кон
+
+алг цел h(цел x)
+нач
+    знач := x + 1
+кон
+
+алг цел g
+нач
+    знач := h(f())
+кон
+)__");
+    ASSERT_NE(ast, nullptr);
+
+    auto f = findFunction(ast, "f");
+    auto h = findFunction(ast, "h");
+    auto g = findFunction(ast, "g");
+    ASSERT_TRUE(f);
+    ASSERT_TRUE(h);
+    ASSERT_TRUE(g);
+
+    EXPECT_TRUE(TMaybeType<TFutureType>(f->RetType));
+    EXPECT_FALSE(TMaybeType<TFutureType>(h->RetType));
+    EXPECT_TRUE(TMaybeType<TFutureType>(g->RetType));
+
+    auto fAwait = findAwaitCall(g->Body, "f");
+    auto hCall = findCall(g->Body, "h");
+    ASSERT_TRUE(fAwait);
+    ASSERT_TRUE(hCall);
+    EXPECT_FALSE(findAwaitCall(g->Body, "h"));
+    EXPECT_TRUE(TMaybeType<TIntegerType>(fAwait->Type));
+    EXPECT_TRUE(TMaybeType<TIntegerType>(hCall->Type));
 }
 
 TEST(TypeAnnotation, CoroutineAwaitUnwrapsReturnValueAtCallSite) {
