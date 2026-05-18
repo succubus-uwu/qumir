@@ -122,12 +122,12 @@
 
     | Размер и позиция робота
     вывод ф, ШИРИНА, " ", ВЫСОТА, нс
-    вывод ф, "0 0", нс
+    вывод ф, "1 1", нс
 
     | Записываем клетки со стенами
     нц для y от 0 до ВЫСОТА - 1
         нц для x от 0 до ШИРИНА - 1
-            цел wE, wS
+            цел wE, wS, wall
             wE := 0; wS := 0
 
             если x < ШИРИНА - 1
@@ -139,8 +139,9 @@
 
             если wE = 1 или wS = 1
                 то
-                    | x y WallN WallE WallS WallW Painted PointMark Rad Temp R G B
-                    вывод ф, x, " ", y, " 0 ", wE, " ", wS, " 0 0 0 0 0 0 0 0", нс
+                    | x y Wall Color Radiation Temperature Symbol Symbol1 Point
+                    wall := 8 * wE + 2 * wS
+                    вывод ф, x + 1, " ", y + 1, " ", wall, " 0 0.000000 0.000000 $ $ 0", нс
             все
         кц
     кц

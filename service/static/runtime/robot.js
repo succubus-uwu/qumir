@@ -23,30 +23,24 @@ const DEFAULT_FIELD = `; Kumir Robot Field Format
 ; ========================
 ;
 ; Line 1: Field size (width height)
-; Line 2: Robot position (x y), 0-indexed from top-left
+; Line 2: Robot position (x y), 1-indexed from top-left
 ;
 ; Remaining lines: Special cell properties
-; Format: x y WallN WallE WallS WallW Painted PointMark Radiation Temperature R G B
+; Format: x y Wall Color Radiation Temperature Symbol Symbol1 Point
 ;
-; Walls: 1 = wall present, 0 = no wall
-;   WallN - wall to the North (above cell)
-;   WallE - wall to the East (right of cell)
-;   WallS - wall to the South (below cell)
-;   WallW - wall to the West (left of cell)
+; Wall is a bit mask: 1 = North, 2 = South, 4 = West, 8 = East
 ;
-; Painted: 1 = cell is painted, 0 = not painted
-; PointMark: 1 = cell has point marker, 0 = no marker (unused)
+; Color: 0 = not painted, non-zero = painted
 ; Radiation: float value for radiation sensor
 ; Temperature: float value for temperature sensor
-; R G B: color values 0-255 (unused)
 ;
-; Example special cell: 3 2 0 1 0 0 1 0 5.5 20.0 0 0 0
+; Example special cell: 3 2 8 1 5.5 20.0 $ $ 0
 ;   Cell at (3,2) with wall to East, painted, radiation=5.5, temp=20.0
 ;
 ; Field Size
 7 7
 ; Robot Position
-0 0
+1 1
 `.trim();
 
 export class RobotField {
@@ -74,6 +68,27 @@ export class RobotField {
     this.temperature.clear();
   }
 
+  addWalls(x, y, wallN, wallE, wallS, wallW) {
+    // Wall to North = horizontal wall above cell (x,y).
+    // In our model: hWalls stores "x,y" meaning wall below (x,y).
+    if (wallN && y > 0) {
+      this.hWalls.add(`${x},${y - 1}`);
+    }
+    // Wall to South = wall below (x,y).
+    if (wallS && y < this.height - 1) {
+      this.hWalls.add(`${x},${y}`);
+    }
+    // Wall to West = wall to the left of (x,y).
+    // In our model: vWalls stores "x,y" meaning wall to the right of (x,y).
+    if (wallW && x > 0) {
+      this.vWalls.add(`${x - 1},${y}`);
+    }
+    // Wall to East = wall to the right of (x,y).
+    if (wallE && x < this.width - 1) {
+      this.vWalls.add(`${x},${y}`);
+    }
+  }
+
   parseField(text) {
     this.reset();
     const lines = text.split(/\r?\n/);
@@ -98,70 +113,43 @@ export class RobotField {
       this.height = parseInt(parts[1], 10) || 7;
     }
 
-    // Line 2: Robot position (x, y)
+    // Line 2: Robot position (x, y), 1-indexed in .fil.
     const robotLine = nextDataLine();
     if (robotLine) {
       const parts = robotLine.split(/\s+/);
-      this.robotX = parseInt(parts[0], 10) || 0;
-      this.robotY = parseInt(parts[1], 10) || 0;
+      this.robotX = Math.max(0, (parseInt(parts[0], 10) || 1) - 1);
+      this.robotY = Math.max(0, (parseInt(parts[1], 10) || 1) - 1);
     }
 
-    // Remaining lines: special fields
-    // Format: x, y, WallN, WallE, WallS, WallW, Painted, PointMark, Radiation, Temperature, R, G, B
+    // Remaining lines: x y Wall Color Radiation Temperature Symbol Symbol1 Point.
+    // Coordinates are 1-indexed in .fil.
+    // Wall is a bit mask: 1 = North, 2 = South, 4 = West, 8 = East.
     let dataLine;
     while ((dataLine = nextDataLine()) !== null) {
       const parts = dataLine.split(/\s+/);
       if (parts.length < 2) continue;
 
-      const x = parseInt(parts[0], 10);
-      const y = parseInt(parts[1], 10);
+      const x = parseInt(parts[0], 10) - 1;
+      const y = parseInt(parts[1], 10) - 1;
       if (isNaN(x) || isNaN(y)) continue;
 
-      // Walls: indices 2,3,4,5 = N,E,S,W (1 = wall, 0 = no wall)
-      const wallN = parts[2] === '1';
-      const wallE = parts[3] === '1';
-      const wallS = parts[4] === '1';
-      const wallW = parts[5] === '1';
+      const wall = parseInt(parts[2] || '0', 10) || 0;
+      this.addWalls(x, y, (wall & 1) !== 0, (wall & 8) !== 0, (wall & 2) !== 0, (wall & 4) !== 0);
 
-      // Wall to North = horizontal wall above cell (x,y)
-      // In our model: hWalls stores "x,y" meaning wall below (x,y)
-      // So wall above (x,y) is wall below (x, y-1) => hWalls.add(`${x},${y-1}`)
-      if (wallN && y > 0) {
-        this.hWalls.add(`${x},${y - 1}`);
-      }
-      // Wall to South = wall below (x,y) => hWalls.add(`${x},${y}`)
-      if (wallS && y < this.height - 1) {
-        this.hWalls.add(`${x},${y}`);
-      }
-      // Wall to West = wall to the left of (x,y)
-      // In our model: vWalls stores "x,y" meaning wall to the right of (x,y)
-      // So wall to the left of (x,y) is wall to the right of (x-1, y) => vWalls.add(`${x-1},${y}`)
-      if (wallW && x > 0) {
-        this.vWalls.add(`${x - 1},${y}`);
-      }
-      // Wall to East = wall to the right of (x,y) => vWalls.add(`${x},${y}`)
-      if (wallE && x < this.width - 1) {
-        this.vWalls.add(`${x},${y}`);
-      }
-
-      // Painted: index 6 (1 = painted)
-      if (parts[6] === '1') {
+      const color = parseInt(parts[3] || '0', 10) || 0;
+      if (color !== 0) {
         this.painted.add(`${x},${y}`);
       }
 
-      // Point mark: index 7 (ignored for now)
-
-      // Radiation: index 8
-      if (parts[8] !== undefined) {
-        const rad = parseFloat(parts[8]);
+      if (parts[4] !== undefined) {
+        const rad = parseFloat(parts[4]);
         if (!isNaN(rad) && rad !== 0) {
           this.radiation.set(`${x},${y}`, rad);
         }
       }
 
-      // Temperature: index 9
-      if (parts[9] !== undefined) {
-        const temp = parseFloat(parts[9]);
+      if (parts[5] !== undefined) {
+        const temp = parseFloat(parts[5]);
         if (!isNaN(temp) && temp !== 0) {
           this.temperature.set(`${x},${y}`, temp);
         }
@@ -211,8 +199,8 @@ export class RobotField {
     lines.push('; Field Size: x, y');
     lines.push(`${this.width} ${this.height}`);
     lines.push('; Robot position: x, y');
-    lines.push(`${this.robotX} ${this.robotY}`);
-    lines.push('; A set of special Fields: x, y, Wall N, Wall E, Wall S, Wall W, Painted, PointMark, Radiation, Temperature, R, G, B');
+    lines.push(`${this.robotX + 1} ${this.robotY + 1}`);
+    lines.push('; A set of special Fields: x, y, Wall, Color, Radiation, Temperature, Symbol, Symbol1, Point');
 
     // Collect all cells with special properties
     const specialCells = new Set();
@@ -238,10 +226,11 @@ export class RobotField {
       const wallS = (y < this.height - 1 && this.hWalls.has(`${x},${y}`)) ? 1 : 0;
       const wallW = (x > 0 && this.vWalls.has(`${x - 1},${y}`)) ? 1 : 0;
       const wallE = (x < this.width - 1 && this.vWalls.has(`${x},${y}`)) ? 1 : 0;
-      const painted = this.painted.has(key) ? 1 : 0;
+      const wall = wallN + wallS * 2 + wallW * 4 + wallE * 8;
+      const color = this.painted.has(key) ? 1 : 0;
       const rad = this.radiation.get(key) || 0;
       const temp = this.temperature.get(key) || 0;
-      lines.push(`${x} ${y} ${wallN} ${wallE} ${wallS} ${wallW} ${painted} 0 ${rad} ${temp} 0 0 0`);
+      lines.push(`${x + 1} ${y + 1} ${wall} ${color} ${rad.toFixed(6)} ${temp.toFixed(6)} $ $ 0`);
     }
 
     return lines.join('\n');

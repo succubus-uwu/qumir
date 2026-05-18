@@ -2267,18 +2267,18 @@ function renderRobotField() {
   for (let x = 0; x < field.width; x++) {
     const cx = offsetX + x * cellSize + cellSize / 2;
     // Top
-    ctx.fillText(String(x), cx, offsetY - labelSpace / 2);
+    ctx.fillText(String(x + 1), cx, offsetY - labelSpace / 2);
     // Bottom
-    ctx.fillText(String(x), cx, offsetY + gridH + labelSpace / 2);
+    ctx.fillText(String(x + 1), cx, offsetY + gridH + labelSpace / 2);
   }
 
   // Y coordinates (left and right)
   for (let y = 0; y < field.height; y++) {
     const cy = offsetY + y * cellSize + cellSize / 2;
     // Left
-    ctx.fillText(String(y), offsetX - labelSpace / 2, cy);
+    ctx.fillText(String(y + 1), offsetX - labelSpace / 2, cy);
     // Right
-    ctx.fillText(String(y), offsetX + gridW + labelSpace / 2, cy);
+    ctx.fillText(String(y + 1), offsetX + gridW + labelSpace / 2, cy);
   }
 
   // Draw outer border (thick)
