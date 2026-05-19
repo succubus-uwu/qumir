@@ -20,25 +20,7 @@ std::expected<bool, TError> PreNameResolutionTransform(NAst::TExprPtr& expr)
 {
     bool changed = TransformAst(expr, expr,
         [](const NAst::TExprPtr& node) -> NAst::TExprPtr {
-            if (auto maybeCall = NAst::TMaybeNode<NAst::TCallExpr>(node)) {
-                auto call = maybeCall.Cast();
-                if (auto maybeCalleeIdent = NAst::TMaybeNode<NAst::TIdentExpr>(call->Callee)) {
-                    auto calleeIdent = maybeCalleeIdent.Cast();
-                    if (calleeIdent->Name == "юникод" && call->Args.size() == 1) {
-                        // cast symbol -> int
-                        return std::make_shared<NAst::TCastExpr>(
-                            call->Location,
-                            call->Args[0],
-                            std::make_shared<NAst::TIntegerType>());
-                    } else if (calleeIdent->Name == "юнисимвол" && call->Args.size() == 1) {
-                        // cast int -> symbol
-                        return std::make_shared<NAst::TCastExpr>(
-                            call->Location,
-                            call->Args[0],
-                            std::make_shared<NAst::TSymbolType>());
-                    }
-                }
-            } else if (auto maybeAssert = NAst::TMaybeNode<NAst::TAssertStmt>(node)) {
+            if (auto maybeAssert = NAst::TMaybeNode<NAst::TAssertStmt>(node)) {
                 // rewrite assert statement into a call: __ensure(condition, "condition_text")
                 auto assertStmt = maybeAssert.Cast();
                 std::ostringstream oss;

@@ -863,7 +863,23 @@ SystemModule::SystemModule() {
             .Inline = [](std::vector<NAst::TExprPtr> args) -> NAst::TExprPtr {
                 return std::make_shared<NAst::TNumberExpr>(TLocation{}, std::numeric_limits<int64_t>::max());
             },
-        }
+        },
+        {
+            .Name = "юникод",
+            .ArgTypes = { symbolType },
+            .ReturnType = integerType,
+            .Inline = [](std::vector<NAst::TExprPtr> args) -> NAst::TExprPtr {
+                return std::make_shared<NAst::TCastExpr>(args[0]->Location, args[0], std::make_shared<NAst::TIntegerType>());
+            }
+        },
+        {
+            .Name = "юнисимвол",
+            .ArgTypes = { integerType },
+            .ReturnType = symbolType,
+            .Inline = [](std::vector<NAst::TExprPtr> args) -> NAst::TExprPtr {
+                return std::make_shared<NAst::TCastExpr>(args[0]->Location, args[0], std::make_shared<NAst::TSymbolType>());
+            }
+        },
 
     };
 
