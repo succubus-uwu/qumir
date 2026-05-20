@@ -73,6 +73,8 @@ add_library(qumir
     error.cpp
     location.h
     optional.h
+    future.h
+    future.cpp
 )
 target_include_directories(qumir PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_compile_features(qumir PUBLIC cxx_std_23)
