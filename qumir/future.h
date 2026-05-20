@@ -112,13 +112,6 @@ struct TFuture<void> : public TFutureBase<void> {
             std::rethrow_exception(errorOr);
         }
     }
-
-    template<typename Func>
-    auto Accept(Func func) -> TFuture<void> {
-        auto prev = std::move(*this);
-        co_await prev;
-        co_return func();
-    }
 };
 
 template<typename T>
