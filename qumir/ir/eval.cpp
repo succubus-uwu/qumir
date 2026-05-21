@@ -6,7 +6,6 @@
 #include <cassert>
 #include <sstream>
 #include <cstring>
-#include <iomanip>
 
 #include <qumir/runtime/string.h> // for str_release
 #include <qumir/future.h>
@@ -72,7 +71,22 @@ std::optional<std::string> TInterpreter::Eval(TFunction& function, std::vector<i
     return ans;
 }
 
-std::optional<std::string> TInterpreter::DoEval(TFunction& function, std::vector<int64_t> args, TInterpreter::TOptions options) {
+void TInterpreter::ProcessAsyncRuntimeEvents() {
+    // runtime should register event processors
+}
+
+std::optional<std::string> TInterpreter::DoEval(TFunction& function, std::vector<int64_t> args, TOptions options) {
+    auto future = DoEvalAsync(function, args, options);
+    while (!future.done()) {
+        ProcessAsyncRuntimeEvents();
+        if (!future.done()) {
+            future.resume();
+        }
+    }
+    return future.await_resume();
+}
+
+TFuture<std::optional<std::string>> TInterpreter::DoEvalAsync(TFunction& function, std::vector<int64_t> args, TInterpreter::TOptions options) {
     if (!function.Exec) {
         function.Exec = &Compiler.Compile(function, options.PrintByteCode);
     }
@@ -93,7 +107,7 @@ std::optional<std::string> TInterpreter::DoEval(TFunction& function, std::vector
     Runtime.Stack.resize(execFunc->NumLocals, 0); // NumLocals is frame size in bytes
     if (args.size() != function.ArgLocals.size()) {
         std::cerr << "Function " << function.Name << " expects " << function.ArgLocals.size() << " arguments, got " << args.size() << "\n";
-        return std::nullopt;
+        co_return std::nullopt;
     }
 
     auto copyArgsToFrame = [&](char* frameBase, const TExecFunc* exec,
@@ -593,7 +607,7 @@ std::optional<std::string> TInterpreter::DoEval(TFunction& function, std::vector
         }
         result = out.str();
     }
-    return result;
+    co_return result;
 }
 
 } // namespace NIR

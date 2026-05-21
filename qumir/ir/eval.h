@@ -3,9 +3,12 @@
 #include "builder.h"
 #include "vmcompiler.h"
 
+#include <coroutine>
 #include <cstdint>
 #include <ostream>
 #include <vector>
+
+#include <qumir/future.h>
 
 namespace NQumir {
 namespace NIR {
@@ -46,6 +49,9 @@ public:
 
 private:
     std::optional<std::string> DoEval(TFunction& function, std::vector<int64_t> args, TOptions options);
+
+    TFuture<std::optional<std::string>> DoEvalAsync(TFunction& function, std::vector<int64_t> args, TOptions options);
+    void ProcessAsyncRuntimeEvents();
 
     std::ostream& Out;
     std::istream& In;
