@@ -170,26 +170,32 @@
       overflow: hidden;
       flex-shrink: 0;
     }
-    .docs-mode-btn {
+    /* Higher specificity (0,2,0) overrides .docs-page-sidebar a (0,1,1) */
+    .docs-mode-toggle .docs-mode-btn {
       flex: 1;
       padding: 7px 4px;
       background: transparent;
       border: none;
+      border-left: none;
       color: #888;
-      font-size: 13px;
+      font-size: 12px;
       cursor: pointer;
       transition: background .15s, color .15s;
       font-family: inherit;
+      text-align: center;
+      text-decoration: none;
+      white-space: nowrap;
+      display: block;
     }
-    .docs-mode-btn.active {
+    .docs-mode-toggle .docs-mode-btn.active {
       background: #0e639c;
       color: #fff;
     }
-    .docs-mode-btn:hover:not(.active) {
+    .docs-mode-toggle .docs-mode-btn:hover:not(.active) {
       background: #252525;
       color: #ccc;
+      text-decoration: none;
     }
-    #docs-nav-arch a { font-size: 13px; }
 
     @media (max-width: 768px) {
       .docs-page-layout { flex-direction: column; }
