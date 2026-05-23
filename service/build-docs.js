@@ -40,24 +40,50 @@ const TEMPLATE = fs.readFileSync(path.join(__dirname, '../service/static/docs.ht
 // Вырезаем <main>...</main> из шаблона
 const MAIN_RE = /<main[^>]*id="docs-main"[^>]*>[\s\S]*?<\/main>/i;
 
-function renderSidebar(active, prefix) {
-  // prefix: '' для корневых страниц, '../' для страниц в подпапках
+const ARCH_ITEMS = [
+  { file: 'arch/overview.md',   label: 'Architecture Overview' },
+  { file: 'arch/arrays.md',     label: 'Array Representation' },
+  { file: 'arch/core-lang.md',  label: 'Core Language' },
+  { file: 'arch/coroutine.md',  label: 'Coroutines' },
+  { file: 'arch/strings.md',    label: 'String Representation' },
+  { file: 'arch/structs.md',    label: 'Struct Representation' },
+];
+
+function renderSidebar(active, mode, prefix) {
+  // mode: 'docs' | 'arch'
+  // prefix: '' for root pages, '../' for pages in subdirs
+  const isArchMode = mode === 'arch';
   const isExamplesSection = active === 'examples.md' || active.startsWith('examples/');
+
+  const archNavItems = ARCH_ITEMS.map(({ file, label }) => {
+    const htmlFile = file.replace(/^arch\//, '').replace(/\.md$/, '.html');
+    return `      <a href="${prefix}arch/${htmlFile}" class="${active === file ? 'active' : ''}">${label}</a>`;
+  }).join('\n');
+
   return `
     <nav class="docs-page-sidebar" id="docs-sidebar">
-      <a href="${prefix}index.html" class="${active === 'index.md' ? 'active' : ''}">Введение</a>
-      <a href="${prefix}syntax.html" class="${active === 'syntax.md' ? 'active' : ''}">Синтаксис языка</a>
-      <a href="${prefix}interpreter.html" class="${active === 'interpreter.md' ? 'active' : ''}">Интерпретатор</a>
-      <a href="${prefix}compiler.html" class="${active === 'compiler.md' ? 'active' : ''}">Компилятор</a>
-      <a href="${prefix}turtle.html" class="${active === 'turtle.md' ? 'active' : ''}">Исполнитель Черепаха</a>
-      <a href="${prefix}drawer.html" class="${active === 'drawer.md' ? 'active' : ''}">Исполнитель Чертежник</a>
-      <a href="${prefix}painter.html" class="${active === 'painter.md' ? 'active' : ''}">Исполнитель Рисователь</a>
-      <a href="${prefix}complex.html" class="${active === 'complex.md' ? 'active' : ''}">Комплексные числа</a>
-      <a href="${prefix}robot.html" class="${active === 'robot.md' ? 'active' : ''}">Исполнитель Робот</a>
-      <a href="${prefix}files.html" class="${active === 'files.md' ? 'active' : ''}">Работа с файлами</a>
-      <a href="${prefix}examples.html" class="${isExamplesSection ? 'active' : ''}">Библиотека примеров</a>
-      <a href="${prefix}about.html" class="${active === 'about.md' ? 'active' : ''}">О проекте</a>
-      <a href="${prefix}faq.html" class="${active === 'faq.md' ? 'active' : ''}">Вопросы и ответы</a>
+      <div class="docs-mode-toggle">
+        <a class="docs-mode-btn${!isArchMode ? ' active' : ''}" href="${prefix}index.html">Документация</a>
+        <a class="docs-mode-btn${isArchMode ? ' active' : ''}" href="${prefix}arch/overview.html">Архитектура</a>
+      </div>
+      <div id="docs-nav-docs"${isArchMode ? ' style="display:none"' : ''}>
+        <a href="${prefix}index.html" class="${active === 'index.md' ? 'active' : ''}">Введение</a>
+        <a href="${prefix}syntax.html" class="${active === 'syntax.md' ? 'active' : ''}">Синтаксис языка</a>
+        <a href="${prefix}interpreter.html" class="${active === 'interpreter.md' ? 'active' : ''}">Интерпретатор</a>
+        <a href="${prefix}compiler.html" class="${active === 'compiler.md' ? 'active' : ''}">Компилятор</a>
+        <a href="${prefix}turtle.html" class="${active === 'turtle.md' ? 'active' : ''}">Исполнитель Черепаха</a>
+        <a href="${prefix}drawer.html" class="${active === 'drawer.md' ? 'active' : ''}">Исполнитель Чертежник</a>
+        <a href="${prefix}painter.html" class="${active === 'painter.md' ? 'active' : ''}">Исполнитель Рисователь</a>
+        <a href="${prefix}complex.html" class="${active === 'complex.md' ? 'active' : ''}">Комплексные числа</a>
+        <a href="${prefix}robot.html" class="${active === 'robot.md' ? 'active' : ''}">Исполнитель Робот</a>
+        <a href="${prefix}files.html" class="${active === 'files.md' ? 'active' : ''}">Работа с файлами</a>
+        <a href="${prefix}examples.html" class="${isExamplesSection ? 'active' : ''}">Библиотека примеров</a>
+        <a href="${prefix}about.html" class="${active === 'about.md' ? 'active' : ''}">О проекте</a>
+        <a href="${prefix}faq.html" class="${active === 'faq.md' ? 'active' : ''}">Вопросы и ответы</a>
+      </div>
+      <div id="docs-nav-arch"${!isArchMode ? ' style="display:none"' : ''}>
+${archNavItems}
+      </div>
     </nav>
   `;
 }
@@ -75,13 +101,13 @@ function collectMdFiles(dir, base) {
   return results;
 }
 
-function buildOne(mdFile) {
-  const mdPath = path.join(DOCS_SRC, mdFile);
+function buildOne(mdFile, { srcDir = DOCS_SRC, mode = 'docs' } = {}) {
+  const mdPath = path.join(srcDir, mdFile);
   const htmlFile = mdFile.replace(/\.md$/, '.html');
   const htmlPath = path.join(DOCS_OUT, htmlFile);
 
   // Определяем глубину вложенности для relative paths
-  const depth = mdFile.split('/').length - 1;
+  const depth = htmlFile.split('/').length - 1;
   const prefix = depth > 0 ? '../'.repeat(depth) : '';
 
   const markdown = fs.readFileSync(mdPath, 'utf8');
@@ -150,11 +176,11 @@ function buildOne(mdFile) {
     // Remove all nav.docs-page-sidebar blocks
     .replace(/<nav class="docs-page-sidebar"[^>]*>[\s\S]*?<\/nav>/g, '')
     // Remove only the inline SPA JS block (not external scripts)
-    .replace(/<script>\s*const DOCS_BASE[\s\S]*?loadDoc\(getDocFromUrl\(\)\);\s*<\/script>/, '')
+    .replace(/<script>\s*\/\/ SPA DOCS SCRIPT[\s\S]*?\/\/ END SPA DOCS SCRIPT\s*<\/script>/, '')
     // Fix styles.css path to root
     .replace(/<link rel="stylesheet" href="[^"]*styles\.css[^"]*">/, '<link rel="stylesheet" href="/styles.css">');
   // Insert sidebar before <main>
-  outHtml = outHtml.replace(/(<div class="docs-page-layout">\s*)/, `$1${renderSidebar(mdFile, prefix)}\n`);
+  outHtml = outHtml.replace(/(<div class="docs-page-layout">\s*)/, `$1${renderSidebar(mdFile, mode, prefix)}\n`);
   // Insert main content
   outHtml = outHtml.replace(MAIN_RE, `<main class="docs-page-main" id="docs-main">${contentWithFixedLinks}</main>`);
   // Ensure metrika.local.js is present after </footer>
@@ -226,12 +252,27 @@ function buildOne(mdFile) {
   console.log('Built:', htmlPath);
 }
 
+const ARCH_SRC = path.join(__dirname, '../docs/arch');
+
 fs.mkdirSync(DOCS_OUT, { recursive: true });
 
+// Build user docs (docs/ru/)
 const files = collectMdFiles(DOCS_SRC, '');
 if (files.length === 0) {
   console.error('No markdown files found in', DOCS_SRC);
 } else {
-  files.forEach(buildOne);
+  // Skip arch/ symlink entries from the user docs pass
+  const docFiles = files.filter(f => !f.startsWith('arch/'));
+  docFiles.forEach(f => buildOne(f, { srcDir: DOCS_SRC, mode: 'docs' }));
   console.log('All docs built!');
+}
+
+// Build architecture notes (docs/arch/)
+if (fs.existsSync(ARCH_SRC)) {
+  const archFiles = collectMdFiles(ARCH_SRC, 'arch');
+  archFiles.forEach(f => {
+    const relFile = f.replace(/^arch\//, '');
+    buildOne(`arch/${relFile}`, { srcDir: path.join(ARCH_SRC, '..'), mode: 'arch' });
+  });
+  console.log('All arch docs built!');
 }

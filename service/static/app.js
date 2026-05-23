@@ -2063,9 +2063,83 @@ function ensurePainterUI() {
     __turtleToggle = ctr;
   }
 
-  __turtleToggle.innerHTML = '';
-  __executorToolbarMode = null;
-  __turtleToggle.style.display = 'none';
+  const updatePainterDelay = () => {
+    const animCheckbox = document.getElementById('painter-anim-enabled');
+    const speedSlider = document.getElementById('painter-speed');
+    if (!animCheckbox || !speedSlider) return;
+    if (__painterModule && typeof __painterModule.__setAnimationDelay === 'function') {
+      if (animCheckbox.checked) {
+        const v = parseInt(speedSlider.value, 10);
+        __painterModule.__setAnimationDelay(Math.round(Math.pow(2, 8 - 4 * v / 50)));
+      } else {
+        __painterModule.__setAnimationDelay(0);
+      }
+    }
+  };
+
+  if (__executorToolbarMode !== 'painter') {
+    __turtleToggle.innerHTML = '';
+    __executorToolbarMode = 'painter';
+
+    const speedContainer = document.createElement('div');
+    speedContainer.style.display = 'flex';
+    speedContainer.style.alignItems = 'center';
+    speedContainer.style.gap = '6px';
+
+    const animCheckbox = document.createElement('input');
+    animCheckbox.type = 'checkbox';
+    animCheckbox.id = 'painter-anim-enabled';
+    animCheckbox.style.cursor = 'pointer';
+    animCheckbox.title = 'Включить анимацию';
+    const savedPainterAnim = getCookie('q_painter_anim');
+    animCheckbox.checked = savedPainterAnim === '1';
+
+    const speedLabel = document.createElement('span');
+    speedLabel.textContent = '🐢';
+    speedLabel.style.fontSize = '14px';
+
+    const speedSlider = document.createElement('input');
+    speedSlider.type = 'range';
+    speedSlider.id = 'painter-speed';
+    speedSlider.min = '0';
+    speedSlider.max = '100';
+    const savedPainterSpeed = getCookie('q_painter_speed');
+    speedSlider.value = savedPainterSpeed !== null ? savedPainterSpeed : '50';
+    speedSlider.style.width = '80px';
+    speedSlider.style.cursor = 'pointer';
+    speedSlider.title = 'Скорость анимации';
+    speedSlider.disabled = !animCheckbox.checked;
+    speedSlider.style.opacity = animCheckbox.checked ? '1' : '0.5';
+
+    const speedLabelFast = document.createElement('span');
+    speedLabelFast.textContent = '🐇';
+    speedLabelFast.style.fontSize = '14px';
+
+    animCheckbox.addEventListener('change', () => {
+      speedSlider.disabled = !animCheckbox.checked;
+      speedSlider.style.opacity = animCheckbox.checked ? '1' : '0.5';
+      speedLabel.style.opacity = animCheckbox.checked ? '1' : '0.5';
+      speedLabelFast.style.opacity = animCheckbox.checked ? '1' : '0.5';
+      setCookie('q_painter_anim', animCheckbox.checked ? '1' : '0', 365);
+      updatePainterDelay();
+    });
+    speedSlider.addEventListener('input', () => {
+      updatePainterDelay();
+      setCookie('q_painter_speed', speedSlider.value, 365);
+    });
+
+    speedLabel.style.opacity = animCheckbox.checked ? '1' : '0.5';
+    speedLabelFast.style.opacity = animCheckbox.checked ? '1' : '0.5';
+
+    speedContainer.appendChild(animCheckbox);
+    speedContainer.appendChild(speedLabel);
+    speedContainer.appendChild(speedSlider);
+    speedContainer.appendChild(speedLabelFast);
+    __turtleToggle.appendChild(speedContainer);
+  }
+
+  updatePainterDelay();
+  __turtleToggle.style.display = '';
 
   if (!__painterCanvas) {
     // Wrapper: flex column, takes all remaining pane space

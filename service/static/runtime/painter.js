@@ -294,9 +294,9 @@ export function __fitPainterView() {
   scheduleDraw();
 }
 
-export function __getAnimationDelay() {
-  return 16;
-}
+let __painterAnimDelay = 0;
+export function __setAnimationDelay(ms) { __painterAnimDelay = ms; }
+export function __getAnimationDelay() { return __painterAnimDelay; }
 
 // ── Sheet info ────────────────────────────────────────────────────────────────
 

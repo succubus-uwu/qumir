@@ -162,6 +162,35 @@
     .docs-loading, .docs-error { text-align: center; padding: 60px; color: #888; }
     .docs-error { color: #ff8a80; }
 
+    .docs-mode-toggle {
+      display: flex;
+      margin: 10px 12px 14px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .docs-mode-btn {
+      flex: 1;
+      padding: 7px 4px;
+      background: transparent;
+      border: none;
+      color: #888;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      font-family: inherit;
+    }
+    .docs-mode-btn.active {
+      background: #0e639c;
+      color: #fff;
+    }
+    .docs-mode-btn:hover:not(.active) {
+      background: #252525;
+      color: #ccc;
+    }
+    #docs-nav-arch a { font-size: 13px; }
+
     @media (max-width: 768px) {
       .docs-page-layout { flex-direction: column; }
       .docs-page-sidebar { width: 100%; min-width: 0; border-right: none; border-bottom: 1px solid #333; padding: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
@@ -178,19 +207,33 @@
   </header>
   <div class="docs-page-layout">
     <nav class="docs-page-sidebar" id="docs-sidebar">
-      <a href="#" data-doc="index.md" class="active">Введение</a>
-      <a href="#" data-doc="syntax.md">Синтаксис языка</a>
-      <a href="#" data-doc="interpreter.md">Интерпретатор</a>
-      <a href="#" data-doc="compiler.md">Компилятор</a>
-      <a href="#" data-doc="turtle.md">Исполнитель Черепаха</a>
-      <a href="#" data-doc="drawer.md">Исполнитель Чертежник</a>
-      <a href="#" data-doc="painter.md">Исполнитель Рисователь</a>
-      <a href="#" data-doc="robot.md">Исполнитель Робот</a>
-      <a href="#" data-doc="complex.md">Комплексные числа</a>
-      <a href="#" data-doc="files.md">Работа с файлами</a>
-      <a href="#" data-doc="examples.md">Библиотека примеров</a>
-      <a href="#" data-doc="about.md">О проекте</a>
-      <a href="#" data-doc="faq.md">Вопросы и ответы</a>
+      <div class="docs-mode-toggle">
+        <button class="docs-mode-btn active" data-mode="docs">Документация</button>
+        <button class="docs-mode-btn" data-mode="arch">Архитектура</button>
+      </div>
+      <div id="docs-nav-docs">
+        <a href="#" data-doc="index.md" class="active">Введение</a>
+        <a href="#" data-doc="syntax.md">Синтаксис языка</a>
+        <a href="#" data-doc="interpreter.md">Интерпретатор</a>
+        <a href="#" data-doc="compiler.md">Компилятор</a>
+        <a href="#" data-doc="turtle.md">Исполнитель Черепаха</a>
+        <a href="#" data-doc="drawer.md">Исполнитель Чертежник</a>
+        <a href="#" data-doc="painter.md">Исполнитель Рисователь</a>
+        <a href="#" data-doc="robot.md">Исполнитель Робот</a>
+        <a href="#" data-doc="complex.md">Комплексные числа</a>
+        <a href="#" data-doc="files.md">Работа с файлами</a>
+        <a href="#" data-doc="examples.md">Библиотека примеров</a>
+        <a href="#" data-doc="about.md">О проекте</a>
+        <a href="#" data-doc="faq.md">Вопросы и ответы</a>
+      </div>
+      <div id="docs-nav-arch" style="display:none">
+        <a href="#" data-doc="arch/overview.md">Architecture Overview</a>
+        <a href="#" data-doc="arch/arrays.md">Array Representation</a>
+        <a href="#" data-doc="arch/core-lang.md">Core Language</a>
+        <a href="#" data-doc="arch/coroutine.md">Coroutines</a>
+        <a href="#" data-doc="arch/strings.md">String Representation</a>
+        <a href="#" data-doc="arch/structs.md">Struct Representation</a>
+      </div>
     </nav>
     <main class="docs-page-main" id="docs-main">
       <div class="docs-loading">Загрузка...</div>
@@ -203,35 +246,48 @@
   <script src="metrika.local.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
+    // SPA DOCS SCRIPT — removed in static build
     const DOCS_BASE = '/docs/';
     const sidebar = document.getElementById('docs-sidebar');
     const main = document.getElementById('docs-main');
     let currentDoc = 'index.md';
+    let currentMode = 'docs';
     const cache = {};
 
-    // Check URL for doc - supports ?section=, ?page=, and #doc.md (for backward compatibility)
+    function getMode(filename) {
+      return filename.startsWith('arch/') ? 'arch' : 'docs';
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      sidebar.querySelectorAll('.docs-mode-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+      });
+      document.getElementById('docs-nav-docs').style.display = mode === 'docs' ? '' : 'none';
+      document.getElementById('docs-nav-arch').style.display = mode === 'arch' ? '' : 'none';
+    }
+
     function getDocFromUrl() {
       const params = new URLSearchParams(window.location.search);
-      // Check query parameters: section and page are synonyms
       const section = params.get('section') || params.get('page');
       if (section && section.endsWith('.md')) return section;
-      // Then check hash (backward compatibility)
       const hash = window.location.hash.slice(1);
       if (hash && hash.endsWith('.md')) return hash;
       return 'index.md';
     }
 
-    // Update URL with query param only (no hash) - doesn't cause page reload
     function updateUrl(filename) {
       const url = new URL(window.location);
       url.searchParams.set('section', filename);
-      url.hash = '';  // Clear hash
+      url.hash = '';
       window.history.pushState({ doc: filename }, '', url);
     }
 
     async function loadDoc(filename) {
-      // Update sidebar
-      sidebar.querySelectorAll('a').forEach(a => {
+      const mode = getMode(filename);
+      if (mode !== currentMode) setMode(mode);
+
+      sidebar.querySelectorAll('a[data-doc]').forEach(a => {
         a.classList.toggle('active', a.dataset.doc === filename);
       });
 
@@ -251,7 +307,6 @@
         if (typeof marked !== 'undefined') {
           marked.setOptions({ breaks: false, gfm: true, headerIds: true, mangle: false });
           main.innerHTML = marked.parse(md);
-          // Render LaTeX formulas with KaTeX after markdown is loaded
           if (window.renderMathInElement) {
             renderMathInElement(main, {
               delimiters: [
@@ -264,7 +319,6 @@
           main.innerHTML = '<pre>' + md.replace(/</g, '&lt;') + '</pre>';
         }
 
-        // Handle internal .md links
         main.querySelectorAll('a').forEach(link => {
           const href = link.getAttribute('href');
           if (href && href.endsWith('.md') && !href.startsWith('http')) {
@@ -273,14 +327,12 @@
               loadDoc(href);
             });
           }
-          // Handle anchor links (#...) inside loaded markdown
           if (href && href.startsWith('#')) {
             link.addEventListener('click', e => {
               e.preventDefault();
               const anchor = href.slice(1);
               const el = main.querySelector(`[id='${anchor}']`);
               if (el) {
-                // Scroll within main container, not the whole page
                 const mainRect = main.getBoundingClientRect();
                 const elRect = el.getBoundingClientRect();
                 const scrollTop = main.scrollTop + (elRect.top - mainRect.top);
@@ -299,8 +351,15 @@
       }
     }
 
-    // Sidebar clicks
     sidebar.addEventListener('click', e => {
+      const modeBtn = e.target.closest('.docs-mode-btn');
+      if (modeBtn) {
+        const mode = modeBtn.dataset.mode;
+        if (mode !== currentMode) {
+          loadDoc(mode === 'arch' ? 'arch/overview.md' : 'index.md');
+        }
+        return;
+      }
       const link = e.target.closest('a[data-doc]');
       if (link) {
         e.preventDefault();
@@ -308,14 +367,15 @@
       }
     });
 
-    // Handle popstate for back/forward navigation
     window.addEventListener('popstate', (e) => {
       const doc = e.state?.doc || getDocFromUrl();
       if (doc !== currentDoc) loadDoc(doc);
     });
 
-    // Initial load
-    loadDoc(getDocFromUrl());
+    const initialDoc = getDocFromUrl();
+    setMode(getMode(initialDoc));
+    loadDoc(initialDoc);
+    // END SPA DOCS SCRIPT
   </script>
 </body>
 </html>
