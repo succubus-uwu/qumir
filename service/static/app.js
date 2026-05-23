@@ -2092,7 +2092,7 @@ function ensurePainterUI() {
     animCheckbox.style.cursor = 'pointer';
     animCheckbox.title = 'Включить анимацию';
     const savedPainterAnim = getCookie('q_painter_anim');
-    animCheckbox.checked = savedPainterAnim === '1';
+    animCheckbox.checked = savedPainterAnim !== '0';
 
     const speedLabel = document.createElement('span');
     speedLabel.textContent = '🐢';
