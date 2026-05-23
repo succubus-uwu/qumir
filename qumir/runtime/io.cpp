@@ -3,6 +3,12 @@
 #include <unordered_map>
 #include <forward_list>
 #include <fstream>
+#include <vector>
+#include <functional>
+#include <chrono>
+#include <thread>
+
+#include <qumir/future.h>
 
 namespace NQumir {
 namespace NRuntime {
@@ -11,6 +17,9 @@ namespace {
 
 std::istream *In = &std::cin;
 std::ostream *Out = &std::cout;
+
+std::vector<std::function<void()>> g_pendingCalls;
+std::vector<TFuture<void>> g_pendingFutures;
 
 };
 
@@ -211,6 +220,31 @@ void input_reset_file() {
 
 void output_reset_file() {
     SetOutputStream(&std::cout);
+}
+
+ITypeErasedFuture* sleep(int64_t milliseconds) {
+    auto promise = std::make_shared<TPromise<void>>();
+    auto future = MakeExternalFuture<void>(promise);
+    g_pendingCalls.emplace_back([promise, milliseconds]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
+    });
+    g_pendingFutures.emplace_back(std::move(future));
+    return new TWrappedFuture<void>(MakeExternalFuture<void>(promise));
+}
+
+size_t io_process_events() {
+    auto calls = std::move(g_pendingCalls);
+    for (auto& call : calls) {
+        call();
+    }
+
+    auto futures = std::move(g_pendingFutures);
+    for (auto& future : futures) {
+        if (!future.done()) {
+            future.resume();
+        }
+    }
+    return futures.size();
 }
 
 } // extern "C"

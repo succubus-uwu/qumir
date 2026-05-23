@@ -1,7 +1,10 @@
 #pragma once
+#include <cstddef>
 #include <iostream>
 
 namespace NQumir {
+struct ITypeErasedFuture;
+
 namespace NRuntime {
 
 void SetOutputStream(std::ostream* os);
@@ -32,6 +35,10 @@ void input_reset_file();
 
 void output_set_file(int32_t fileHandle);
 void output_reset_file();
+
+ITypeErasedFuture* sleep(int64_t milliseconds);
+
+size_t io_process_events();
 
 } // extern "C"
 

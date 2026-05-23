@@ -151,6 +151,15 @@ std::optional<std::string> TLlvmRunner::Run(std::unique_ptr<ILLVMModuleArtifacts
     }
     auto gv = SafeRunFunction(ee.get(), target, noargs);
 
+    auto processEvents = [&]() {
+        size_t processed = 0;
+        processed += NRuntime::robot_process_events();
+        processed += NRuntime::turtle_process_events();
+        processed += NRuntime::painter_process_events();
+        processed += NRuntime::io_process_events();
+        return processed;
+    };
+
     if (isCoroutineModule) {
         // Wrap the raw coro frame in ITypeErasedFuture* and use the public
         // __qumir_future_* API for the event loop. This avoids any dependency
@@ -158,18 +167,14 @@ std::optional<std::string> TLlvmRunner::Run(std::unique_ptr<ILLVMModuleArtifacts
         ITypeErasedFuture* future = __qumir_wrap_coro(gv.PointerVal, 0);
 
         while (!__qumir_future_done(future)) {
-            size_t processed = NRuntime::robot_process_events()
-                             + NRuntime::turtle_process_events()
-                             + NRuntime::painter_process_events();
+            size_t processed = processEvents();
             assert(processed > 0 && "coroutine suspended with no pending async events");
             if (!__qumir_future_done(future)) {
                 __qumir_future_resume(future);
             }
         }
         // Flush any remaining batched calls (e.g. painter drawing commands).
-        NRuntime::robot_process_events();
-        NRuntime::turtle_process_events();
-        NRuntime::painter_process_events();
+        processEvents();
 
         __qumir_future_destroy(future);
 

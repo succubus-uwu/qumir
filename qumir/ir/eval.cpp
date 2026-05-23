@@ -11,6 +11,7 @@
 #include <qumir/runtime/painter.h>
 #include <qumir/runtime/robot.h>
 #include <qumir/runtime/turtle.h>
+#include <qumir/runtime/io.h>
 #include <qumir/runtime/future.h>
 #include <qumir/future.h>
 
@@ -80,6 +81,7 @@ size_t TInterpreter::ProcessAsyncRuntimeEvents() {
     processed += NRuntime::robot_process_events();
     processed += NRuntime::turtle_process_events();
     processed += NRuntime::painter_process_events();
+    processed += NRuntime::io_process_events();
     return processed;
 }
 

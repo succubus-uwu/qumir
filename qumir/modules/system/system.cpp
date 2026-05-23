@@ -881,6 +881,19 @@ SystemModule::SystemModule() {
             }
         },
 
+        {
+            .Name = "ждать",
+            .MangledName = "sleep",
+            .Ptr = reinterpret_cast<void*>(static_cast<ITypeErasedFuture*(*)(int64_t)>(NRuntime::sleep)),
+            .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
+                auto* future = NRuntime::sleep(std::bit_cast<int64_t>(args[0]));
+                return reinterpret_cast<uint64_t>(future);
+            },
+            .ArgTypes = { integerType },
+            .ReturnType = voidType,
+            .MaySuspend = true,
+        }
+
     };
 
     ExternalFunctions_.swap(functions);
