@@ -368,6 +368,36 @@ TEST_P(RegExec, ExecLLVM) {
     CheckExecGoldens(src, golden, goldenStdOut, got, out.str(), "LLVM RUN");
 }
 
+TEST_P(RegExec, ExecLLVMOPT) {
+    const fs::path src = fs::path(CasesDir / GetParam().base).replace_extension(".kum");
+    const fs::path stdin = fs::path(CasesDir / GetParam().base).replace_extension(".stdin");
+    const fs::path golden = fs::path(GoldensDir / GetParam().base).replace_extension(".result");
+    const fs::path goldenStdOut = fs::path(GoldensDir / GetParam().base).replace_extension(".result.stdout");
+
+    const auto code = ReadAll(src);
+    auto header = code.substr(0, code.find('\n'));
+    if (header.find("disable_exec") != std::string::npos) {
+        GTEST_SKIP() << "Execution disabled for this test case";
+    }
+    std::istringstream input(code);
+
+    std::ostringstream out;
+    NRuntime::SetOutputStream(&out);
+    std::istream* inStream = nullptr;
+    std::ifstream fin;
+    if (fs::exists(stdin)) {
+        fin.open(stdin, std::ios::binary);
+        inStream = &fin;
+    }
+    NRuntime::SetInputStream(inStream);
+
+    TLLVMRunner runner({.OptLevel = 1});
+    auto res = runner.Run(input);
+    auto got = ResultString(res);
+
+    CheckExecGoldens(src, golden, goldenStdOut, got, out.str(), "LLVM OPT RUN");
+}
+
 TEST_P(RegExec, CoreExec) {
     const fs::path src = fs::path(CasesDir / GetParam().base).replace_extension(".kum");
     const fs::path stdin = fs::path(CasesDir / GetParam().base).replace_extension(".stdin");
