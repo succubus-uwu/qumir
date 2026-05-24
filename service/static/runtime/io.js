@@ -442,6 +442,10 @@ export function time_from_daystart_millis() {
 }
 
 export function sleep(milliseconds) {
+  return qumir_sleep(milliseconds);
+}
+
+export function qumir_sleep(milliseconds) {
   const delay = Math.max(0, Number(milliseconds) || 0);
   const h = allocFuture();
   enqueuePendingOp({

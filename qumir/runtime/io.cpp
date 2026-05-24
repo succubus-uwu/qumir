@@ -7,6 +7,7 @@
 #include <functional>
 #include <chrono>
 #include <thread>
+#include <ctime>
 
 #include <qumir/future.h>
 
@@ -20,7 +21,6 @@ std::ostream *Out = &std::cout;
 
 std::vector<std::function<void()>> g_pendingCalls;
 std::vector<TFuture<void>> g_pendingFutures;
-const std::chrono::time_zone* tz = std::chrono::current_zone();
 
 };
 
@@ -227,15 +227,24 @@ void output_reset_file() {
 int64_t time_from_daystart_millis() {
     using namespace std::chrono;
     auto now = system_clock::now();
-    auto localNow = zoned_time{tz, now};
-    auto localDays = floor<days>(localNow.get_local_time());
-    auto midnight = localDays;
-    return duration_cast<milliseconds>(
-        localNow.get_local_time() - midnight
-    ).count();
+    auto millis = duration_cast<milliseconds>(now.time_since_epoch()).count();
+    auto subsecondMillis = millis % 1000;
+    if (subsecondMillis < 0) {
+        subsecondMillis += 1000;
+    }
+
+    std::time_t time = system_clock::to_time_t(now);
+    std::tm localTime{};
+#if defined(_WIN32)
+    localtime_s(&localTime, &time);
+#else
+    localtime_r(&time, &localTime);
+#endif
+    return ((static_cast<int64_t>(localTime.tm_hour) * 60 + localTime.tm_min) * 60 + localTime.tm_sec) * 1000
+        + subsecondMillis;
 }
 
-ITypeErasedFuture* sleep(int64_t milliseconds) {
+ITypeErasedFuture* qumir_sleep(int64_t milliseconds) {
     auto promise = std::make_shared<TPromise<void>>();
     auto future = MakeExternalFuture<void>(promise);
     g_pendingCalls.emplace_back([promise, milliseconds]() {

@@ -6,6 +6,14 @@ find_package(LLVM REQUIRED CONFIG)
 
 message(STATUS "LLVM codegen enabled (LLVM ${LLVM_PACKAGE_VERSION})")
 
+if(APPLE)
+    foreach(dep IN ITEMS ZLIB::ZLIB LibEdit::LibEdit zstd::libzstd_shared zstd::libzstd_static)
+        if(TARGET ${dep})
+            set_target_properties(${dep} PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "")
+        endif()
+    endforeach()
+endif()
+
 # Require LLVM 20 or newer. Some APIs used in this target rely on LLVM 20+.
 # Prefer the provided major variable; if unavailable, derive it from LLVM_PACKAGE_VERSION.
 if (NOT DEFINED LLVM_VERSION_MAJOR)
@@ -69,7 +77,7 @@ set(LLVM_COMPONENTS
 )
 
 llvm_map_components_to_libnames(LLVM_LIBS ${LLVM_COMPONENTS})
-target_link_libraries(qumir_codegen_llvm PUBLIC ${LLVM_LIBS})
+target_link_libraries(qumir_codegen_llvm PRIVATE ${LLVM_LIBS})
 if(UNIX AND NOT APPLE)
     target_link_options(qumir_codegen_llvm PUBLIC -rdynamic)
 endif()
