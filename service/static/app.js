@@ -2899,7 +2899,7 @@ async function runWasmCoroutine({ instance, entryFn, args, usesRobot, usesTurtle
         // resolveFuture() internally calls __qumir_coro_resume(caller),
         // advancing the WASM coro to the next await or completion.
         const { h, execute } = futureEnv.shiftPendingOp();
-        execute();
+        await execute();
         futureEnv.resolveFuture(h);
       } else if (!isDone()) {
         // No pending external op: coro may be polling a wrapped child coro.

@@ -1,4 +1,5 @@
 import { __allocCString, __bindMemory as bindStringMemory, __loadString } from './string.js';
+import { allocFuture, enqueuePendingOp } from './future.js';
 
 // IO runtime shims: provide input/output functions expected by the program
 // and allow embedders to inject their own input/output streams. Also exposes
@@ -40,6 +41,56 @@ let DEFAULT_INPUT_STREAM = NullInputStream;
 let DEFAULT_INPUT_INITIALIZED = false;
 let OUTPUT_STREAM = NullOutputStream;
 let FILE_MANAGER = NullFileManager;
+let CACHED_LOCAL_MIDNIGHT_MS = null;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function localMidnightMs(nowMs) {
+  const now = new Date(nowMs);
+  return new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    0, 0, 0, 0
+  ).getTime();
+}
+
+function monotonicNowMs() {
+  return (typeof performance !== 'undefined' && typeof performance.now === 'function')
+    ? performance.now()
+    : Date.now();
+}
+
+function yieldSoon() {
+  if (typeof MessageChannel !== 'undefined') {
+    return new Promise(resolve => {
+      const channel = new MessageChannel();
+      channel.port1.onmessage = () => {
+        channel.port1.close();
+        channel.port2.close();
+        resolve();
+      };
+      channel.port2.postMessage(0);
+    });
+  }
+  if (typeof setImmediate === 'function') {
+    return new Promise(resolve => setImmediate(resolve));
+  }
+  return new Promise(resolve => setTimeout(resolve, 0));
+}
+
+async function asyncSleep(milliseconds) {
+  const deadline = monotonicNowMs() + milliseconds;
+  while (true) {
+    const remaining = deadline - monotonicNowMs();
+    if (remaining <= 0) return;
+    if (remaining > 128) {
+      await new Promise(resolve => setTimeout(resolve, remaining - 64));
+    } else {
+      await yieldSoon();
+    }
+  }
+}
 
 function normalizeInputStream(stream) {
   if (!stream) return NullInputStream;
@@ -374,6 +425,30 @@ export function output_set_file(handle) {
 
 export function output_reset_file() {
   __outputFileHandle = null;
+}
+
+// Time from local day start in milliseconds.
+export function time_from_daystart_millis() {
+  const nowMs = Date.now();
+  if (CACHED_LOCAL_MIDNIGHT_MS === null) {
+    CACHED_LOCAL_MIDNIGHT_MS = localMidnightMs(nowMs);
+  }
+  let elapsed = nowMs - CACHED_LOCAL_MIDNIGHT_MS;
+  if (elapsed < 0 || elapsed >= DAY_MS) {
+    CACHED_LOCAL_MIDNIGHT_MS = localMidnightMs(nowMs);
+    elapsed = nowMs - CACHED_LOCAL_MIDNIGHT_MS;
+  }
+  return BigInt(elapsed);
+}
+
+export function sleep(milliseconds) {
+  const delay = Math.max(0, Number(milliseconds) || 0);
+  const h = allocFuture();
+  enqueuePendingOp({
+    h,
+    execute: () => asyncSleep(delay)
+  });
+  return h;
 }
 
 // Dummy implementation for C++-style destructor registration used by some runtimes.

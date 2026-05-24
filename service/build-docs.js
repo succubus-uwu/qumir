@@ -69,6 +69,7 @@ function renderSidebar(active, mode, prefix) {
       <div id="docs-nav-docs"${isArchMode ? ' style="display:none"' : ''}>
         <a href="${prefix}index.html" class="${active === 'index.md' ? 'active' : ''}">Введение</a>
         <a href="${prefix}syntax.html" class="${active === 'syntax.md' ? 'active' : ''}">Синтаксис языка</a>
+        <a href="${prefix}standard-functions.html" class="${active === 'standard-functions.md' ? 'active' : ''}">Стандартные функции</a>
         <a href="${prefix}interpreter.html" class="${active === 'interpreter.md' ? 'active' : ''}">Интерпретатор</a>
         <a href="${prefix}compiler.html" class="${active === 'compiler.md' ? 'active' : ''}">Компилятор</a>
         <a href="${prefix}turtle.html" class="${active === 'turtle.md' ? 'active' : ''}">Исполнитель Черепаха</a>
@@ -125,6 +126,7 @@ function buildOne(mdFile, { srcDir = DOCS_SRC, mode = 'docs' } = {}) {
   const titles = {
     'index.md': 'Документация — Qumir',
     'syntax.md': 'Документация — Qumir (Синтаксис языка)',
+    'standard-functions.md': 'Документация — Qumir (Стандартные функции)',
     'interpreter.md': 'Документация — Qumir (Интерпретатор)',
     'compiler.md': 'Документация — Qumir (Компилятор)',
     'turtle.md': 'Документация — Qumir (Исполнитель Черепаха)',
@@ -150,6 +152,7 @@ function buildOne(mdFile, { srcDir = DOCS_SRC, mode = 'docs' } = {}) {
   const descriptions = {
     'index.md': 'Полная документация по языку программирования КуМир: синтаксис, компилятор, интерпретатор, исполнители Черепаха, Чертежник и Робот. Примеры программ и руководства.',
     'syntax.md': 'Подробное описание синтаксиса языка КуМир: переменные, типы данных, операторы, функции и алгоритмы. Руководство по программированию на КуМир.',
+    'standard-functions.md': 'Стандартные функции КуМир в Qumir: математика, случайные числа, строки, преобразования, файлы, время и ожидание.',
     'interpreter.md': 'Интерпретатор КуМир: установка, использование, режимы работы. Запуск программ на КуМир через интерпретатор.',
     'compiler.md': 'Компилятор КуМир: компиляция в WebAssembly, оптимизация, генерация кода. Использование компилятора для создания исполняемых программ.',
     'turtle.md': 'Исполнитель Черепаха в КуМир: команды управления, рисование графики, создание фракталов и геометрических фигур.',
