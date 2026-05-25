@@ -12,6 +12,7 @@ RobotModule::RobotModule()
     auto boolType = std::make_shared<NAst::TBoolType>();
     auto floatType = std::make_shared<NAst::TFloatType>();
     auto voidType = std::make_shared<NAst::TVoidType>();
+    auto futureVoidType = NAst::WrapFutureType(voidType);
 
     std::vector<TExternalFunction> functions = {
         {
@@ -22,8 +23,7 @@ RobotModule::RobotModule()
                 return reinterpret_cast<uint64_t>(robot_left());
             },
             .ArgTypes = {},
-            .ReturnType = voidType,
-            .MaySuspend = true,
+            .ReturnType = futureVoidType,
         },
         {
             .Name = "вправо",
@@ -33,8 +33,7 @@ RobotModule::RobotModule()
                 return reinterpret_cast<uint64_t>(robot_right());
             },
             .ArgTypes = {},
-            .ReturnType = voidType,
-            .MaySuspend = true,
+            .ReturnType = futureVoidType,
         },
         {
             .Name = "вверх",
@@ -44,8 +43,7 @@ RobotModule::RobotModule()
                 return reinterpret_cast<uint64_t>(robot_up());
             },
             .ArgTypes = {},
-            .ReturnType = voidType,
-            .MaySuspend = true,
+            .ReturnType = futureVoidType,
         },
         {
             .Name = "вниз",
@@ -55,8 +53,7 @@ RobotModule::RobotModule()
                 return reinterpret_cast<uint64_t>(robot_down());
             },
             .ArgTypes = {},
-            .ReturnType = voidType,
-            .MaySuspend = true,
+            .ReturnType = futureVoidType,
         },
         {
             .Name = "закрасить",
@@ -66,8 +63,7 @@ RobotModule::RobotModule()
                 return reinterpret_cast<uint64_t>(robot_paint());
             },
             .ArgTypes = {},
-            .ReturnType = voidType,
-            .MaySuspend = true,
+            .ReturnType = futureVoidType,
         },
         {
             .Name = "слева свободно",

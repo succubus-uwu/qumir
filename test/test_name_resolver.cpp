@@ -33,21 +33,6 @@ TExprPtr parseStmtList(const std::string& src) {
     return std::move(res.value());
 }
 
-const TExternalFunction* findExternal(const std::vector<TExternalFunction>& functions, const std::string& mangledName) {
-    for (const auto& function : functions) {
-        if (function.MangledName == mangledName) {
-            return &function;
-        }
-    }
-    return nullptr;
-}
-
-void expectMaySuspend(const std::vector<TExternalFunction>& functions, const std::string& mangledName, bool maySuspend) {
-    auto* function = findExternal(functions, mangledName);
-    ASSERT_NE(function, nullptr) << mangledName;
-    EXPECT_EQ(function->MaySuspend, maySuspend) << mangledName;
-}
-
 std::shared_ptr<TFunDecl> findFunction(const TExprPtr& ast, const std::string& name) {
     auto block = TMaybeNode<TBlockExpr>(ast).Cast();
     if (!block) {

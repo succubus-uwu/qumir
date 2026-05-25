@@ -890,8 +890,7 @@ SystemModule::SystemModule() {
                 return reinterpret_cast<uint64_t>(future);
             },
             .ArgTypes = { integerType },
-            .ReturnType = voidType,
-            .MaySuspend = true,
+            .ReturnType = NAst::WrapFutureType(voidType),
         },
         {
             .Name = "время",

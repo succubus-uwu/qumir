@@ -451,7 +451,9 @@ std::expected<bool, TError> PostTypeAnnotationTransform(NAst::TExprPtr& expr, NS
                     }
                     if (stmt->Type) {
                         auto maybeVoidType = NAst::TMaybeType<NAst::TVoidType>(stmt->Type);
-                        if (!maybeVoidType) {
+                        auto futureResultType = NAst::FutureResultType(stmt->Type);
+                        bool isFutureVoid = futureResultType && NAst::TMaybeType<NAst::TVoidType>(futureResultType);
+                        if (!maybeVoidType && !isFutureVoid) {
                             errors.push_back(TError(stmt->Location, "выражение, возвращающее результат, должно быть присвоено переменной или использовано"));
                         }
                     }
@@ -658,10 +660,7 @@ struct TCoroutineAnalysis {
             auto call = maybeCall.Cast();
             if (auto maybeIdent = NAst::TMaybeNode<NAst::TIdentExpr>(call->Callee)) {
                 if (auto callee = LookupFunction(maybeIdent.Cast(), scopeId)) {
-                    if (callee->MaySuspend) {
-                        DirectCoroutineFunctions.insert(currentFunction);
-                        Changed = EnsureFutureReturn(callee) || Changed;
-                    } else if (NAst::IsFutureType(callee->RetType)) {
+                    if (NAst::IsFutureType(callee->RetType)) {
                         DirectCoroutineFunctions.insert(currentFunction);
                     }
                     if (callee->Body) {
@@ -714,7 +713,7 @@ struct TCoroutineAnalysis {
     {
         if (auto maybeIdent = NAst::TMaybeNode<NAst::TIdentExpr>(call->Callee)) {
             if (auto callee = LookupFunction(maybeIdent.Cast(), scopeId)) {
-                return callee->MaySuspend || NAst::IsFutureType(callee->RetType);
+                return NAst::IsFutureType(callee->RetType);
             }
         }
         return false;

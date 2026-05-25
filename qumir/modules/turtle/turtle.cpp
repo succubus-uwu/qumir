@@ -17,6 +17,7 @@ TurtleModule::TurtleModule()
     auto voidType = std::make_shared<NAst::TVoidType>();
     auto stringType = std::make_shared<NAst::TStringType>();
     auto voidPtrType = std::make_shared<NAst::TPointerType>(voidType);
+    auto futureVoidType = NAst::WrapFutureType(voidType);
 
     std::vector<TExternalFunction> functions = {
         {
@@ -27,8 +28,7 @@ TurtleModule::TurtleModule()
                 return reinterpret_cast<uint64_t>(turtle_pen_up());
             },
             .ArgTypes = {  },
-            .ReturnType = voidType,
-            .MaySuspend = true,
+            .ReturnType = futureVoidType,
         },
         {
             .Name = "опустить хвост",
@@ -38,8 +38,7 @@ TurtleModule::TurtleModule()
                 return reinterpret_cast<uint64_t>(turtle_pen_down());
             },
             .ArgTypes = {  },
-            .ReturnType = voidType,
-            .MaySuspend = true,
+            .ReturnType = futureVoidType,
         },
         {
             .Name = "вперед",
@@ -49,8 +48,7 @@ TurtleModule::TurtleModule()
                 return reinterpret_cast<uint64_t>(turtle_forward(std::bit_cast<double>(args[0])));
             },
             .ArgTypes = { floatType },
-            .ReturnType = voidType,
-            .MaySuspend = true,
+            .ReturnType = futureVoidType,
         },
         {
             .Name = "назад",
@@ -60,8 +58,7 @@ TurtleModule::TurtleModule()
                 return reinterpret_cast<uint64_t>(turtle_backward(std::bit_cast<double>(args[0])));
             },
             .ArgTypes = { floatType },
-            .ReturnType = voidType,
-            .MaySuspend = true,
+            .ReturnType = futureVoidType,
         },
         {
             .Name = "влево",
@@ -71,8 +68,7 @@ TurtleModule::TurtleModule()
                 return reinterpret_cast<uint64_t>(turtle_turn_left(std::bit_cast<double>(args[0])));
             },
             .ArgTypes = { floatType },
-            .ReturnType = voidType,
-            .MaySuspend = true,
+            .ReturnType = futureVoidType,
         },
         {
             .Name = "вправо",
@@ -82,8 +78,7 @@ TurtleModule::TurtleModule()
                 return reinterpret_cast<uint64_t>(turtle_turn_right(std::bit_cast<double>(args[0])));
             },
             .ArgTypes = { floatType },
-            .ReturnType = voidType,
-            .MaySuspend = true,
+            .ReturnType = futureVoidType,
         },
         {
             .Name = "сохранить состояние",
@@ -93,8 +88,7 @@ TurtleModule::TurtleModule()
                 return reinterpret_cast<uint64_t>(turtle_save_state());
             },
             .ArgTypes = {  },
-            .ReturnType = voidType,
-            .MaySuspend = true,
+            .ReturnType = futureVoidType,
         },
         {
             .Name = "восстановить состояние",
@@ -104,8 +98,7 @@ TurtleModule::TurtleModule()
                 return reinterpret_cast<uint64_t>(turtle_restore_state());
             },
             .ArgTypes = {  },
-            .ReturnType = voidType,
-            .MaySuspend = true,
+            .ReturnType = futureVoidType,
         },
     };
 

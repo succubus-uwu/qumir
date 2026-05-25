@@ -16,7 +16,6 @@ struct TExternalFunction {
     NAst::TTypePtr ReturnType;
     bool RequireArgsMaterialization = false; // if true, arguments must be materialized before calling, used for strings
     bool IsOp = false; // if true, Name is an operator symbol; no name conflict check on import
-    bool MaySuspend = false; // if true, the call is a coroutine suspend point for animated runtimes
     // Optional inline factory: receives annotated argument ASTs, returns replacement AST.
     // If set, the IR interpreter replaces the call with the returned AST.
     // Other backends (LLVM, WASM) continue using Ptr/Packed.

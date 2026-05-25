@@ -277,8 +277,7 @@ PainterModule::PainterModule() {
                 return reinterpret_cast<uint64_t>(future);
             },
             .ArgTypes = { integerType, integerType, colorType },
-            .ReturnType = voidType,
-            .MaySuspend = true,
+            .ReturnType = NAst::WrapFutureType(voidType),
         },
         {
             .Name = "загрузить лист",

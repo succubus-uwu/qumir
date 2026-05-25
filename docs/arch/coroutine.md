@@ -31,9 +31,8 @@ Physically, if a function calls a coroutine it also becomes a coroutine
 `Future<T>` is an AST-level type. It marks a function whose execution may
 suspend before producing `T`.
 
-Runtime functions that can suspend are marked on their function declarations
-with `MaySuspend`. The coroutine annotation pass treats those functions as
-returning `Future<RetType>` for front-end typing.
+Runtime functions that can suspend are declared with `Future<RetType>` return
+types. The coroutine annotation pass uses that return type directly.
 
 User functions are not annotated as coroutines during normal type annotation.
 First the ordinary type annotator assigns types, then a separate transform
@@ -59,8 +58,8 @@ the transform has inserted it.
 `CoroutineAnnotationTransform` builds a call graph and marks direct coroutine
 callers:
 
-- a function calls a `MaySuspend` runtime function;
-- a function calls another function already returning `Future<T>`.
+- a function calls a runtime function returning `Future<T>`;
+- a function calls another function returning `Future<T>`.
 
 The mark propagates backwards. If `a` calls `b` and `b` is a coroutine,
 `a` becomes a coroutine too, and its return type changes from `T` to `Future<T>`.
@@ -71,10 +70,10 @@ The mark propagates backwards. If `a` calls `b` and `b` is a coroutine,
 TAwaitExpr { TExprPtr Operand; }
 ```
 
-The transform rewrites `(call f ...)` to `(await (call f ...))` when `f` is
-`MaySuspend` or returns `Future<T>`. On the next type annotation iteration,
-`AnnotateAwait` checks the operand has type `Future<T>` and sets the await
-expression type to `T`.
+The transform rewrites `(call f ...)` to `(await (call f ...))` when `f`
+returns `Future<T>`. On the next type annotation iteration, `AnnotateAwait`
+checks the operand has type `Future<T>` and sets the await expression type to
+`T`.
 
 ---
 
@@ -211,7 +210,7 @@ Source:
 кон
 ```
 
-Robot actions are `MaySuspend`, so `квадрат` becomes a coroutine.
+Robot actions return `Future<void>`, so `квадрат` becomes a coroutine.
 Printed IR (shortened):
 
 ```text
