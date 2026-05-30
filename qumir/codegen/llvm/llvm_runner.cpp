@@ -19,6 +19,7 @@
 #include <qumir/runtime/runtime.h> // for __ensure and longjmp escape hatch
 #include <qumir/runtime/robot.h>
 #include <qumir/runtime/turtle.h>
+#include <qumir/runtime/drawer.h>
 #include <qumir/runtime/painter.h>
 #include <qumir/runtime/future.h>
 
@@ -163,6 +164,7 @@ std::optional<std::string> TLlvmRunner::Run(
         size_t processed = 0;
         processed += NRuntime::robot_process_events();
         processed += NRuntime::turtle_process_events();
+        processed += NRuntime::drawer_process_events();
         processed += NRuntime::painter_process_events();
         processed += NRuntime::io_process_events();
         return processed;

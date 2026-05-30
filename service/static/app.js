@@ -2613,9 +2613,10 @@ async function runWasm() {
     if (mem && typeof futureEnv.__bindMemory === 'function') {
       futureEnv.__bindMemory(mem);
     }
-    // Give robot/turtle/painter modules access to the JS future runtime
+    // Give async executor modules access to the JS future runtime
     if (__robotModule   && typeof __robotModule.__bindFutureRuntime   === 'function') __robotModule.__bindFutureRuntime(futureEnv);
     if (__turtleModule  && typeof __turtleModule.__bindFutureRuntime  === 'function') __turtleModule.__bindFutureRuntime(futureEnv);
+    if (__drawerModule  && typeof __drawerModule.__bindFutureRuntime  === 'function') __drawerModule.__bindFutureRuntime(futureEnv);
     if (__painterModule && typeof __painterModule.__bindFutureRuntime === 'function') __painterModule.__bindFutureRuntime(futureEnv);
 
     // Bind string runtime to drawer module for text handling

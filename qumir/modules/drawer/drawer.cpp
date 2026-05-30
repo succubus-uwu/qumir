@@ -14,6 +14,7 @@ DrawerModule::DrawerModule()
     auto voidType = std::make_shared<NAst::TVoidType>();
     auto stringType = std::make_shared<NAst::TStringType>();
     auto colorType = std::make_shared<NAst::TNamedType>("цвет", integerType);
+    auto futureVoidType = NAst::WrapFutureType(voidType);
 
     std::vector<TExternalFunction> functions = {
         {
@@ -52,35 +53,32 @@ DrawerModule::DrawerModule()
         {
             .Name = "сместиться в точку",
             .MangledName = "drawer_move_to",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(double, double)>(drawer_move_to)),
+            .Ptr = reinterpret_cast<void*>(static_cast<ITypeErasedFuture*(*)(double, double)>(drawer_move_to)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
-                drawer_move_to(std::bit_cast<double>(args[0]), std::bit_cast<double>(args[1]));
-                return 0;
+                return reinterpret_cast<uint64_t>(drawer_move_to(std::bit_cast<double>(args[0]), std::bit_cast<double>(args[1])));
             },
             .ArgTypes = { floatType, floatType },
-            .ReturnType = voidType,
+            .ReturnType = futureVoidType,
         },
         {
             .Name = "сместиться на вектор",
             .MangledName = "drawer_move_by",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(double, double)>(drawer_move_by)),
+            .Ptr = reinterpret_cast<void*>(static_cast<ITypeErasedFuture*(*)(double, double)>(drawer_move_by)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
-                drawer_move_by(std::bit_cast<double>(args[0]), std::bit_cast<double>(args[1]));
-                return 0;
+                return reinterpret_cast<uint64_t>(drawer_move_by(std::bit_cast<double>(args[0]), std::bit_cast<double>(args[1])));
             },
             .ArgTypes = { floatType, floatType },
-            .ReturnType = voidType,
+            .ReturnType = futureVoidType,
         },
         {
             .Name = "написать",
             .MangledName = "drawer_write_text",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(double, const char*)>(drawer_write_text)),
+            .Ptr = reinterpret_cast<void*>(static_cast<ITypeErasedFuture*(*)(double, const char*)>(drawer_write_text)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
-                drawer_write_text(std::bit_cast<double>(args[0]), reinterpret_cast<const char*>(args[1]));
-                return 0;
+                return reinterpret_cast<uint64_t>(drawer_write_text(std::bit_cast<double>(args[0]), reinterpret_cast<const char*>(args[1])));
             },
             .ArgTypes = { floatType, stringType },
-            .ReturnType = voidType,
+            .ReturnType = futureVoidType,
             .RequireArgsMaterialization = true,
         },
     };

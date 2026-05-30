@@ -1,0 +1,14 @@
+function helper () { ; ptr to void coroutine result void
+  block {
+    label: label(0)
+    arg imm(4622100592565682176,f64) 
+    arg imm(4612811918334230528,f64) 
+    call tmp(0,ptr to void) = сместиться на вектор 
+    await tmp(0,ptr to void) 
+    jmp label(1) 
+  }
+  block {
+    label: label(1)
+    ret 
+  }
+}

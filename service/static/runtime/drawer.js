@@ -4,9 +4,9 @@
 //   void drawer_pen_up();
 //   void drawer_pen_down();
 //   void drawer_set_color(int64_t color);
-//   void drawer_move_to(double x, double y);
-//   void drawer_move_by(double dx, double dy);
-//   void drawer_write_text(double width, const char* text);
+//   Future<void> drawer_move_to(double x, double y);
+//   Future<void> drawer_move_by(double dx, double dy);
+//   Future<void> drawer_write_text(double width, const char* text);
 // Helpers:
 //   __bindDrawerCanvas(canvas)
 //   __resetDrawer(clear)
@@ -236,15 +236,15 @@ function scheduleAutoFit() {
 }
 
 function fitToContent() {
-  if (!canvas || !state.hasPath) return;
+  if (!canvas || !state.hasPath) return false;
   // If canvas is hidden (display:none), its CSS size is near zero; defer fitting until visible
   const rect0 = canvas.getBoundingClientRect();
   if ((rect0.width|0) < 10 || (rect0.height|0) < 10) {
     // Keep autoFitPending so we can refit on show
-    return;
+    return false;
   }
   const { minX, minY, maxX, maxY } = state.bounds;
-  if (!(isFinite(minX) && isFinite(minY) && isFinite(maxX) && isFinite(maxY))) return;
+  if (!(isFinite(minX) && isFinite(minY) && isFinite(maxX) && isFinite(maxY))) return false;
   const rect = canvas.getBoundingClientRect();
   const cssW = Math.max(1, Math.floor(rect.width));
   const cssH = Math.max(1, Math.floor(rect.height));
@@ -265,6 +265,35 @@ function fitToContent() {
   view.ox += centerScreenX - screen.x;
   view.oy += centerScreenY - screen.y;
   scheduleDraw();
+  return true;
+}
+
+function contentNeedsFocus(padPx = 32) {
+  if (!canvas || !state.hasPath) return false;
+  const rect = canvas.getBoundingClientRect();
+  const cssW = Math.max(1, Math.floor(rect.width));
+  const cssH = Math.max(1, Math.floor(rect.height));
+  if (cssW < 10 || cssH < 10) return true;
+  const { minX, minY, maxX, maxY } = state.bounds;
+  if (!(isFinite(minX) && isFinite(minY) && isFinite(maxX) && isFinite(maxY))) return false;
+  const p1 = toScreen(minX, minY);
+  const p2 = toScreen(maxX, maxY);
+  const left = Math.min(p1.x, p2.x);
+  const right = Math.max(p1.x, p2.x);
+  const top = Math.min(p1.y, p2.y);
+  const bottom = Math.max(p1.y, p2.y);
+  return left < padPx || right > cssW - padPx || top < padPx || bottom > cssH - padPx;
+}
+
+function focusContentAfterChange() {
+  if (userInteracted) return false;
+  autoFitPending = true;
+  if (!contentNeedsFocus()) return false;
+  if (autoFitTimer) {
+    clearTimeout(autoFitTimer);
+    autoFitTimer = null;
+  }
+  return fitToContent();
 }
 
 function onWheel(e) {
@@ -399,6 +428,17 @@ function updateBounds(x, y) {
   b.maxY = Math.max(b.maxY, y);
 }
 
+// JS future runtime — set by __bindFutureRuntime from app.js.
+let __futureRuntime = null;
+export function __bindFutureRuntime(fr) { __futureRuntime = fr; }
+
+function _drawerOp(execute) {
+  if (!__futureRuntime) { execute(); return 0; }
+  const h = __futureRuntime.allocFuture();
+  __futureRuntime.enqueuePendingOp({ h, execute });
+  return h;
+}
+
 export function drawer_pen_up() {
   state.penDown = false;
   scheduleDraw();
@@ -417,24 +457,24 @@ export function drawer_set_color(color) {
 export function drawer_move_to(x, y) {
   const nx = Number(x) || 0;
   const ny = Number(y) || 0;
+  return _drawerOp(() => {
+    if (state.penDown) {
+      state.path.push({
+        x1: state.x,
+        y1: state.y,
+        x2: nx,
+        y2: ny,
+        color: state.color
+      });
+      updateBounds(state.x, state.y);
+      updateBounds(nx, ny);
+      state.hasPath = true;
+    }
 
-  if (state.penDown) {
-    state.path.push({
-      x1: state.x,
-      y1: state.y,
-      x2: nx,
-      y2: ny,
-      color: state.color
-    });
-    updateBounds(state.x, state.y);
-    updateBounds(nx, ny);
-    state.hasPath = true;
-  }
-
-  state.x = nx;
-  state.y = ny;
-  scheduleDraw();
-  scheduleAutoFit();
+    state.x = nx;
+    state.y = ny;
+    if (!focusContentAfterChange()) scheduleDraw();
+  });
 }
 
 export function drawer_move_by(dx, dy) {
@@ -442,24 +482,24 @@ export function drawer_move_by(dx, dy) {
   const ddy = Number(dy) || 0;
   const nx = state.x + ddx;
   const ny = state.y + ddy;
+  return _drawerOp(() => {
+    if (state.penDown) {
+      state.path.push({
+        x1: state.x,
+        y1: state.y,
+        x2: nx,
+        y2: ny,
+        color: state.color
+      });
+      updateBounds(state.x, state.y);
+      updateBounds(nx, ny);
+      state.hasPath = true;
+    }
 
-  if (state.penDown) {
-    state.path.push({
-      x1: state.x,
-      y1: state.y,
-      x2: nx,
-      y2: ny,
-      color: state.color
-    });
-    updateBounds(state.x, state.y);
-    updateBounds(nx, ny);
-    state.hasPath = true;
-  }
-
-  state.x = nx;
-  state.y = ny;
-  scheduleDraw();
-  scheduleAutoFit();
+    state.x = nx;
+    state.y = ny;
+    if (!focusContentAfterChange()) scheduleDraw();
+  });
 }
 
 // Need access to string runtime for loading strings from handles/memory
@@ -493,18 +533,19 @@ export function drawer_write_text(width, textPtr) {
 
   const w = Number(width) || 50;
 
-  state.texts.push({
-    x: state.x,
-    y: state.y,
-    width: w,
-    text: text,
-    color: state.color
+  return _drawerOp(() => {
+    state.texts.push({
+      x: state.x,
+      y: state.y,
+      width: w,
+      text: text,
+      color: state.color
+    });
+
+    updateBounds(state.x, state.y);
+    updateBounds(state.x + w / view.scale, state.y);
+    state.hasPath = true;
+
+    if (!focusContentAfterChange()) scheduleDraw();
   });
-
-  updateBounds(state.x, state.y);
-  updateBounds(state.x + w / view.scale, state.y);
-  state.hasPath = true;
-
-  scheduleDraw();
-  scheduleAutoFit();
 }
