@@ -48,20 +48,59 @@ export class RobotField {
     this.painted = new Set();
     this.hWalls = new Set(); // horizontal walls: "x,y" means wall below cell (x,y)
     this.vWalls = new Set(); // vertical walls: "x,y" means wall to the right of cell (x,y)
+    this.colors = new Map(); // "x,y" -> numeric color from .fil
     this.radiation = new Map(); // "x,y" -> value
     this.temperature = new Map(); // "x,y" -> value
+    this.symbol = new Map(); // "x,y" -> Symbol column from .fil
+    this.symbol1 = new Map(); // "x,y" -> Symbol1 column from .fil
+    this.point = new Map(); // "x,y" -> Point column from .fil
   }
 
   reset() {
-    this.width = 10;
-    this.height = 8;
+    this.width = 7;
+    this.height = 7;
     this.robotX = 0;
     this.robotY = 0;
     this.painted.clear();
     this.hWalls.clear();
     this.vWalls.clear();
+    this.colors.clear();
     this.radiation.clear();
     this.temperature.clear();
+    this.symbol.clear();
+    this.symbol1.clear();
+    this.point.clear();
+  }
+
+  resize(width, height) {
+    this.width = Math.max(1, Math.min(200, Number(width) | 0));
+    this.height = Math.max(1, Math.min(200, Number(height) | 0));
+    this.robotX = Math.max(0, Math.min(this.width - 1, this.robotX));
+    this.robotY = Math.max(0, Math.min(this.height - 1, this.robotY));
+
+    const inCellBounds = (key) => {
+      const [x, y] = key.split(',').map(Number);
+      return x >= 0 && y >= 0 && x < this.width && y < this.height;
+    };
+    const inHorizontalWallBounds = (key) => {
+      const [x, y] = key.split(',').map(Number);
+      return x >= 0 && y >= 0 && x < this.width && y < this.height - 1;
+    };
+    const inVerticalWallBounds = (key) => {
+      const [x, y] = key.split(',').map(Number);
+      return x >= 0 && y >= 0 && x < this.width - 1 && y < this.height;
+    };
+    for (const set of [this.painted, this.hWalls, this.vWalls]) {
+      const predicate = set === this.hWalls ? inHorizontalWallBounds : set === this.vWalls ? inVerticalWallBounds : inCellBounds;
+      for (const key of Array.from(set)) {
+        if (!predicate(key)) set.delete(key);
+      }
+    }
+    for (const map of [this.colors, this.radiation, this.temperature, this.symbol, this.symbol1, this.point]) {
+      for (const key of Array.from(map.keys())) {
+        if (!inCellBounds(key)) map.delete(key);
+      }
+    }
   }
 
   addWalls(x, y, wallN, wallE, wallS, wallW) {
@@ -134,6 +173,7 @@ export class RobotField {
 
       const color = parseInt(parts[3] || '0', 10) || 0;
       if (color !== 0) {
+        this.colors.set(`${x},${y}`, color);
         this.painted.add(`${x},${y}`);
       }
 
@@ -148,6 +188,19 @@ export class RobotField {
         const temp = parseFloat(parts[5]);
         if (!isNaN(temp) && temp !== 0) {
           this.temperature.set(`${x},${y}`, temp);
+        }
+      }
+
+      if (parts[6] !== undefined && parts[6] !== '$') {
+        this.symbol.set(`${x},${y}`, parts[6]);
+      }
+      if (parts[7] !== undefined && parts[7] !== '$') {
+        this.symbol1.set(`${x},${y}`, parts[7]);
+      }
+      if (parts[8] !== undefined) {
+        const point = parseInt(parts[8], 10);
+        if (!isNaN(point) && point !== 0) {
+          this.point.set(`${x},${y}`, point);
         }
       }
     }
@@ -180,6 +233,7 @@ export class RobotField {
 
   paint() {
     this.painted.add(`${this.robotX},${this.robotY}`);
+    this.colors.set(`${this.robotX},${this.robotY}`, 1);
   }
 
   getRadiation() {
@@ -201,6 +255,7 @@ export class RobotField {
     // Collect all cells with special properties
     const specialCells = new Set();
     for (const key of this.painted) specialCells.add(key);
+    for (const key of this.colors.keys()) specialCells.add(key);
     for (const key of this.hWalls) {
       // hWalls "x,y" = wall below (x,y), which is South wall for (x,y) and North wall for (x,y+1)
       const [x, y] = key.split(',').map(Number);
@@ -215,18 +270,30 @@ export class RobotField {
     }
     for (const key of this.radiation.keys()) specialCells.add(key);
     for (const key of this.temperature.keys()) specialCells.add(key);
+    for (const key of this.symbol.keys()) specialCells.add(key);
+    for (const key of this.symbol1.keys()) specialCells.add(key);
+    for (const key of this.point.keys()) specialCells.add(key);
 
-    for (const key of specialCells) {
+    const sortedCells = Array.from(specialCells).sort((a, b) => {
+      const [ax, ay] = a.split(',').map(Number);
+      const [bx, by] = b.split(',').map(Number);
+      return ay === by ? ax - bx : ay - by;
+    });
+
+    for (const key of sortedCells) {
       const [x, y] = key.split(',').map(Number);
       const wallN = (y > 0 && this.hWalls.has(`${x},${y - 1}`)) ? 1 : 0;
       const wallS = (y < this.height - 1 && this.hWalls.has(`${x},${y}`)) ? 1 : 0;
       const wallW = (x > 0 && this.vWalls.has(`${x - 1},${y}`)) ? 1 : 0;
       const wallE = (x < this.width - 1 && this.vWalls.has(`${x},${y}`)) ? 1 : 0;
       const wall = wallN + wallS * 2 + wallW * 4 + wallE * 8;
-      const color = this.painted.has(key) ? 1 : 0;
+      const color = this.colors.get(key) || (this.painted.has(key) ? 1 : 0);
       const rad = this.radiation.get(key) || 0;
       const temp = this.temperature.get(key) || 0;
-      lines.push(`${x + 1} ${y + 1} ${wall} ${color} ${rad.toFixed(6)} ${temp.toFixed(6)} $ $ 0`);
+      const symbol = this.symbol.get(key) || '$';
+      const symbol1 = this.symbol1.get(key) || '$';
+      const point = this.point.get(key) || 0;
+      lines.push(`${x + 1} ${y + 1} ${wall} ${color} ${rad.toFixed(6)} ${temp.toFixed(6)} ${symbol} ${symbol1} ${point}`);
     }
 
     return lines.join('\n');
@@ -252,6 +319,30 @@ function getFiles() {
   return typeof __filesAccessor === 'function' ? __filesAccessor() : [];
 }
 
+function findFilFile() {
+  const files = getFiles();
+  for (const f of files) {
+    const name = (f.name || '').toLowerCase();
+    if (name.endsWith('.fil')) return f;
+  }
+  return null;
+}
+
+function writeFieldToFile() {
+  let filFile = findFilFile();
+  const content = field.toText();
+  if (!filFile) {
+    if (typeof __addFileCallback !== 'function') return false;
+    __addFileCallback({ name: 'robot.fil', content });
+    return true;
+  }
+  filFile.content = content;
+  if (typeof __updateFileCallback === 'function') {
+    __updateFileCallback(filFile.id, content);
+  }
+  return true;
+}
+
 // Lazy loading flag - field is loaded on first robot command
 let __fieldLoaded = false;
 
@@ -260,26 +351,12 @@ function ensureFieldLoaded() {
   if (__fieldLoaded) return;
   __fieldLoaded = true;
 
-  const files = getFiles();
-
-  // Look for first .fil file
-  let filFile = null;
-  for (const f of files) {
-    const name = (f.name || '').toLowerCase();
-    if (name.endsWith('.fil')) {
-      filFile = f;
-      break;
-    }
-  }
+  const filFile = findFilFile();
 
   if (filFile && filFile.content) {
     field.parseField(filFile.content);
   } else {
     field.parseField(DEFAULT_FIELD);
-    // Create default .fil file if callback available
-    if (typeof __addFileCallback === 'function') {
-      __addFileCallback({ name: 'robot.fil', content: DEFAULT_FIELD });
-    }
   }
 
 }
@@ -295,17 +372,7 @@ export function __previewField() {
   field.reset();
   __fieldLoaded = true;
 
-  const files = getFiles();
-
-  // Look for first .fil file
-  let filFile = null;
-  for (const f of files) {
-    const name = (f.name || '').toLowerCase();
-    if (name.endsWith('.fil')) {
-      filFile = f;
-      break;
-    }
-  }
+  const filFile = findFilFile();
 
   if (filFile && filFile.content) {
     field.parseField(filFile.content);
@@ -330,6 +397,103 @@ export function __getRobotState() {
     hWalls: Array.from(field.hWalls),
     vWalls: Array.from(field.vWalls)
   };
+}
+
+export function __writeFieldToFil() {
+  return writeFieldToFile();
+}
+
+export function __setRobotPosition(x, y) {
+  ensureFieldLoaded();
+  field.robotX = Math.max(0, Math.min(field.width - 1, Number(x) | 0));
+  field.robotY = Math.max(0, Math.min(field.height - 1, Number(y) | 0));
+  return writeFieldToFile();
+}
+
+export function __resizeField(width, height) {
+  ensureFieldLoaded();
+  field.resize(width, height);
+  return writeFieldToFile();
+}
+
+export function __toggleWall(x, y, side) {
+  ensureFieldLoaded();
+  x = Number(x) | 0;
+  y = Number(y) | 0;
+  let set = null;
+  let key = null;
+  if (side === 'north' && y > 0) {
+    set = field.hWalls;
+    key = `${x},${y - 1}`;
+  } else if (side === 'south' && y < field.height - 1) {
+    set = field.hWalls;
+    key = `${x},${y}`;
+  } else if (side === 'west' && x > 0) {
+    set = field.vWalls;
+    key = `${x - 1},${y}`;
+  } else if (side === 'east' && x < field.width - 1) {
+    set = field.vWalls;
+    key = `${x},${y}`;
+  }
+  if (!set || !key) return false;
+  if (set.has(key)) set.delete(key);
+  else set.add(key);
+  return writeFieldToFile();
+}
+
+export function __togglePainted(x, y) {
+  ensureFieldLoaded();
+  const key = `${Number(x) | 0},${Number(y) | 0}`;
+  if (field.painted.has(key) || field.colors.has(key)) {
+    field.painted.delete(key);
+    field.colors.delete(key);
+  } else {
+    field.painted.add(key);
+    field.colors.set(key, 1);
+  }
+  return writeFieldToFile();
+}
+
+export function __getCellProperties(x, y) {
+  ensureFieldLoaded();
+  const key = `${Number(x) | 0},${Number(y) | 0}`;
+  return {
+    color: field.colors.get(key) || (field.painted.has(key) ? 1 : 0),
+    radiation: field.radiation.get(key) || 0,
+    temperature: field.temperature.get(key) || 0,
+    symbol: field.symbol.get(key) || '$',
+    symbol1: field.symbol1.get(key) || '$',
+    point: field.point.get(key) || 0
+  };
+}
+
+export function __setCellProperties(x, y, props = {}) {
+  ensureFieldLoaded();
+  const key = `${Number(x) | 0},${Number(y) | 0}`;
+  const color = parseInt(props.color ?? 0, 10) || 0;
+  if (color) {
+    field.colors.set(key, color);
+    field.painted.add(key);
+  } else {
+    field.colors.delete(key);
+    field.painted.delete(key);
+  }
+  const radiation = parseFloat(props.radiation ?? 0);
+  if (!isNaN(radiation) && radiation !== 0) field.radiation.set(key, radiation);
+  else field.radiation.delete(key);
+  const temperature = parseFloat(props.temperature ?? 0);
+  if (!isNaN(temperature) && temperature !== 0) field.temperature.set(key, temperature);
+  else field.temperature.delete(key);
+  const symbol = String(props.symbol ?? '$').trim() || '$';
+  if (symbol !== '$') field.symbol.set(key, symbol);
+  else field.symbol.delete(key);
+  const symbol1 = String(props.symbol1 ?? '$').trim() || '$';
+  if (symbol1 !== '$') field.symbol1.set(key, symbol1);
+  else field.symbol1.delete(key);
+  const point = parseInt(props.point ?? 0, 10) || 0;
+  if (point) field.point.set(key, point);
+  else field.point.delete(key);
+  return writeFieldToFile();
 }
 
 // Runtime API functions (exported for WASM)

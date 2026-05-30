@@ -17,6 +17,10 @@ let __turtleToggle = null;
 let __turtleModule = null;
 let __robotModule = null;
 let __robotCanvas = null;
+let __robotEditEnabled = false;
+let __robotEditTool = 'wall';
+let __robotResizeDrag = null;
+let __robotSuppressNextClick = false;
 let __executorToolbarMode = null;
 let __drawerModule = null;
 let __drawerCanvas = null;
@@ -353,6 +357,35 @@ function hasFilFile(files) {
   return files.some(f => f && typeof f.name === 'string' && f.name.toLowerCase().endsWith('.fil'));
 }
 
+function addRobotIoFile(file) {
+  const newId = generateIoFileId();
+  const f = { id: newId, name: file.name || 'robot.fil', content: file.content || '' };
+  __ioFiles.push(f);
+  renderIoFilePane(f);
+  refreshIoSelectOptions();
+  persistIoFiles();
+  return f;
+}
+
+function updateRobotIoFile(fileId, content) {
+  const file = __ioFiles.find(f => f.id === fileId);
+  if (!file) return;
+  file.content = content;
+  if (file.elements && file.elements.editor && file.elements.editor.value !== content) {
+    file.elements.editor.value = content;
+  }
+  persistIoFiles();
+}
+
+function setupRobotFilesAccessor() {
+  if (!__robotModule || typeof __robotModule.__setRobotFilesAccessor !== 'function') return;
+  __robotModule.__setRobotFilesAccessor(
+    () => __ioFiles,
+    addRobotIoFile,
+    updateRobotIoFile
+  );
+}
+
 // Try to preview robot field if applicable
 async function tryPreviewRobotField(code, files) {
   if (!codeUsesRobot(code)) {
@@ -370,9 +403,7 @@ async function tryPreviewRobotField(code, files) {
   ensureRobotUI();
 
   // Setup file accessor for robot module
-  if (__robotModule && typeof __robotModule.__setRobotFilesAccessor === 'function') {
-    __robotModule.__setRobotFilesAccessor(() => __ioFiles);
-  }
+  setupRobotFilesAccessor();
 
   // Preview field
   if (__robotModule && typeof __robotModule.__previewField === 'function') {
@@ -388,6 +419,8 @@ function tryUpdateRobotFieldPreview() {
   // Only update if robot mode is active
   if (__compilerOutputMode !== 'robot') return;
   if (!__robotModule) return;
+
+  setupRobotFilesAccessor();
 
   // Re-preview the field
   if (typeof __robotModule.__previewField === 'function') {
@@ -994,6 +1027,9 @@ function removeIoFile(fileId) {
   }
   refreshIoSelectOptions();
   persistIoFiles();
+  if (file && file.name && file.name.toLowerCase().endsWith('.fil')) {
+    tryUpdateRobotFieldPreview();
+  }
 }
 
 function setupIoTabDragAndDrop() {
@@ -1904,6 +1940,65 @@ function ensureRobotUI() {
     speedContainer.appendChild(speedSlider);
     speedContainer.appendChild(speedLabelFast);
 
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.id = 'robot-edit-toggle';
+    editBtn.className = 'robot-edit-toggle';
+    editBtn.textContent = 'edit';
+    editBtn.title = 'Редактировать поле робота';
+    editBtn.setAttribute('aria-pressed', 'false');
+
+    const editTools = document.createElement('select');
+    editTools.id = 'robot-edit-tool';
+    editTools.className = 'robot-edit-tool';
+    editTools.title = 'Что редактировать';
+    [
+      ['wall', 'стена'],
+      ['robot', 'робот'],
+      ['color', 'цвет'],
+      ['radiation', 'радиация'],
+      ['temperature', 'темп.'],
+      ['symbol', 'символ'],
+      ['symbol1', 'символ1'],
+      ['point', 'точка']
+    ].forEach(([value, label]) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = label;
+      editTools.appendChild(option);
+    });
+    editTools.value = __robotEditTool;
+    editTools.style.display = __robotEditEnabled ? '' : 'none';
+
+    const syncEditState = () => {
+      editBtn.classList.toggle('active', __robotEditEnabled);
+      editBtn.setAttribute('aria-pressed', __robotEditEnabled ? 'true' : 'false');
+      editTools.style.display = __robotEditEnabled ? '' : 'none';
+      if (__robotCanvas) {
+        __robotCanvas.classList.toggle('robot-editing', __robotEditEnabled);
+      }
+    };
+
+    editBtn.addEventListener('click', () => {
+      __robotEditEnabled = !__robotEditEnabled;
+      setupRobotFilesAccessor();
+      if (__robotEditEnabled && __robotModule && typeof __robotModule.__previewField === 'function') {
+        __robotModule.__previewField();
+      }
+      if (__robotEditEnabled && __robotModule && typeof __robotModule.__writeFieldToFil === 'function') {
+        __robotModule.__writeFieldToFil();
+      }
+      syncEditState();
+      renderRobotField();
+    });
+
+    editTools.addEventListener('change', () => {
+      __robotEditTool = editTools.value || 'wall';
+    });
+
+    speedContainer.appendChild(editBtn);
+    speedContainer.appendChild(editTools);
+
     __turtleToggle.appendChild(speedContainer);
   }
 
@@ -1923,6 +2018,13 @@ function ensureRobotUI() {
     cnv.style.borderRadius = '4px';
     preview.appendChild(cnv);
     __robotCanvas = cnv;
+    __robotCanvas.addEventListener('click', handleRobotCanvasEditClick);
+    __robotCanvas.addEventListener('pointerdown', handleRobotCanvasPointerDown);
+    __robotCanvas.addEventListener('pointermove', handleRobotCanvasPointerMove);
+    __robotCanvas.addEventListener('pointerleave', handleRobotCanvasPointerLeave);
+  }
+  if (__robotCanvas) {
+    __robotCanvas.classList.toggle('robot-editing', __robotEditEnabled);
   }
 }
 
@@ -1933,6 +2035,173 @@ function hideRobotUI() {
   const out = document.getElementById('output');
   if (out) out.style.display = '';
   hideOutputPane();
+}
+
+function getRobotEditHit(event) {
+  if (!__robotCanvas || !__robotCanvas.__robotGrid) return null;
+  const grid = __robotCanvas.__robotGrid;
+  const rect = __robotCanvas.getBoundingClientRect();
+  const px = event.clientX - rect.left;
+  const py = event.clientY - rect.top;
+  const localX = px - grid.offsetX;
+  const localY = py - grid.offsetY;
+  if (localX < 0 || localY < 0 || localX > grid.gridW || localY > grid.gridH) return null;
+
+  const x = Math.min(grid.width - 1, Math.max(0, Math.floor(localX / grid.cellSize)));
+  const y = Math.min(grid.height - 1, Math.max(0, Math.floor(localY / grid.cellSize)));
+  const inCellX = localX - x * grid.cellSize;
+  const inCellY = localY - y * grid.cellSize;
+  const edge = Math.max(5, Math.min(12, grid.cellSize * 0.22));
+  let side = null;
+  const distances = [
+    ['west', inCellX],
+    ['east', grid.cellSize - inCellX],
+    ['north', inCellY],
+    ['south', grid.cellSize - inCellY]
+  ].sort((a, b) => a[1] - b[1]);
+  if (distances[0][1] <= edge) side = distances[0][0];
+  return { x, y, side };
+}
+
+function getRobotResizeHit(event) {
+  if (!__robotCanvas || !__robotCanvas.__robotGrid) return null;
+  const grid = __robotCanvas.__robotGrid;
+  const rect = __robotCanvas.getBoundingClientRect();
+  const px = event.clientX - rect.left;
+  const py = event.clientY - rect.top;
+  const threshold = Math.max(7, Math.min(14, grid.cellSize * 0.25));
+  const nearY = py >= grid.offsetY - threshold && py <= grid.offsetY + grid.gridH + threshold;
+  const nearX = px >= grid.offsetX - threshold && px <= grid.offsetX + grid.gridW + threshold;
+  const east = Math.abs(px - (grid.offsetX + grid.gridW)) <= threshold && nearY;
+  const south = Math.abs(py - (grid.offsetY + grid.gridH)) <= threshold && nearX;
+  if (!east && !south) return null;
+  return { east, south };
+}
+
+function setRobotCanvasCursor(event) {
+  if (!__robotCanvas) return;
+  if (!__robotEditEnabled) {
+    __robotCanvas.style.cursor = '';
+    return;
+  }
+  const resizeHit = event ? getRobotResizeHit(event) : null;
+  if (resizeHit && resizeHit.east && resizeHit.south) {
+    __robotCanvas.style.cursor = 'nwse-resize';
+  } else if (resizeHit && resizeHit.east) {
+    __robotCanvas.style.cursor = 'ew-resize';
+  } else if (resizeHit && resizeHit.south) {
+    __robotCanvas.style.cursor = 'ns-resize';
+  } else {
+    __robotCanvas.style.cursor = 'crosshair';
+  }
+}
+
+function handleRobotCanvasPointerDown(event) {
+  if (!__robotEditEnabled || !__robotModule || typeof __robotModule.__resizeField !== 'function') return;
+  const hit = getRobotResizeHit(event);
+  if (!hit || !__robotCanvas.__robotGrid) return;
+  event.preventDefault();
+  __robotResizeDrag = {
+    east: hit.east,
+    south: hit.south,
+    startX: event.clientX,
+    startY: event.clientY,
+    width: __robotModule.field.width,
+    height: __robotModule.field.height,
+    cellSize: __robotCanvas.__robotGrid.cellSize,
+    pointerId: event.pointerId
+  };
+  __robotSuppressNextClick = true;
+  __robotCanvas.setPointerCapture(event.pointerId);
+  window.addEventListener('pointermove', handleRobotResizePointerMove);
+  window.addEventListener('pointerup', handleRobotResizePointerUp);
+}
+
+function handleRobotCanvasPointerMove(event) {
+  if (__robotResizeDrag) return;
+  setRobotCanvasCursor(event);
+}
+
+function handleRobotCanvasPointerLeave() {
+  if (!__robotResizeDrag) setRobotCanvasCursor(null);
+}
+
+function handleRobotResizePointerMove(event) {
+  if (!__robotResizeDrag || !__robotModule || typeof __robotModule.__resizeField !== 'function') return;
+  const dx = event.clientX - __robotResizeDrag.startX;
+  const dy = event.clientY - __robotResizeDrag.startY;
+  let width = __robotResizeDrag.width;
+  let height = __robotResizeDrag.height;
+  if (__robotResizeDrag.east) {
+    width = Math.max(1, Math.min(200, __robotResizeDrag.width + Math.round(dx / __robotResizeDrag.cellSize)));
+  }
+  if (__robotResizeDrag.south) {
+    height = Math.max(1, Math.min(200, __robotResizeDrag.height + Math.round(dy / __robotResizeDrag.cellSize)));
+  }
+  if (width === __robotModule.field.width && height === __robotModule.field.height) return;
+  __robotSuppressNextClick = true;
+  setupRobotFilesAccessor();
+  __robotModule.__resizeField(width, height);
+  renderRobotField();
+}
+
+function handleRobotResizePointerUp(event) {
+  if (__robotResizeDrag && __robotCanvas && __robotResizeDrag.pointerId === event.pointerId) {
+    try {
+      __robotCanvas.releasePointerCapture(event.pointerId);
+    } catch {}
+  }
+  __robotResizeDrag = null;
+  window.removeEventListener('pointermove', handleRobotResizePointerMove);
+  window.removeEventListener('pointerup', handleRobotResizePointerUp);
+  setRobotCanvasCursor(event);
+}
+
+function promptRobotCellProperty(x, y, property) {
+  if (!__robotModule || typeof __robotModule.__getCellProperties !== 'function') return null;
+  const current = __robotModule.__getCellProperties(x, y);
+  const labels = {
+    color: 'Color',
+    radiation: 'Radiation',
+    temperature: 'Temperature',
+    symbol: 'Symbol',
+    symbol1: 'Symbol1',
+    point: 'Point'
+  };
+  const input = window.prompt(labels[property] || property, String(current[property] ?? ''));
+  if (input === null) return null;
+  return {
+    ...current,
+    [property]: input.trim()
+  };
+}
+
+function handleRobotCanvasEditClick(event) {
+  if (__robotSuppressNextClick) {
+    __robotSuppressNextClick = false;
+    return;
+  }
+  if (!__robotEditEnabled || !__robotModule) return;
+  const hit = getRobotEditHit(event);
+  if (!hit) return;
+  event.preventDefault();
+  setupRobotFilesAccessor();
+
+  if (__robotEditTool === 'wall') {
+    if (!hit.side || typeof __robotModule.__toggleWall !== 'function') return;
+    __robotModule.__toggleWall(hit.x, hit.y, hit.side);
+  } else if (__robotEditTool === 'robot') {
+    if (typeof __robotModule.__setRobotPosition === 'function') {
+      __robotModule.__setRobotPosition(hit.x, hit.y);
+    }
+  } else if (['color', 'radiation', 'temperature', 'symbol', 'symbol1', 'point'].includes(__robotEditTool)) {
+    if (typeof __robotModule.__setCellProperties !== 'function') return;
+    const props = promptRobotCellProperty(hit.x, hit.y, __robotEditTool);
+    if (!props) return;
+    __robotModule.__setCellProperties(hit.x, hit.y, props);
+  }
+
+  renderRobotField();
 }
 
 // Drawer UI functions
@@ -2328,6 +2597,7 @@ function renderRobotField() {
   // Center grid in available area (between label spaces)
   const offsetX = padding + labelSpace + (availW - gridW) / 2;
   const offsetY = padding + labelSpace + (availH - gridH) / 2;
+  canvas.__robotGrid = { offsetX, offsetY, gridW, gridH, cellSize, width: field.width, height: field.height };
 
   // Clear
   ctx.fillStyle = '#fff';
@@ -2338,6 +2608,41 @@ function renderRobotField() {
   for (const key of field.painted) {
     const [x, y] = key.split(',').map(Number);
     ctx.fillRect(offsetX + x * cellSize, offsetY + y * cellSize, cellSize, cellSize);
+  }
+
+  if (field.radiation || field.temperature) {
+    ctx.font = `${Math.min(11, cellSize * 0.28)}px sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    for (let y = 0; y < field.height; y++) {
+      for (let x = 0; x < field.width; x++) {
+        const key = `${x},${y}`;
+        const rad = field.radiation && field.radiation.get(key);
+        const temp = field.temperature && field.temperature.get(key);
+        if (!rad && !temp) continue;
+        const label = `${rad ? `R${rad}` : ''}${rad && temp ? ' ' : ''}${temp ? `T${temp}` : ''}`;
+        ctx.fillStyle = '#6b4f00';
+        ctx.fillText(label, offsetX + x * cellSize + 3, offsetY + y * cellSize + 3);
+      }
+    }
+  }
+
+  if (field.symbol || field.symbol1 || field.point) {
+    ctx.font = `${Math.min(13, cellSize * 0.34)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (let y = 0; y < field.height; y++) {
+      for (let x = 0; x < field.width; x++) {
+        const key = `${x},${y}`;
+        const symbol = field.symbol && field.symbol.get(key);
+        const symbol1 = field.symbol1 && field.symbol1.get(key);
+        const point = field.point && field.point.get(key);
+        if (!symbol && !symbol1 && !point) continue;
+        const label = [symbol, symbol1, point ? String(point) : ''].filter(Boolean).join(' ');
+        ctx.fillStyle = '#333';
+        ctx.fillText(label, offsetX + x * cellSize + cellSize / 2, offsetY + y * cellSize + cellSize / 2);
+      }
+    }
   }
 
   // Draw grid lines
@@ -2433,6 +2738,15 @@ function renderRobotField() {
   ctx.beginPath();
   ctx.arc(rx, ry - robotRadius * 0.3, robotRadius * 0.25, 0, Math.PI * 2);
   ctx.fill();
+
+  if (__robotEditEnabled) {
+    ctx.save();
+    ctx.strokeStyle = '#0e639c';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(offsetX - 3, offsetY - 3, gridW + 6, gridH + 6);
+    ctx.restore();
+  }
 }
 
 function setCompilerOutputMode(mode) {
@@ -2706,29 +3020,7 @@ async function runWasm() {
     }
     // Robot integration: setup file accessor and init field only if program uses robot
     if (usesRobot && __robotModule) {
-      if (typeof __robotModule.__setRobotFilesAccessor === 'function') {
-        __robotModule.__setRobotFilesAccessor(
-          () => __ioFiles,
-          (file) => {
-            // addFile callback
-            const newId = generateIoFileId();
-            const f = { id: newId, name: file.name, content: file.content || '' };
-            __ioFiles.push(f);
-            renderIoFilePane(f);
-            refreshIoSelectOptions();
-          },
-          (fileId, content) => {
-            // updateFile callback
-            const file = __ioFiles.find(f => f.id === fileId);
-            if (file) {
-              file.content = content;
-              if (file.elements && file.elements.editor) {
-                file.elements.editor.value = content;
-              }
-            }
-          }
-        );
-      }
+      setupRobotFilesAccessor();
       if (typeof __robotModule.__initRobotField === 'function') {
         __robotModule.__initRobotField();
       }
