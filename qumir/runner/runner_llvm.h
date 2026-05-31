@@ -39,6 +39,7 @@ public:
     // Compiles a core-lang kernel source string and returns a JIT function pointer.
     // The pointer is valid for the lifetime of this TLLVMRunner.
     void* CompileKernel(const std::string& source, std::string* error = nullptr);
+    void* CompileKernelAst(NAst::TExprPtr ast, std::string* error = nullptr);
 
 private:
     TLLVMRunnerOptions Options;
