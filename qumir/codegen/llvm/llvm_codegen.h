@@ -34,6 +34,7 @@ namespace NQumir::NCodeGen {
 struct TLLVMCodeGenOptions {
     std::string ModuleName {"oz_module"};
     bool Optimize {false};
+    bool NativeCode {false};
     // Optional target triple override (e.g., "wasm32-unknown-unknown").
     // If empty, defaults are used.
     std::string TargetTriple;

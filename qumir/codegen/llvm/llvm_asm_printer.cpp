@@ -12,9 +12,11 @@
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/Path.h>
+#include <llvm/TargetParser/Host.h>
 
 #include <iostream>
 #include <fstream>
+#include <utility>
 
 namespace NQumir::NCodeGen {
 
@@ -22,6 +24,20 @@ namespace {
 
 constexpr auto AssemblyFile = llvm::CodeGenFileType::AssemblyFile;
 constexpr auto ObjectFile = llvm::CodeGenFileType::ObjectFile;
+
+std::pair<std::string, std::string> GetNativeCpuAndFeatures() {
+    auto cpu = llvm::sys::getHostCPUName().str();
+    std::string features;
+    auto hostFeatures = llvm::sys::getHostCPUFeatures();
+    for (const auto& feature : hostFeatures) {
+        if (!features.empty()) {
+            features += ",";
+        }
+        features += feature.getValue() ? "+" : "-";
+        features += feature.getKey().str();
+    }
+    return {std::move(cpu), std::move(features)};
+}
 
 } // namespace
 
@@ -35,8 +51,17 @@ void TLLVMModuleArtifacts::Generate(std::ostream& os, bool generateAsm, bool gen
 
     llvm::TargetOptions opt;
     auto RM = std::optional<llvm::Reloc::Model>(llvm::Reloc::PIC_);
+    std::string cpu = "generic";
+    std::string features;
+    if (NativeCode) {
+        auto [nativeCpu, nativeFeatures] = GetNativeCpuAndFeatures();
+        if (!nativeCpu.empty()) {
+            cpu = nativeCpu;
+        }
+        features = std::move(nativeFeatures);
+    }
     std::unique_ptr<llvm::TargetMachine> TM {
-        target->createTargetMachine(triple, "generic", "", opt, RM)
+        target->createTargetMachine(triple, cpu, features, opt, RM)
     };
     if (!TM) {
         throw std::runtime_error("createTargetMachine failed");

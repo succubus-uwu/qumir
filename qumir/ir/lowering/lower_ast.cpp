@@ -528,7 +528,13 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
         auto operand = co_await Lower(cast->Operand, scope);
         if (!operand.Value) co_return TError(cast->Operand->Location, TErrorString::Get<EErrorId::OPERAND_OF_CAST_NOT_VALUE>());
         std::optional<TOperand> tmp;
-        if (NAst::TMaybeType<NAst::TIntegerType>(expr->Type) && NAst::TMaybeType<NAst::TFloatType>(cast->Operand->Type)) {
+        if (NAst::TMaybeType<NAst::TIntegerType>(expr->Type) && NAst::TMaybeType<NAst::TBoolType>(cast->Operand->Type)) {
+            // bool to int cast
+            tmp = Builder.Emit1("mov"_op, {*operand.Value});
+        } else if (NAst::TMaybeType<NAst::TFloatType>(expr->Type) && NAst::TMaybeType<NAst::TBoolType>(cast->Operand->Type)) {
+            // bool to float cast
+            tmp = Builder.Emit1("i2f"_op, {*operand.Value});
+        } else if (NAst::TMaybeType<NAst::TIntegerType>(expr->Type) && NAst::TMaybeType<NAst::TFloatType>(cast->Operand->Type)) {
             // float to int cast
             tmp = Builder.Emit1("f2i"_op, {*operand.Value});
         } else if (NAst::TMaybeType<NAst::TFloatType>(expr->Type) && NAst::TMaybeType<NAst::TIntegerType>(cast->Operand->Type)) {

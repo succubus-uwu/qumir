@@ -34,6 +34,7 @@ int main(int argc, char ** argv) {
     bool printTransformedAst = false;
     bool printIr = false;
     bool printLlvm = false;
+    bool printAsm = false;
     bool printByteCode = false;
     bool coreInput = false;
     int optLevel = 0;
@@ -52,6 +53,8 @@ int main(int argc, char ** argv) {
             printIr = true;
         } else if (!std::strcmp(argv[i], "--print-llvm")) {
             printLlvm = true;
+        } else if (!std::strcmp(argv[i], "--print-asm")) {
+            printAsm = true;
         } else if (!std::strcmp(argv[i], "--print-bytecode")) {
             printByteCode = true;
         } else if (!std::strcmp(argv[i], "--core")) {
@@ -91,6 +94,7 @@ int main(int argc, char ** argv) {
                          "  --print-transformed-ast Print AST after semantic transforms\n"
                          "  --print-ir           Print IR after lowering\n"
                          "  --print-llvm         Print LLVM IR after codegen\n"
+                         "  --print-asm          Print target assembly before JIT\n"
                          "  --core               Parse input as core language\n"
                          "  --input-file|-i <file>  Input file (default: stdin)\n"
                          "  -O <level>           Optimization level (0-3), default 0\n"
@@ -135,6 +139,7 @@ int main(int argc, char ** argv) {
         .PrintTransformedAst = printTransformedAst,
         .PrintIr = printIr,
         .PrintLlvm = printLlvm,
+        .PrintAsm = printAsm,
         .CoreInput = coreInput,
         .OptLevel = optLevel
     });

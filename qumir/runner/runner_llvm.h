@@ -23,6 +23,8 @@ struct TLLVMRunnerOptions {
     bool PrintTransformedAst = false;
     bool PrintIr = false;
     bool PrintLlvm = false;
+    bool PrintAsm = false;
+    bool NativeCode = false;
     bool CoreInput = false;
     bool ResolveCoreInput = true;
     int OptLevel = 0; // 0-3
@@ -31,6 +33,8 @@ struct TLLVMRunnerOptions {
 class TLLVMRunner {
 public:
     TLLVMRunner(TLLVMRunnerOptions options = {});
+
+    void RegisterModule(std::shared_ptr<NRegistry::IModule> module, bool import = false);
 
     // Parses, resolves, lowers to IR and executes via LLVM JIT.
     // Returns numeric result (if any) produced by the compiled chunk.
@@ -52,6 +56,7 @@ private:
 
     std::unordered_set<int> PrintedChunks;
     std::unordered_set<int> PrintedLLVMChunks;
+    std::unordered_set<std::string> RegisteredModuleNames;
 
     std::vector<std::shared_ptr<NRegistry::IModule>> RegisteredModules;
     std::vector<std::shared_ptr<NRegistry::IModule>> AvailableModules;

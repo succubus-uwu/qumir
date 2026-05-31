@@ -367,16 +367,15 @@ TExprPtr TryModuleBinaryOp(TExprPtr left, TExprPtr right,
 }
 
 TTask AnnotateBinary(std::shared_ptr<TBinaryExpr> binary, NSemantics::TNameResolver& context, NSemantics::TScopeId scopeId) {
+    auto explicitType = binary->Type;
     binary->Left = co_await DoAnnotate(binary->Left, context, scopeId);
     binary->Right = co_await DoAnnotate(binary->Right, context, scopeId);
     if (!binary->Left->Type || !binary->Right->Type) {
         co_return TError(binary->Location, "Не удалось определить типы выражения для бинарной операции");
     }
-    if (binary->Type && binary->Type->TypeName() == TNamedType::TypeId) {
-        co_return binary;
-    }
     auto left = UnwrapReferenceType(binary->Left->Type);
     auto right = UnwrapReferenceType(binary->Right->Type);
+    TTypePtr type;
 
     switch (binary->Operator) {
         case TOperator("+"):
@@ -392,19 +391,19 @@ TTask AnnotateBinary(std::shared_ptr<TBinaryExpr> binary, NSemantics::TNameResol
 
                 // string + string
                 if (maybeStrLeft && maybeStrRight) {
-                    binary->Type = left;
+                    type = left;
                     break;
                 }
                 // string + symbol
                 if (maybeStrLeft && maybeSymRight) {
                     binary->Right = InsertImplicitCastIfNeeded(binary->Right, maybeStrLeft.Cast(), &context);
-                    binary->Type = maybeStrLeft.Cast();
+                    type = maybeStrLeft.Cast();
                     break;
                 }
                 // symbol + string
                 if (maybeSymLeft && maybeStrRight) {
                     binary->Left = InsertImplicitCastIfNeeded(binary->Left, maybeStrRight.Cast(), &context);
-                    binary->Type = maybeStrRight.Cast();
+                    type = maybeStrRight.Cast();
                     break;
                 }
                 // symbol + symbol => string
@@ -412,7 +411,7 @@ TTask AnnotateBinary(std::shared_ptr<TBinaryExpr> binary, NSemantics::TNameResol
                     auto strT = std::make_shared<TStringType>();
                     binary->Left = InsertImplicitCastIfNeeded(binary->Left, strT, &context);
                     binary->Right = InsertImplicitCastIfNeeded(binary->Right, strT, &context);
-                    binary->Type = strT;
+                    type = strT;
                     break;
                 }
             }
@@ -431,13 +430,13 @@ TTask AnnotateBinary(std::shared_ptr<TBinaryExpr> binary, NSemantics::TNameResol
 
             binary->Left  = InsertImplicitCastIfNeeded(binary->Left,  common, &context);
             binary->Right = InsertImplicitCastIfNeeded(binary->Right, common, &context);
-            binary->Type  = common;
+            type = common;
             break;
         }
         case TOperator("%"):
             // integer remainder
             if (TMaybeType<TIntegerType>(left) && TMaybeType<TIntegerType>(right)) {
-                binary->Type = std::make_shared<TIntegerType>();
+                type = std::make_shared<TIntegerType>();
             } else {
                 co_return TError(binary->Location, "binary expression operands must be both integer types");
             }
@@ -445,9 +444,9 @@ TTask AnnotateBinary(std::shared_ptr<TBinaryExpr> binary, NSemantics::TNameResol
         case TOperator("^"):
             // power: left^right
             if (TMaybeType<TFloatType>(left) && TMaybeType<TIntegerType>(right)) {
-                binary->Type = std::make_shared<TFloatType>();
+                type = std::make_shared<TFloatType>();
             } else if (TMaybeType<TIntegerType>(left) && TMaybeType<TIntegerType>(right)) {
-                binary->Type = std::make_shared<TIntegerType>();
+                type = std::make_shared<TIntegerType>();
             } else {
                 co_return TError(binary->Location, "binary expression operands must be both numeric types (float^int or int^int)");
             }
@@ -458,7 +457,7 @@ TTask AnnotateBinary(std::shared_ptr<TBinaryExpr> binary, NSemantics::TNameResol
         case TOperator("<<"):
         case TOperator(">>"):
             if (TMaybeType<TIntegerType>(left) && TMaybeType<TIntegerType>(right)) {
-                binary->Type = std::make_shared<TIntegerType>();
+                type = std::make_shared<TIntegerType>();
             } else {
                 co_return TError(binary->Location, "Битовые операции применимы только к целым числам");
             }
@@ -483,13 +482,13 @@ TTask AnnotateBinary(std::shared_ptr<TBinaryExpr> binary, NSemantics::TNameResol
                     co_return co_await AnnotateIfNeeded(result, context, scopeId);
                 }
             }
-            binary->Type = std::make_shared<TBoolType>();
+            type = std::make_shared<TBoolType>();
             break;
         case TOperator("&&"):
         case TOperator("||"):
             binary->Left  = InsertImplicitCastIfNeeded(binary->Left,  std::make_shared<TBoolType>(), &context);
             binary->Right = InsertImplicitCastIfNeeded(binary->Right, std::make_shared<TBoolType>(), &context);
-            binary->Type  = std::make_shared<TBoolType>();
+            type = std::make_shared<TBoolType>();
             break;
         default:
             if (auto result = TryModuleBinaryOp(binary->Left, binary->Right, binary->Operator, context)) {
@@ -499,6 +498,17 @@ TTask AnnotateBinary(std::shared_ptr<TBinaryExpr> binary, NSemantics::TNameResol
             break;
     }
 
+    if (!type) {
+        co_return TError(binary->Location, "Не удалось определить тип бинарного выражения");
+    }
+
+    binary->Type = type;
+    if (explicitType && !EqualTypes(explicitType, type)) {
+        co_return MakeCast(binary, explicitType);
+    }
+    if (explicitType) {
+        binary->Type = explicitType;
+    }
     co_return binary;
 }
 
@@ -1140,12 +1150,12 @@ TTask AnnotateFieldAssign(std::shared_ptr<TFieldAssignExpr> fieldAssign, NSemant
 }
 
 TTask DoAnnotate(TExprPtr expr, NSemantics::TNameResolver& context, NSemantics::TScopeId scopeId) {
-    if (auto maybeNum = TMaybeNode<TNumberExpr>(expr)) {
+    if (auto maybeBinary = TMaybeNode<TBinaryExpr>(expr)) {
+        co_return co_await AnnotateBinary(maybeBinary.Cast(), context, scopeId);
+    } else if (auto maybeNum = TMaybeNode<TNumberExpr>(expr)) {
         co_return AnnotateNumber(maybeNum.Cast());
     } else if (auto maybeUnary = TMaybeNode<TUnaryExpr>(expr)) {
         co_return co_await AnnotateUnary(maybeUnary.Cast(), context, scopeId);
-    } else if (auto maybeBinary = TMaybeNode<TBinaryExpr>(expr)) {
-        co_return co_await AnnotateBinary(maybeBinary.Cast(), context, scopeId);
     } else if (auto maybeBlock = TMaybeNode<TBlockExpr>(expr)) {
         co_return co_await AnnotateBlock(maybeBlock.Cast(), context, scopeId);
     } else if (auto maybeSeq = TMaybeNode<TSeqExpr>(expr)) {

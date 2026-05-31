@@ -8,12 +8,14 @@
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Support/DynamicLibrary.h>
+#include <llvm/TargetParser/Host.h>
 
 #include <sstream>
 #include <iomanip>
 #include <setjmp.h>
 #include <stdexcept>
 #include <functional>
+#include <utility>
 
 #include <qumir/runtime/string.h> // for str_release
 #include <qumir/runtime/runtime.h> // for __ensure and longjmp escape hatch
@@ -46,6 +48,43 @@ static const void* const kQumir_jit_symbol_anchors[] = {
 namespace NQumir::NCodeGen {
 
 using namespace NIR;
+
+namespace {
+
+std::pair<std::string, std::string> GetNativeCpuAndFeatures() {
+    auto cpu = llvm::sys::getHostCPUName().str();
+    std::string features;
+    auto hostFeatures = llvm::sys::getHostCPUFeatures();
+    for (const auto& feature : hostFeatures) {
+        if (!features.empty()) {
+            features += ",";
+        }
+        features += feature.getValue() ? "+" : "-";
+        features += feature.getKey().str();
+    }
+    return {std::move(cpu), std::move(features)};
+}
+
+std::vector<std::string> SplitFeatures(const std::string& features) {
+    std::vector<std::string> out;
+    std::string current;
+    for (char c : features) {
+        if (c == ',') {
+            if (!current.empty()) {
+                out.push_back(current);
+                current.clear();
+            }
+        } else {
+            current.push_back(c);
+        }
+    }
+    if (!current.empty()) {
+        out.push_back(current);
+    }
+    return out;
+}
+
+} // namespace
 
 #ifdef __APPLE__
 // On macOS, MCJIT needs __dso_handle for global constructors/destructors
@@ -111,6 +150,15 @@ std::optional<std::string> TLlvmRunner::Run(
     llvm::Module* rawModulePtr = artifacts->Module.get();
     llvm::EngineBuilder builder(std::move(artifacts->Module));
     builder.setEngineKind(llvm::EngineKind::JIT);
+    if (artifacts->NativeCode) {
+        auto [nativeCpu, nativeFeatures] = GetNativeCpuAndFeatures();
+        if (!nativeCpu.empty()) {
+            builder.setMCPU(nativeCpu);
+        }
+        if (!nativeFeatures.empty()) {
+            builder.setMAttrs(SplitFeatures(nativeFeatures));
+        }
+    }
     auto ee = std::unique_ptr<llvm::ExecutionEngine>(builder.setErrorStr(&eeErr).create());
     if (!ee) {
         if (error) *error = std::string("ExecutionEngine create failed: ") + eeErr;
@@ -267,6 +315,15 @@ void* TLlvmRunner::Lookup(
     std::string eeErr;
     llvm::EngineBuilder builder(std::move(artifacts->Module));
     builder.setEngineKind(llvm::EngineKind::JIT);
+    if (artifacts->NativeCode) {
+        auto [nativeCpu, nativeFeatures] = GetNativeCpuAndFeatures();
+        if (!nativeCpu.empty()) {
+            builder.setMCPU(nativeCpu);
+        }
+        if (!nativeFeatures.empty()) {
+            builder.setMAttrs(SplitFeatures(nativeFeatures));
+        }
+    }
     auto ee = std::unique_ptr<llvm::ExecutionEngine>(builder.setErrorStr(&eeErr).create());
     if (!ee) {
         if (error) *error = std::string("ExecutionEngine create failed: ") + eeErr;

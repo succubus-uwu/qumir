@@ -29,7 +29,7 @@ TLLVMRunner::TLLVMRunner(TLLVMRunnerOptions options)
     , Builder(Module)
     , Lowerer(Module, Builder, Resolver)
 {
-    RegisteredModules.push_back(std::make_shared<NRegistry::SystemModule>());
+    RegisterModule(std::make_shared<NRegistry::SystemModule>(), true);
     // TODO: register other modules
 
     AvailableModules.push_back(std::make_shared<NRegistry::TurtleModule>());
@@ -46,6 +46,25 @@ TLLVMRunner::TLLVMRunner(TLLVMRunnerOptions options)
     }
     for (const auto& mod : AvailableModules) {
         Resolver.RegisterModule(mod.get());
+    }
+}
+
+void TLLVMRunner::RegisterModule(std::shared_ptr<NRegistry::IModule> module, bool import) {
+    if (!module) {
+        return;
+    }
+    auto name = module->Name();
+    if (RegisteredModuleNames.count(name)) {
+        if (import) {
+            (void)Resolver.ImportModule(name);
+        }
+        return;
+    }
+    Resolver.RegisterModule(module.get());
+    RegisteredModuleNames.insert(name);
+    RegisteredModules.push_back(std::move(module));
+    if (import) {
+        (void)Resolver.ImportModule(name);
     }
 }
 
@@ -119,7 +138,7 @@ std::expected<std::optional<std::string>, TError> TLLVMRunner::Run(std::istream&
         std::cerr << "============================\n\n";
     }
 
-    NCodeGen::TLLVMCodeGen cg({});
+    NCodeGen::TLLVMCodeGen cg({ .NativeCode = Options.NativeCode });
     std::string err;
     std::unique_ptr<NCodeGen::ILLVMModuleArtifacts> artifacts;
     try {
@@ -135,6 +154,12 @@ std::expected<std::optional<std::string>, TError> TLLVMRunner::Run(std::istream&
                 cg.PrintFunction(function.SymId, std::cerr);
             }
         }
+        std::cerr << "============================\n\n";
+    }
+
+    if (Options.PrintAsm) {
+        std::cerr << "=========== ASM: ===========\n";
+        artifacts->Generate(std::cerr, /*generateAsm=*/true, /*generateObj=*/false);
         std::cerr << "============================\n\n";
     }
 
@@ -208,7 +233,7 @@ void* TLLVMRunner::CompileKernelAst(NAst::TExprPtr ast, std::string* error) {
     }
     const std::string funcName = Module.Functions.back().Name;
 
-    NCodeGen::TLLVMCodeGen cg({});
+    NCodeGen::TLLVMCodeGen cg({ .NativeCode = Options.NativeCode });
     std::unique_ptr<NCodeGen::ILLVMModuleArtifacts> artifacts;
     try {
         artifacts = cg.Emit(Module, Options.OptLevel);
@@ -218,6 +243,11 @@ void* TLLVMRunner::CompileKernelAst(NAst::TExprPtr ast, std::string* error) {
     }
 
     artifacts->PrintModule(std::cerr);
+    if (Options.PrintAsm) {
+        std::cerr << "=========== ASM: ===========\n";
+        artifacts->Generate(std::cerr, /*generateAsm=*/true, /*generateObj=*/false);
+        std::cerr << "============================\n\n";
+    }
 
     std::string runErr;
     void* fnPtr = LlvmRunner_.Lookup(std::move(artifacts), funcName, &runErr);
@@ -266,7 +296,7 @@ void* TLLVMRunner::CompileKernel(const std::string& source, std::string* error) 
     }
     const std::string funcName = Module.Functions.back().Name;
 
-    NCodeGen::TLLVMCodeGen cg({});
+    NCodeGen::TLLVMCodeGen cg({ .NativeCode = Options.NativeCode });
     std::unique_ptr<NCodeGen::ILLVMModuleArtifacts> artifacts;
     try {
         artifacts = cg.Emit(Module, 0);

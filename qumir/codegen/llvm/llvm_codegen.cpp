@@ -34,6 +34,8 @@
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/Transforms/Vectorize/LoopVectorize.h>
 
+#include <utility>
+
 namespace NQumir::NCodeGen {
 
 using namespace NQumir::NIR;
@@ -76,6 +78,20 @@ llvm::Type* GetTypeById(int typeId, const TTypeTable& tt, llvm::LLVMContext& ctx
     }
 }
 
+std::pair<std::string, std::string> GetNativeCpuAndFeatures() {
+    auto cpu = llvm::sys::getHostCPUName().str();
+    std::string features;
+    auto hostFeatures = llvm::sys::getHostCPUFeatures();
+    for (const auto& feature : hostFeatures) {
+        if (!features.empty()) {
+            features += ",";
+        }
+        features += feature.getValue() ? "+" : "-";
+        features += feature.getKey().str();
+    }
+    return {std::move(cpu), std::move(features)};
+}
+
 bool IsSignedIntegerType(const TTypeTable& tt, int typeId) {
     switch (tt.GetKind(typeId)) {
         case EKind::U8:
@@ -85,6 +101,17 @@ bool IsSignedIntegerType(const TTypeTable& tt, int typeId) {
             return false;
         default:
             return true;
+    }
+}
+
+void MarkPointerArgsNoAlias(llvm::Function* function) {
+    if (!function) {
+        return;
+    }
+    for (auto& arg : function->args()) {
+        if (arg.getType()->isPointerTy()) {
+            arg.addAttr(llvm::Attribute::NoAlias);
+        }
     }
 }
 
@@ -109,7 +136,9 @@ void EmitCoroutineRuntimeHelpers(llvm::Module& module, llvm::LLVMContext& ctx) {
             }
             existing->eraseFromParent();
         }
-        return llvm::Function::Create(type, llvm::Function::ExternalLinkage, name, module);
+        auto* helper = llvm::Function::Create(type, llvm::Function::ExternalLinkage, name, module);
+        MarkPointerArgsNoAlias(helper);
+        return helper;
     };
 
     {
@@ -263,6 +292,7 @@ std::unique_ptr<ILLVMModuleArtifacts> TLLVMCodeGen::Emit(TModule& module, int op
         } else {
             throw std::runtime_error("function already declared");
         }
+        MarkPointerArgsNoAlias(lfun);
         if (f.Name.find("__repl") == 0) { // repl functions should not be optimized
             lfun->addFnAttr(llvm::Attribute::NoInline);
             lfun->addFnAttr(llvm::Attribute::OptimizeNone);
@@ -378,6 +408,7 @@ std::unique_ptr<ILLVMModuleArtifacts> TLLVMCodeGen::Emit(TModule& module, int op
     auto out = std::make_unique<TLLVMModuleArtifacts>();
     out->Ctx = std::move(Ctx);
     out->Module = std::move(LModule);
+    out->NativeCode = Opts.NativeCode;
     // Collect defined function names for tests without pulling in LLVM headers
     if (out->Module) {
         for (auto& F : *out->Module) {
@@ -1515,9 +1546,16 @@ void TLLVMCodeGen::CreateTargetMachine() {
     }
     llvm::TargetOptions opt;
     auto RM = std::optional<llvm::Reloc::Model>(llvm::Reloc::PIC_);
-    TM.reset(
-        target->createTargetMachine(triple, "generic", "", opt, RM)
-    );
+    std::string cpu = "generic";
+    std::string features;
+    if (Opts.NativeCode) {
+        auto [nativeCpu, nativeFeatures] = GetNativeCpuAndFeatures();
+        if (!nativeCpu.empty()) {
+            cpu = nativeCpu;
+        }
+        features = std::move(nativeFeatures);
+    }
+    TM.reset(target->createTargetMachine(triple, cpu, features, opt, RM));
 
     LModule->setDataLayout(TM->createDataLayout());
 }
