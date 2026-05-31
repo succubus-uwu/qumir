@@ -396,6 +396,129 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
     co_return TValueWithBlock{ *prev, Builder.CurrentBlockLabel() };
 }
 
+TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::LowerLValueAddress(const NAst::TExprPtr& expr, TBlockScope scope)
+{
+    if (auto maybeIdent = NAst::TMaybeNode<NAst::TIdentExpr>(expr)) {
+        auto addr = co_await LoadVar(maybeIdent.Cast()->Name, scope, expr->Location, true /*address*/);
+        co_return TValueWithBlock{addr, Builder.CurrentBlockLabel(), EOwnership::Borrowed};
+    }
+
+    if (auto maybeIndex = NAst::TMaybeNode<NAst::TIndexExpr>(expr)) {
+        auto index = maybeIndex.Cast();
+        auto indexValue = co_await Lower(index->Index, scope);
+        if (!indexValue.Value) {
+            co_return TError(index->Index->Location, TErrorString::Get<EErrorId::ARRAY_INDEX_NOT_NUMBER>());
+        }
+
+        auto maybeIdent = NAst::TMaybeNode<NAst::TIdentExpr>(index->Collection);
+        if (!maybeIdent) {
+            co_return TError(index->Collection->Location, TErrorString::Get<EErrorId::COLLECTION_NOT_ARRAY>());
+        }
+        auto arraySymbol = Context.Lookup(maybeIdent.Cast()->Name, scope.Id);
+        if (!arraySymbol) {
+            co_return TError(index->Collection->Location, TErrorString::Get<EErrorId::UNDEFINED_NAME>());
+        }
+
+        auto value = co_await Lower(index->Collection, scope);
+        if (!value.Value) {
+            co_return TError(index->Collection->Location, TErrorString::Get<EErrorId::FAILED_LOWER_COLLECTION>());
+        }
+        auto arrayPtr = *value.Value;
+        if (arrayPtr.Type != TOperand::EType::Tmp) {
+            co_return TError(index->Collection->Location, TErrorString::Get<EErrorId::COLLECTION_NOT_ARRAY>());
+        }
+
+        auto arrayType = Builder.GetType(arrayPtr.Tmp);
+        int elemTypeId = FromAstType(expr->Type, Module.Types);
+        int elemByteSize = Module.Types.SizeInBytes(elemTypeId);
+        auto i64 = Module.Types.I(EKind::I64);
+
+        TOperand byteOffset;
+        auto symbolNode = Context.GetSymbolNode(NSemantics::TSymbolId{arraySymbol->Id});
+        auto symbolType = symbolNode ? NAst::UnwrapReferenceType(NAst::UnwrapNamedType(symbolNode->Type)) : nullptr;
+        if (NAst::TMaybeType<NAst::TPointerType>(symbolType)) {
+            auto offset = Builder.Emit1("*"_op, {*indexValue.Value, TImm{elemByteSize, i64}});
+            Builder.SetType(offset, i64);
+            byteOffset = offset;
+        } else {
+            auto layoutIt = ArrayLayouts.find(arraySymbol->Id);
+            if (layoutIt == ArrayLayouts.end()) {
+                co_return TError(index->Collection->Location, TErrorString::Get<EErrorId::UNDEFINED_NAME>());
+            }
+            auto lbound0 = LoadLayoutOperand(layoutIt->second.LBounds[0]);
+            auto zeroBasedIndex = Builder.Emit1("-"_op, {*indexValue.Value, lbound0});
+            Builder.SetType(zeroBasedIndex, i64);
+            auto offset = Builder.Emit1("*"_op, {zeroBasedIndex, TImm{elemByteSize, i64}});
+            Builder.SetType(offset, i64);
+            byteOffset = offset;
+        }
+
+        auto destPtr = Builder.Emit1("+"_op, {arrayPtr, byteOffset});
+        Builder.SetType(destPtr, arrayType);
+        co_return TValueWithBlock{destPtr, Builder.CurrentBlockLabel(), EOwnership::Borrowed};
+    }
+
+    if (auto maybeMultiIndex = NAst::TMaybeNode<NAst::TMultiIndexExpr>(expr)) {
+        auto multiIndex = maybeMultiIndex.Cast();
+        auto maybeIdent = NAst::TMaybeNode<NAst::TIdentExpr>(multiIndex->Collection);
+        if (!maybeIdent) {
+            co_return TError(multiIndex->Collection->Location, TErrorString::Get<EErrorId::MULTI_INDEX_COLLECTION_MUST_BE_IDENTIFIER>());
+        }
+        auto arraySymbol = Context.Lookup(maybeIdent.Cast()->Name, scope.Id);
+        if (!arraySymbol) {
+            co_return TError(multiIndex->Collection->Location, TErrorString::Get<EErrorId::UNDEFINED_NAME>());
+        }
+        auto value = co_await Lower(multiIndex->Collection, scope);
+        if (!value.Value) {
+            co_return TError(multiIndex->Collection->Location, TErrorString::Get<EErrorId::FAILED_LOWER_COLLECTION>());
+        }
+        auto arrayPtr = *value.Value;
+        if (arrayPtr.Type != TOperand::EType::Tmp) {
+            co_return TError(multiIndex->Collection->Location, TErrorString::Get<EErrorId::COLLECTION_NOT_ARRAY>());
+        }
+        auto arrayType = Builder.GetType(arrayPtr.Tmp);
+        int elemTypeId = FromAstType(expr->Type, Module.Types);
+        auto indices = co_await LowerIndices(*arraySymbol, multiIndex->Indices, scope, Module.Types.SizeInBytes(elemTypeId));
+        if (!indices.Value) {
+            co_return TError(multiIndex->Location, TErrorString::Get<EErrorId::FAILED_LOWER_ARRAY_INDICES>());
+        }
+        auto destPtr = Builder.Emit1("+"_op, {arrayPtr, *indices.Value});
+        Builder.SetType(destPtr, arrayType);
+        co_return TValueWithBlock{destPtr, Builder.CurrentBlockLabel(), EOwnership::Borrowed};
+    }
+
+    if (auto maybeField = NAst::TMaybeNode<NAst::TFieldAccessExpr>(expr)) {
+        auto field = maybeField.Cast();
+        auto object = field->Object;
+        TOperand objAddr;
+        if (auto maybeIdent = NAst::TMaybeNode<NAst::TIdentExpr>(object)) {
+            objAddr = co_await LoadVar(maybeIdent.Cast()->Name, scope, object->Location, true /*address*/);
+        } else {
+            auto res = co_await LowerLValueAddress(object, scope);
+            if (!res.Value) {
+                co_return TError(object->Location, "Не удалось вычислить адрес объекта при обращении к полю '" + field->FieldName + "'.");
+            }
+            objAddr = *res.Value;
+        }
+
+        auto objAstType = NAst::UnwrapReferenceType(NAst::UnwrapNamedType(object->Type));
+        int structTypeId = FromAstType(objAstType, Module.Types);
+        const auto& fieldTypes = Module.Types.GetStructFields(structTypeId);
+        int64_t fieldByteOffset = 0;
+        for (int i = 0; i < field->FieldIndex; ++i) {
+            fieldByteOffset += Module.Types.SizeInBytes(fieldTypes[i]);
+        }
+
+        auto i64 = Module.Types.I(EKind::I64);
+        int ptrTypeId = Module.Types.Ptr(Module.Types.I(EKind::I8));
+        auto fieldPtr = Builder.Emit1("+"_op, {objAddr, TImm{fieldByteOffset, i64}});
+        Builder.SetType(fieldPtr, ptrTypeId);
+        co_return TValueWithBlock{fieldPtr, Builder.CurrentBlockLabel(), EOwnership::Borrowed};
+    }
+
+    co_return TError(expr->Location, TErrorString::Get<EErrorId::ARG_REF_MUST_BE_IDENTIFIER>());
+}
+
 TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lower(const NAst::TExprPtr& inputExpr, TBlockScope scope) {
     int lowStringTypeId = Module.Types.Ptr(Module.Types.I(EKind::I8));
     NAst::TExprPtr expr = inputExpr;
@@ -768,11 +891,28 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
         int arrayElemTypeId = Module.Types.UnderlyingType(arrayType);
         assert(arrayElemTypeId >= 0);
         int elemByteSize = Module.Types.SizeInBytes(arrayElemTypeId);
-        auto indices = co_await LowerIndices(*arraySymbol, asg->Indices, scope, elemByteSize);
-        if (!indices.Value) {
-            co_return TError(asg->Location, TErrorString::Get<EErrorId::FAILED_LOWER_ARRAY_INDICES>());
+        TOperand totalIndex;
+        auto symbolNode = Context.GetSymbolNode(NSemantics::TSymbolId{arraySymbol->Id});
+        auto symbolType = symbolNode ? NAst::UnwrapReferenceType(NAst::UnwrapNamedType(symbolNode->Type)) : nullptr;
+        if (NAst::TMaybeType<NAst::TPointerType>(symbolType)) {
+            if (asg->Indices.size() != 1) {
+                co_return TError(asg->Location, TErrorString::Get<EErrorId::FAILED_LOWER_ARRAY_INDICES>());
+            }
+            auto indexValue = co_await Lower(asg->Indices[0], scope);
+            if (!indexValue.Value) {
+                co_return TError(asg->Indices[0]->Location, TErrorString::Get<EErrorId::ARRAY_INDEX_NOT_NUMBER>());
+            }
+            auto i64 = Module.Types.I(EKind::I64);
+            auto offset = Builder.Emit1("*"_op, {*indexValue.Value, TImm{elemByteSize, i64}});
+            Builder.SetType(offset, i64);
+            totalIndex = offset;
+        } else {
+            auto indices = co_await LowerIndices(*arraySymbol, asg->Indices, scope, elemByteSize);
+            if (!indices.Value) {
+                co_return TError(asg->Location, TErrorString::Get<EErrorId::FAILED_LOWER_ARRAY_INDICES>());
+            }
+            totalIndex = *indices.Value;
         }
-        auto totalIndex = *indices.Value;
         auto destPtr = Builder.Emit1("+"_op, {arrayPtr, totalIndex});
         Builder.SetType(destPtr, arrayType);
 
@@ -838,6 +978,21 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
         auto indexSymbol = Context.Lookup(maybeIndexIdent.Cast()->Name, scope.Id);
         if (!indexSymbol) {
             co_return TError(index->Collection->Location, TErrorString::Get<EErrorId::UNDEFINED_NAME>());
+        }
+        auto symbolNode = Context.GetSymbolNode(NSemantics::TSymbolId{indexSymbol->Id});
+        auto symbolType = symbolNode ? NAst::UnwrapReferenceType(NAst::UnwrapNamedType(symbolNode->Type)) : nullptr;
+        if (NAst::TMaybeType<NAst::TPointerType>(symbolType)) {
+            auto arrayType = Builder.GetType(arrayPtr.Tmp);
+            int elemTypeId = FromAstType(expr->Type, Module.Types);
+            int elemByteSize = Module.Types.SizeInBytes(elemTypeId);
+            auto i64 = Module.Types.I(EKind::I64);
+            auto offset = Builder.Emit1("*"_op, {*indexValue.Value, TImm{elemByteSize, i64}});
+            Builder.SetType(offset, i64);
+            auto destPtr = Builder.Emit1("+"_op, {arrayPtr, offset});
+            Builder.SetType(destPtr, arrayType);
+            auto loaded = Builder.Emit1("lde"_op, { destPtr });
+            Builder.SetType(loaded, elemTypeId);
+            co_return TValueWithBlock{ loaded, Builder.CurrentBlockLabel(), EOwnership::Borrowed };
         }
         auto layoutIt = ArrayLayouts.find(indexSymbol->Id);
         if (layoutIt == ArrayLayouts.end()) {
@@ -1339,13 +1494,10 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
             TValueWithBlock av;
 
             if (NAst::TMaybeType<NAst::TReferenceType>(argType)) {
-                // a must be an identifier
-                auto maybeIdent = NAst::TMaybeNode<NAst::TIdentExpr>(a);
-                if (!maybeIdent) {
-                    co_return TError(a->Location, TErrorString::Get<EErrorId::ARG_REF_MUST_BE_IDENTIFIER>());
+                av = co_await LowerLValueAddress(a, scope);
+                if (av.Value && av.Value->Type == TOperand::EType::Tmp) {
+                    Builder.SetType(av.Value->Tmp, FromAstType(argType, Module.Types));
                 }
-                av.Value = co_await LoadVar(maybeIdent.Cast()->Name, scope, a->Location, true /*address*/);
-                Builder.SetType(av.Value->Tmp, FromAstType(argType, Module.Types));
             } else {
                 // struct args and scalar args are both lowered the same way —
                 // VMCompiler handles ABI (lea/pointer) for struct types

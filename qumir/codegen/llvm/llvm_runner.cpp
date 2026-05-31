@@ -243,4 +243,56 @@ std::optional<std::string> TLlvmRunner::Run(
     return oss.str();
 }
 
+void* TLlvmRunner::Lookup(
+    std::unique_ptr<ILLVMModuleArtifacts> iartifacts,
+    const std::string& name,
+    std::string* error)
+{
+    auto* artifacts = static_cast<TLLVMModuleArtifacts*>(iartifacts.get());
+    if (!artifacts || !artifacts->Module) {
+        if (error) *error = "null artifacts";
+        return nullptr;
+    }
+
+    static bool inited = false;
+    if (!inited) {
+        LLVMInitializeNativeTarget();
+        LLVMInitializeNativeAsmPrinter();
+        LLVMInitializeNativeAsmParser();
+        inited = true;
+    }
+
+    llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
+
+    std::string eeErr;
+    llvm::EngineBuilder builder(std::move(artifacts->Module));
+    builder.setEngineKind(llvm::EngineKind::JIT);
+    auto ee = std::unique_ptr<llvm::ExecutionEngine>(builder.setErrorStr(&eeErr).create());
+    if (!ee) {
+        if (error) *error = std::string("ExecutionEngine create failed: ") + eeErr;
+        return nullptr;
+    }
+
+    ee->finalizeObject();
+    auto addr = ee->getFunctionAddress(name);
+    if (!addr) {
+        if (error) *error = "function not found: " + name;
+        return nullptr;
+    }
+
+    struct TLiveJit {
+        // Destruction order is important: Engine owns the Module, while Artifacts
+        // owns the LLVMContext used by that Module. Members are destroyed in
+        // reverse declaration order, so Engine must be declared after Artifacts.
+        std::unique_ptr<ILLVMModuleArtifacts> Artifacts;
+        std::unique_ptr<llvm::ExecutionEngine> Engine;
+    };
+
+    auto live = std::make_shared<TLiveJit>();
+    live->Artifacts = std::move(iartifacts);
+    live->Engine = std::move(ee);
+    LiveEngines_.push_back(std::move(live));
+    return reinterpret_cast<void*>(addr);
+}
+
 } // namespace NQumir::NCodeGen

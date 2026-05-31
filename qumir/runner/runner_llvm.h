@@ -36,6 +36,10 @@ public:
     // Returns numeric result (if any) produced by the compiled chunk.
     std::expected<std::optional<std::string>, TError> Run(std::istream& input);
 
+    // Compiles a core-lang kernel source string and returns a JIT function pointer.
+    // The pointer is valid for the lifetime of this TLLVMRunner.
+    void* CompileKernel(const std::string& source, std::string* error = nullptr);
+
 private:
     TLLVMRunnerOptions Options;
     // Persistent compiler state across Run() calls (REPL-style session)
@@ -50,6 +54,8 @@ private:
 
     std::vector<std::shared_ptr<NRegistry::IModule>> RegisteredModules;
     std::vector<std::shared_ptr<NRegistry::IModule>> AvailableModules;
+
+    NCodeGen::TLlvmRunner LlvmRunner_; // persistent; keeps compiled kernels alive
 };
 
 } // namespace NQumir

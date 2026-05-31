@@ -180,4 +180,60 @@ std::expected<std::optional<std::string>, TError> TLLVMRunner::Run(std::istream&
     }
 }
 
+void* TLLVMRunner::CompileKernel(const std::string& source, std::string* error) {
+    std::istringstream input(source);
+
+    NAst::NCore::TTokenStream ts(input);
+    NAst::NCore::TParser p;
+    auto parsed = p.Parse(ts);
+    if (!parsed) {
+        if (error) *error = parsed.error().ToString();
+        return nullptr;
+    }
+
+    auto scope = Resolver.GetOrCreateRootScope();
+    scope->AllowsRedeclare = true;
+    scope->RootLevel = false;
+
+    if (auto err = Resolver.Resolve(*parsed)) {
+        if (error) *error = err->ToString();
+        return nullptr;
+    }
+
+    auto transformResult = NTransform::Pipeline(*parsed, Resolver, {});
+    if (!transformResult) {
+        if (error) *error = transformResult.error().ToString();
+        return nullptr;
+    }
+
+    auto lowerRes = Lowerer.LowerTop(*parsed);
+    if (!lowerRes) {
+        if (error) *error = lowerRes.error().ToString();
+        return nullptr;
+    }
+
+    if (Module.Functions.empty()) {
+        if (error) *error = "no functions after lowering";
+        return nullptr;
+    }
+    const std::string funcName = Module.Functions.back().Name;
+
+    NCodeGen::TLLVMCodeGen cg({});
+    std::unique_ptr<NCodeGen::ILLVMModuleArtifacts> artifacts;
+    try {
+        artifacts = cg.Emit(Module, 0);
+    } catch (const std::exception& e) {
+        if (error) *error = std::string("llvm codegen error: ") + e.what();
+        return nullptr;
+    }
+
+    std::string runErr;
+    void* fnPtr = LlvmRunner_.Lookup(std::move(artifacts), funcName, &runErr);
+    if (!fnPtr) {
+        if (error) *error = runErr.empty() ? "function not found: " + funcName : runErr;
+        return nullptr;
+    }
+    return fnPtr;
+}
+
 } // namespace NQumir

@@ -217,6 +217,21 @@ Casts, indexing, and slicing:
 Single-index access creates `TIndexExpr`; vector index access creates
 `TMultiIndexExpr`.
 
+When a function parameter has type `<ref T>`, the argument must be an lvalue.
+Identifiers, field accesses, and array element accesses can be passed by
+reference. Indexed array arguments use the same syntax as normal reads:
+
+```core
+(fun bump void ((var x <ref i64>)) ()
+  (block (= x (+ x (: 1 i64)))))
+
+(var a <array i64 1> [0 2])
+(call bump (index 1 a))
+```
+
+During IR lowering the indexed expression is converted to the element address,
+not loaded as a value.
+
 Modules and assertions:
 
 ```core

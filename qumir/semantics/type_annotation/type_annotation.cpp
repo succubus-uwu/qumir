@@ -573,9 +573,10 @@ TTask AnnotateArrayAssign(std::shared_ptr<TArrayAssignExpr> arrayAssign, NSemant
     if (!sym || !sym->Type) {
         co_return TError(arrayAssign->Location, "У массива не определён тип: '" + arrayAssign->Name + "'.");
     }
-    // Allow array assignment for arrays and strings
+    // Allow indexed assignment for arrays, strings and raw kernel pointers.
     auto maybeArrayType = TMaybeType<TArrayType>(sym->Type);
     auto maybeStringType = TMaybeType<TStringType>(sym->Type);
+    auto maybePointerType = TMaybeType<TPointerType>(sym->Type);
     if (maybeArrayType) {
         auto arrayType = maybeArrayType.Cast();
         auto valueType = UnwrapReferenceType(arrayAssign->Value->Type);
@@ -602,6 +603,35 @@ TTask AnnotateArrayAssign(std::shared_ptr<TArrayAssignExpr> arrayAssign, NSemant
         }
         arrayAssign->Type = std::make_shared<NAst::TVoidType>();
         co_return arrayAssign;
+    } else if (maybePointerType) {
+        auto pointerType = maybePointerType.Cast();
+        if (arrayAssign->Indices.size() != 1) {
+            co_return TError(arrayAssign->Location, "В присваивании по указателю '" + arrayAssign->Name + "' должен быть ровно один индекс.");
+        }
+
+        arrayAssign->Indices[0] = co_await DoAnnotate(arrayAssign->Indices[0], context, scopeId);
+        if (!arrayAssign->Indices[0]->Type) {
+            co_return TError(arrayAssign->Location, "Индекс в присваивании по указателю '" + arrayAssign->Name + "' не имеет типа.");
+        }
+        auto intType = std::make_shared<TIntegerType>();
+        if (!EqualTypes(arrayAssign->Indices[0]->Type, intType)) {
+            if (!CanImplicit(arrayAssign->Indices[0]->Type, intType, &context)) {
+                co_return TError(arrayAssign->Location, "Индекс в присваивании по указателю '" + arrayAssign->Name + "' должен быть целым числом.");
+            }
+            arrayAssign->Indices[0] = InsertImplicitCastIfNeeded(arrayAssign->Indices[0], intType, &context);
+        }
+
+        auto valueType = UnwrapReferenceType(arrayAssign->Value->Type);
+        if (!EqualTypes(valueType, pointerType->PointeeType)) {
+            if (!CanImplicit(valueType, pointerType->PointeeType, &context)) {
+                co_return TError(arrayAssign->Location, "Нельзя неявно преобразовать тип '" +
+                    std::string(valueType->TypeName()) + "' к типу '" + std::string(pointerType->PointeeType->TypeName()) + "' при присваивании по указателю '" + arrayAssign->Name + "'.");
+            }
+            arrayAssign->Value = InsertImplicitCastIfNeeded(arrayAssign->Value, pointerType->PointeeType, &context);
+        }
+
+        arrayAssign->Type = std::make_shared<NAst::TVoidType>();
+        co_return arrayAssign;
     } else if (maybeStringType) {
         // Only allow s[1] = 'c' (symbol to string)
         if (arrayAssign->Indices.size() != 1) {
@@ -620,7 +650,7 @@ TTask AnnotateArrayAssign(std::shared_ptr<TArrayAssignExpr> arrayAssign, NSemant
         arrayAssign->Type = std::make_shared<NAst::TVoidType>();
         co_return arrayAssign;
     } else {
-        co_return TError(arrayAssign->Location, "Идентификатор '" + arrayAssign->Name + "' не является массивом или строкой, поэтому нельзя использовать присваивание по индексу.");
+        co_return TError(arrayAssign->Location, "Идентификатор '" + arrayAssign->Name + "' не является массивом, строкой или указателем, поэтому нельзя использовать присваивание по индексу.");
     }
 }
 
@@ -971,11 +1001,13 @@ TTask AnnotateIndex(std::shared_ptr<TIndexExpr> indexExpr, NSemantics::TNameReso
     } else if (auto maybeArrayType = TMaybeType<TArrayType>(collectionType)) {
         auto arrayType = maybeArrayType.Cast();
         indexExpr->Type = arrayType->ElementType;
+    } else if (auto maybePointerType = TMaybeType<TPointerType>(collectionType)) {
+        indexExpr->Type = maybePointerType.Cast()->PointeeType;
     } else {
-        co_return TError(indexExpr->Location, "Индексация поддерживается только для массивов и строк.\n"
+        co_return TError(indexExpr->Location, "Индексация поддерживается только для массивов, строк и указателей.\n"
             "Пример корректной индексации массива: a[2] (где a — массив).\n"
             "Пример корректной индексации строки: s[1] (где s — строка).\n"
-            "Проверьте, что вы обращаетесь к массиву или строке, а не к другому типу.");
+            "Проверьте, что вы обращаетесь к массиву, строке или указателю, а не к другому типу.");
     }
 
     co_return indexExpr;

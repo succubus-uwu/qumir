@@ -96,6 +96,19 @@ addr   = arrayPtr + offset
 Loads use `lde`; scalar stores use `ste`; struct elements are copied with
 `copy` because the element value may be address-backed.
 
+The same address calculation is used when an array element is passed to a
+reference parameter. For example, a core call like `(call bump (index i a))`
+lowers the indexed expression as an lvalue address:
+
+```text
+addr = arrayPtr + LowerIndices(symbol, [i], elemByteSize)
+arg addr
+call bump
+```
+
+For one-dimensional pointer values, the offset is simply `i * elemByteSize`.
+LLVM codegen lowers the IR pointer addition to a byte-addressed GEP.
+
 ## Passing Arrays to Functions
 
 Array arguments are passed by pointer. The callee receives the same backing

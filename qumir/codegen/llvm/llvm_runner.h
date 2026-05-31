@@ -24,8 +24,19 @@ public:
         bool returnTypeIsString = false /* TODO: remove me, clutch: support string returnType */,
         std::function<std::optional<std::string>(const void*)> coroutineResultFormatter = {});
 
+    // Compiles the module via JIT and returns a function pointer by name.
+    // The pointer is valid for the lifetime of this TLlvmRunner.
+    void* Lookup(
+        std::unique_ptr<ILLVMModuleArtifacts> artifacts,
+        const std::string& name,
+        std::string* error = nullptr);
+
 private:
     std::string LastError; // currently unused (kept for future diagnostics)
+
+    // Keeps ExecutionEngines alive so function pointers returned by Lookup remain valid.
+    // Type-erased to avoid including heavy LLVM headers here.
+    std::vector<std::shared_ptr<void>> LiveEngines_;
 };
 
 } // namespace NQumir::NCodeGen

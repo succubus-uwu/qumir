@@ -65,6 +65,7 @@ private:
     TExpectedTask<TValueWithBlock, TError, TLocation> LowerTimes(std::shared_ptr<NAst::TTimesStmtExpr> loop, TBlockScope scope);
     TExpectedTask<TArrayLayout, TError, TLocation> LowerArrayLayout(NSemantics::TSymbolInfo symbol, const std::vector<std::pair<NAst::TExprPtr, NAst::TExprPtr>>& bounds, TBlockScope scope, const TLocation& loc);
     TExpectedTask<TValueWithBlock, TError, TLocation> LowerIndices(NSemantics::TSymbolInfo symbol, const std::vector<NAst::TExprPtr>& indices, TBlockScope scope, int elemSize = 8);
+    TExpectedTask<TValueWithBlock, TError, TLocation> LowerLValueAddress(const NAst::TExprPtr& expr, TBlockScope scope);
     TExpectedTask<TTmp, TError, TLocation> LoadVar(const std::string& name, TBlockScope scope, const TLocation& loc, bool ref = false);
     TTmp LoadLayoutOperand(TOperand operand);
     TOperand AllocLayoutStorage(NSemantics::TSymbolInfo symbol, int typeId);
