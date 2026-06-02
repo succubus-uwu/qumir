@@ -31,6 +31,8 @@ struct TMaybeNode {
     operator bool() const { return Node != nullptr; }
 };
 
+struct IVisitor;
+
 struct TExpr {
     TLocation Location;
     TTypePtr Type = nullptr;
@@ -54,6 +56,8 @@ struct TExpr {
     virtual const std::string ToString() const {
         return std::string(NodeName());
     }
+
+    virtual void Accept(class IVisitor& visitor) = 0;
 };
 
 template<typename T>
@@ -79,6 +83,8 @@ struct TIdentExpr : TExpr {
     const std::string ToString() const override {
         return "$" + Name;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TAssignExpr : TExpr {
@@ -107,6 +113,8 @@ struct TAssignExpr : TExpr {
     const std::string ToString() const override {
         return std::string("$") + Name + " =";
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TArrayAssignExpr : TExpr {
@@ -144,6 +152,8 @@ struct TArrayAssignExpr : TExpr {
     const std::string ToString() const override {
         return std::string("$") + Name + "[...] =";
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TNumberExpr : TExpr {
@@ -178,6 +188,8 @@ struct TNumberExpr : TExpr {
     const std::string ToString() const override {
         return IsFloat ? std::to_string(FloatValue) : std::to_string(IntValue);
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 // c-style const char* string literal
@@ -214,6 +226,8 @@ struct TStringLiteralExpr : TExpr {
         }
         return "\"" + escaped + "\"";
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TUnaryExpr : TExpr {
@@ -242,6 +256,8 @@ struct TUnaryExpr : TExpr {
     const std::string ToString() const override {
         return Operator.ToString();
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TBinaryExpr : TExpr {
@@ -272,6 +288,8 @@ struct TBinaryExpr : TExpr {
     const std::string ToString() const override {
         return Operator.ToString();
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TBlockExpr : TExpr {
@@ -307,6 +325,8 @@ struct TBlockExpr : TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TSeqExpr : TExpr {
@@ -340,6 +360,8 @@ struct TSeqExpr : TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TIfStmt : TExpr {
@@ -366,6 +388,8 @@ struct TIfStmt : TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TIfExpr : TExpr {
@@ -392,6 +416,8 @@ struct TIfExpr : TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TLetExpr : TExpr {
@@ -444,6 +470,8 @@ struct TLetExpr : TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TWhileStmtExpr : TExpr {
@@ -469,6 +497,8 @@ struct TWhileStmtExpr : TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TRepeatStmtExpr : TExpr {
@@ -494,6 +524,8 @@ struct TRepeatStmtExpr : TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TForStmtExpr : TExpr {
@@ -525,6 +557,8 @@ struct TForStmtExpr : TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TTimesStmtExpr : TExpr {
@@ -550,6 +584,8 @@ struct TTimesStmtExpr : TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TBreakStmt : TExpr {
@@ -562,6 +598,8 @@ struct TBreakStmt : TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TContinueStmt : TExpr {
@@ -574,6 +612,8 @@ struct TContinueStmt : TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TVarStmt : TExpr {
@@ -613,6 +653,8 @@ struct TVarStmt : TExpr {
     const std::string ToString() const override {
         return std::string(NodeName()) + " $" + Name;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TVarsBlockExpr : TExpr {
@@ -629,6 +671,8 @@ struct TVarsBlockExpr : TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 using TParam = std::shared_ptr<TVarStmt>;
@@ -701,6 +745,8 @@ struct TFunDecl : TExpr {
         }
         return s;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TCallExpr : TExpr {
@@ -737,6 +783,8 @@ struct TCallExpr : TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TAwaitExpr : TExpr {
@@ -759,6 +807,8 @@ struct TAwaitExpr : TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 // Sugared AST node for input(...) expression, which is transformed into calls to input_xxx functions
@@ -794,6 +844,8 @@ struct TInputExpr : TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 // Sugared AST node for output(...) expression, which is transformed into calls to output_xxx functions
@@ -847,6 +899,8 @@ struct TOutputExpr : TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TCastExpr : public TExpr {
@@ -878,6 +932,8 @@ struct TCastExpr : public TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 inline TExprPtr MakeCast(TExprPtr e, TTypePtr to) {
@@ -907,6 +963,8 @@ struct TIndexExpr : public TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TMultiIndexExpr : public TExpr {
@@ -944,6 +1002,8 @@ struct TMultiIndexExpr : public TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 struct TSliceExpr : public TExpr {
@@ -971,6 +1031,8 @@ struct TSliceExpr : public TExpr {
     const std::string_view NodeName() const override {
         return NodeId;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 class TUseExpr : public TExpr {
@@ -990,6 +1052,8 @@ public:
     const std::string ToString() const override {
         return "use \"" + ModuleName + "\"";
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 class TAssertStmt : public TExpr {
@@ -1013,6 +1077,8 @@ public:
     std::vector<TExprPtr*> MutableChildren() override {
         return { &Expr };
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 class TFieldAccessExpr : public TExpr {
@@ -1039,6 +1105,8 @@ public:
     std::vector<TExprPtr*> MutableChildren() override {
         return { &Object };
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 // Constructs a struct value from per-field expressions. Type must be set to the struct type.
@@ -1064,6 +1132,8 @@ public:
         for (auto& f : Fields) r.push_back(&f);
         return r;
     }
+
+    void Accept(IVisitor& visitor) override;
 };
 
 class TFieldAssignExpr : public TExpr {
@@ -1092,6 +1162,49 @@ public:
     std::vector<TExprPtr*> MutableChildren() override {
         return { &Object, &Value };
     }
+
+    void Accept(IVisitor& visitor) override;
+};
+
+struct IVisitor {
+    virtual ~IVisitor() = default;
+    virtual void Visit(TIdentExpr& node) = 0;
+    virtual void Visit(TAssignExpr& node) = 0;
+    virtual void Visit(TArrayAssignExpr& node) = 0;
+    virtual void Visit(TNumberExpr& node) = 0;
+    virtual void Visit(TStringLiteralExpr& node) = 0;
+    virtual void Visit(TUnaryExpr& node) = 0;
+    virtual void Visit(TBinaryExpr& node) = 0;
+    virtual void Visit(TBlockExpr& node) = 0;
+    virtual void Visit(TSeqExpr& node) = 0;
+    virtual void Visit(TIfStmt& node) = 0;
+    virtual void Visit(TIfExpr& node) = 0;
+    virtual void Visit(TLetExpr& node) = 0;
+    virtual void Visit(TWhileStmtExpr& node) = 0;
+    virtual void Visit(TRepeatStmtExpr& node) = 0;
+    virtual void Visit(TForStmtExpr& node) = 0;
+    virtual void Visit(TTimesStmtExpr& node) = 0;
+    virtual void Visit(TBreakStmt& node) = 0;
+    virtual void Visit(TContinueStmt& node) = 0;
+    virtual void Visit(TVarStmt& node) = 0;
+    virtual void Visit(TVarsBlockExpr& node) = 0;
+    virtual void Visit(TFunDecl& node) = 0;
+    virtual void Visit(TCallExpr& node) = 0;
+    virtual void Visit(TAwaitExpr& node) = 0;
+    virtual void Visit(TInputExpr& node) = 0;
+    virtual void Visit(TOutputExpr& node) = 0;
+    virtual void Visit(TCastExpr& node) = 0;
+    virtual void Visit(TIndexExpr& node) = 0;
+    virtual void Visit(TMultiIndexExpr& node) = 0;
+    virtual void Visit(TSliceExpr& node) = 0;
+    virtual void Visit(TUseExpr& node) = 0;
+    virtual void Visit(TAssertStmt& node) = 0;
+    virtual void Visit(TFieldAccessExpr& node) = 0;
+    virtual void Visit(TStructConstructExpr& node) = 0;
+    virtual void Visit(TFieldAssignExpr& node) = 0;
+
+    virtual void VisitOtherwise(TExpr& node) = 0;
+     // Add more
 };
 
 template<typename TransformFunctor, typename FilterFunctor>

@@ -11,10 +11,15 @@ namespace NCore {
 
 namespace {
 
+struct TPrintFrame {
+    bool AllowTypeWrap;
+    int Level;
+};
+
 class TPrinter {
 public:
     TPrinter(std::ostream& out, TPrintOptions options)
-        : Out(out)
+        : Out(&out)
         , Options(options)
     { }
 
@@ -26,43 +31,44 @@ public:
         PrintType(std::move(type), /*level=*/0);
     }
 
-private:
-    bool FitsOneLine(TExprPtr expr, bool allowTypeWrap, int level) const {
+    bool FitsOneLine(TExprPtr expr, bool allowTypeWrap, int level) {
         if (!Options.Pretty) {
             return true;
         }
-        auto compactOptions = Options;
-        compactOptions.Pretty = false;
-        std::ostringstream out;
-        TPrinter printer(out, compactOptions);
-        printer.PrintExpr(std::move(expr), allowTypeWrap, level);
-        return level * Options.IndentStep + out.str().size() <= Options.LineWidth;
+        std::ostringstream buf;
+        auto* savedOut = Out;
+        Out = &buf;
+        Options.Pretty = false;
+        PrintExpr(std::move(expr), allowTypeWrap, level);
+        Out = savedOut;
+        Options.Pretty = true;
+        return level * Options.IndentStep + buf.str().size() <= Options.LineWidth;
     }
 
     bool ForceMultiline(TExprPtr expr) const {
-        return TMaybeNode<TBlockExpr>(expr)
-            || TMaybeNode<TSeqExpr>(expr)
-            || TMaybeNode<TVarsBlockExpr>(expr)
-            || TMaybeNode<TFunDecl>(expr);
+        return expr->NodeName() == TBlockExpr::NodeId
+            || expr->NodeName() == TSeqExpr::NodeId
+            || expr->NodeName() == TVarsBlockExpr::NodeId
+            || expr->NodeName() == TFunDecl::NodeId;
     }
 
     void PrintCompact(TExprPtr expr, bool allowTypeWrap, int level) {
-        auto compactOptions = Options;
-        compactOptions.Pretty = false;
-        TPrinter printer(Out, compactOptions);
-        printer.PrintExpr(std::move(expr), allowTypeWrap, level);
+        auto options = Options;
+        Options.Pretty = false;
+        PrintExpr(std::move(expr), allowTypeWrap, level);
+        Options = options;
     }
 
     void Separator(int level) {
         if (Options.Pretty) {
-            Out << '\n' << std::string(static_cast<size_t>(level * Options.IndentStep), ' ');
+            *Out << '\n' << std::string(static_cast<size_t>(level * Options.IndentStep), ' ');
         } else {
-            Out << ' ';
+            *Out << ' ';
         }
     }
 
     void Space() {
-        Out << ' ';
+        *Out << ' ';
     }
 
     bool ShouldWrapType(const TExprPtr& expr) const {
@@ -90,141 +96,7 @@ private:
         return integerType && integerType.Cast()->Kind != TIntegerType::I64;
     }
 
-    void PrintExpr(TExprPtr expr, bool allowTypeWrap, int level) {
-        if (!expr) {
-            Out << "nil";
-            return;
-        }
-
-        if (allowTypeWrap && ShouldWrapType(expr)) {
-            if (Options.Pretty && !ForceMultiline(expr) && FitsOneLine(expr, allowTypeWrap, level)) {
-                PrintCompact(std::move(expr), allowTypeWrap, level);
-                return;
-            }
-            Out << "(: ";
-            PrintExpr(expr, /*allowTypeWrap=*/false, level + 1);
-            Separator(level + 1);
-            PrintType(expr->Type, level + 1);
-            Out << ')';
-            return;
-        }
-
-        if (Options.Pretty && !ForceMultiline(expr) && FitsOneLine(expr, allowTypeWrap, level)) {
-            PrintCompact(std::move(expr), allowTypeWrap, level);
-            return;
-        }
-
-        if (auto n = TMaybeNode<TIdentExpr>(expr)) {
-            PrintIdentifier(n.Cast()->Name);
-        } else if (auto n = TMaybeNode<TAssignExpr>(expr)) {
-            Out << "(= ";
-            PrintIdentifier(n.Cast()->Name);
-            Separator(level + 1);
-            PrintExpr(n.Cast()->Value, true, level + 1);
-            Out << ')';
-        } else if (auto n = TMaybeNode<TArrayAssignExpr>(expr)) {
-            PrintArrayAssign(n.Cast(), level);
-        } else if (auto n = TMaybeNode<TNumberExpr>(expr)) {
-            PrintNumber(n.Cast());
-        } else if (auto n = TMaybeNode<TStringLiteralExpr>(expr)) {
-            PrintString(n.Cast()->Value, '"');
-        } else if (auto n = TMaybeNode<TUnaryExpr>(expr)) {
-            Out << '(' << n.Cast()->Operator.ToString() << ' ';
-            PrintExpr(n.Cast()->Operand, true, level + 1);
-            Out << ')';
-        } else if (auto n = TMaybeNode<TBinaryExpr>(expr)) {
-            Out << '(' << n.Cast()->Operator.ToString() << ' ';
-            PrintExpr(n.Cast()->Left, true, level + 1);
-            Separator(level + 1);
-            PrintExpr(n.Cast()->Right, true, level + 1);
-            Out << ')';
-        } else if (auto n = TMaybeNode<TBlockExpr>(expr)) {
-            PrintExprList("block", n.Cast()->Stmts, level);
-        } else if (auto n = TMaybeNode<TSeqExpr>(expr)) {
-            PrintExprList("seq", n.Cast()->Stmts, level);
-        } else if (auto n = TMaybeNode<TIfStmt>(expr)) {
-            PrintIfLike("cond", n.Cast()->Cond, n.Cast()->Then, n.Cast()->Else, level);
-        } else if (auto n = TMaybeNode<TIfExpr>(expr)) {
-            PrintIfLike("if", n.Cast()->Cond, n.Cast()->Then, n.Cast()->Else, level);
-        } else if (auto n = TMaybeNode<TLetExpr>(expr)) {
-            PrintLet(n.Cast(), level);
-        } else if (auto n = TMaybeNode<TWhileStmtExpr>(expr)) {
-            PrintWhile(n.Cast(), level);
-        } else if (auto n = TMaybeNode<TRepeatStmtExpr>(expr)) {
-            PrintRepeat(n.Cast(), level);
-        } else if (auto n = TMaybeNode<TForStmtExpr>(expr)) {
-            PrintFor(n.Cast(), level);
-        } else if (auto n = TMaybeNode<TTimesStmtExpr>(expr)) {
-            PrintTimes(n.Cast(), level);
-        } else if (TMaybeNode<TBreakStmt>(expr)) {
-            Out << "break";
-        } else if (TMaybeNode<TContinueStmt>(expr)) {
-            Out << "continue";
-        } else if (auto n = TMaybeNode<TVarStmt>(expr)) {
-            PrintVar(n.Cast(), level);
-        } else if (auto n = TMaybeNode<TVarsBlockExpr>(expr)) {
-            PrintExprList("vars", n.Cast()->Vars, level);
-        } else if (auto n = TMaybeNode<TFunDecl>(expr)) {
-            PrintFun(n.Cast(), level);
-        } else if (auto n = TMaybeNode<TCallExpr>(expr)) {
-            PrintCall(n.Cast(), level);
-        } else if (auto n = TMaybeNode<TAwaitExpr>(expr)) {
-            Out << "(await";
-            Separator(level + 1);
-            PrintExpr(n.Cast()->Operand, true, level + 1);
-            Out << ')';
-        } else if (auto n = TMaybeNode<TInputExpr>(expr)) {
-            PrintExprList("input", n.Cast()->Args, level);
-        } else if (auto n = TMaybeNode<TOutputExpr>(expr)) {
-            PrintOutput(n.Cast(), level);
-        } else if (auto n = TMaybeNode<TCastExpr>(expr)) {
-            Out << "(cast";
-            Separator(level + 1);
-            PrintExpr(n.Cast()->Operand, true, level + 1);
-            Separator(level + 1);
-            PrintType(n.Cast()->Type, level + 1);
-            Out << ')';
-        } else if (auto n = TMaybeNode<TIndexExpr>(expr)) {
-            Out << "(index";
-            Separator(level + 1);
-            PrintExpr(n.Cast()->Index, true, level + 1);
-            Separator(level + 1);
-            PrintExpr(n.Cast()->Collection, true, level + 1);
-            Out << ')';
-        } else if (auto n = TMaybeNode<TMultiIndexExpr>(expr)) {
-            PrintMultiIndex(n.Cast(), level);
-        } else if (auto n = TMaybeNode<TSliceExpr>(expr)) {
-            PrintSlice(n.Cast(), level);
-        } else if (auto n = TMaybeNode<TUseExpr>(expr)) {
-            Out << "(use ";
-            PrintString(n.Cast()->ModuleName, '"');
-            Out << ')';
-        } else if (auto n = TMaybeNode<TAssertStmt>(expr)) {
-            Out << "(assert";
-            Separator(level + 1);
-            PrintExpr(n.Cast()->Expr, true, level + 1);
-            Out << ')';
-        } else if (auto n = TMaybeNode<TFieldAccessExpr>(expr)) {
-            Out << "(field ";
-            PrintIdentifier(n.Cast()->FieldName);
-            Separator(level + 1);
-            PrintExpr(n.Cast()->Object, true, level + 1);
-            Out << ')';
-        } else if (auto n = TMaybeNode<TStructConstructExpr>(expr)) {
-            PrintStructConstruct(n.Cast(), level);
-        } else if (auto n = TMaybeNode<TFieldAssignExpr>(expr)) {
-            Out << "(field_assign";
-            Separator(level + 1);
-            PrintExpr(n.Cast()->Object, true, level + 1);
-            Separator(level + 1);
-            PrintIdentifier(n.Cast()->FieldName);
-            Separator(level + 1);
-            PrintExpr(n.Cast()->Value, true, level + 1);
-            Out << ')';
-        } else {
-            throw std::runtime_error("unsupported AST node for core print: " + std::string(expr->NodeName()));
-        }
-    }
+    void PrintExpr(TExprPtr expr, bool allowTypeWrap, int level);
 
     bool HasPrintableTypeAttrs(TTypePtr type) const {
         return type && type->Mutable && !type->Readable;
@@ -235,27 +107,27 @@ private:
         if (!HasPrintableTypeAttrs(type)) {
             return;
         }
-        Out << " (";
+        *Out << " (";
         if (type->Mutable) {
-            Out << "mutable";
+            *Out << "mutable";
         }
-        Out << ')';
+        *Out << ')';
     }
 
     // Prints a simple (scalar) type, wrapping in <> with attrs if flags are non-default.
     void PrintScalarType(std::string_view name, TTypePtr type) {
         if (HasPrintableTypeAttrs(type)) {
-            Out << '<' << name;
+            *Out << '<' << name;
             PrintTypeAttrs(type);
-            Out << '>';
+            *Out << '>';
         } else {
-            Out << name;
+            *Out << name;
         }
     }
 
     void PrintType(TTypePtr type, int level) {
         if (!type) {
-            Out << "nil";
+            *Out << "nil";
         } else if (auto t = TMaybeType<TIntegerType>(type)) {
             PrintScalarType(t.Cast()->ToString(), type);
         } else if (TMaybeType<TFloatType>(type)) {
@@ -273,34 +145,34 @@ private:
         } else if (auto t = TMaybeType<TFunctionType>(type)) {
             PrintFunctionType(t.Cast(), level);
         } else if (auto t = TMaybeType<TFutureType>(type)) {
-            Out << "<future ";
+            *Out << "<future ";
             PrintType(t.Cast()->ResultType, level);
             PrintTypeAttrs(type);
-            Out << '>';
+            *Out << '>';
         } else if (auto t = TMaybeType<TArrayType>(type)) {
-            Out << "<array ";
+            *Out << "<array ";
             PrintType(t.Cast()->ElementType, level);
-            Out << ' ' << t.Cast()->Arity << '>';
+            *Out << ' ' << t.Cast()->Arity << '>';
         } else if (auto t = TMaybeType<TPointerType>(type)) {
-            Out << "<ptr ";
+            *Out << "<ptr ";
             PrintType(t.Cast()->PointeeType, level);
             PrintTypeAttrs(type);
-            Out << '>';
+            *Out << '>';
         } else if (auto t = TMaybeType<TReferenceType>(type)) {
-            Out << "<ref ";
+            *Out << "<ref ";
             PrintType(t.Cast()->ReferencedType, level);
             PrintTypeAttrs(type);
-            Out << '>';
+            *Out << '>';
         } else if (auto t = TMaybeType<TNamedType>(type)) {
             if (Options.ShortNamedTypes.contains(t.Cast()->Name)) {
                 PrintIdentifier(t.Cast()->Name);
             } else {
-                Out << "<named ";
+                *Out << "<named ";
                 PrintIdentifier(t.Cast()->Name);
-                Out << ' ';
+                *Out << ' ';
                 PrintType(t.Cast()->UnderlyingType, level);
                 PrintTypeAttrs(type);
-                Out << '>';
+                *Out << '>';
             }
         } else if (auto t = TMaybeType<TStructType>(type)) {
             PrintStructType(t.Cast(), level);
@@ -311,53 +183,53 @@ private:
 
     void PrintIdentifier(const std::string& value) {
         if (value.find(' ') != std::string::npos) {
-            Out << '|' << value << '|';
+            *Out << '|' << value << '|';
         } else {
-            Out << value;
+            *Out << value;
         }
     }
 
     void PrintString(const std::string& value, char quote) {
-        Out << quote;
+        *Out << quote;
         for (char ch : value) {
             switch (ch) {
-                case '\n': Out << "\\n"; break;
-                case '\t': Out << "\\t"; break;
-                case '\\': Out << "\\\\"; break;
-                case '"': Out << (quote == '"' ? "\\\"" : "\""); break;
-                case '\'': Out << (quote == '\'' ? "\\'" : "'"); break;
-                default: Out << ch;
+                case '\n': *Out << "\\n"; break;
+                case '\t': *Out << "\\t"; break;
+                case '\\': *Out << "\\\\"; break;
+                case '"': *Out << (quote == '"' ? "\\\"" : "\""); break;
+                case '\'': *Out << (quote == '\'' ? "\\'" : "'"); break;
+                default: *Out << ch;
             }
         }
-        Out << quote;
+        *Out << quote;
     }
 
-    void PrintNumber(const std::shared_ptr<TNumberExpr>& node) {
-        if (TMaybeType<TBoolType>(node->Type)) {
-            Out << (node->IntValue ? "#t" : "#f");
-        } else if (TMaybeType<TSymbolType>(node->Type)) {
-            PrintString(std::string(1, static_cast<char>(node->IntValue)), '\'');
-        } else if (node->IsFloat) {
-            const auto oldPrecision = Out.precision();
-            Out << std::setprecision(std::numeric_limits<double>::max_digits10);
-            Out << node->FloatValue;
-            Out.precision(oldPrecision);
+    void PrintNumber(TNumberExpr& node) {
+        if (TMaybeType<TBoolType>(node.Type)) {
+            *Out << (node.IntValue ? "#t" : "#f");
+        } else if (TMaybeType<TSymbolType>(node.Type)) {
+            PrintString(std::string(1, static_cast<char>(node.IntValue)), '\'');
+        } else if (node.IsFloat) {
+            const auto oldPrecision = Out->precision();
+            *Out << std::setprecision(std::numeric_limits<double>::max_digits10);
+            *Out << node.FloatValue;
+            Out->precision(oldPrecision);
         } else {
-            Out << node->IntValue;
+            *Out << node.IntValue;
         }
     }
 
     void PrintExprList(std::string_view head, const std::vector<TExprPtr>& items, int level) {
-        Out << '(' << head;
+        *Out << '(' << head;
         for (const auto& item : items) {
             Separator(level + 1);
             PrintExpr(item, true, level + 1);
         }
-        Out << ')';
+        *Out << ')';
     }
 
     void PrintIfLike(std::string_view head, TExprPtr cond, TExprPtr thenBranch, TExprPtr elseBranch, int level) {
-        Out << '(' << head;
+        *Out << '(' << head;
         Separator(level + 1);
         PrintExpr(cond, true, level + 1);
         Separator(level + 1);
@@ -366,151 +238,151 @@ private:
             Separator(level + 1);
             PrintExpr(elseBranch, true, level + 1);
         }
-        Out << ')';
+        *Out << ')';
     }
 
-    void PrintArrayAssign(const std::shared_ptr<TArrayAssignExpr>& node, int level) {
-        Out << "(= ";
-        PrintIdentifier(node->Name);
+    void PrintArrayAssign(TArrayAssignExpr& node, int level) {
+        *Out << "(= ";
+        PrintIdentifier(node.Name);
         Separator(level + 1);
-        PrintIndexVector(node->Indices, level + 1);
+        PrintIndexVector(node.Indices, level + 1);
         Separator(level + 1);
-        PrintExpr(node->Value, true, level + 1);
-        Out << ')';
+        PrintExpr(node.Value, true, level + 1);
+        *Out << ')';
     }
 
     void PrintIndexVector(const std::vector<TExprPtr>& indices, int level) {
-        Out << '[';
+        *Out << '[';
         for (size_t i = 0; i < indices.size(); ++i) {
             if (i != 0) {
                 Separator(level + 1);
             }
             PrintExpr(indices[i], true, level + 1);
         }
-        Out << ']';
+        *Out << ']';
     }
 
-    void PrintLet(const std::shared_ptr<TLetExpr>& node, int level) {
-        Out << "(let (";
-        for (size_t i = 0; i < node->Bindings.size(); ++i) {
+    void PrintLet(TLetExpr& node, int level) {
+        *Out << "(let (";
+        for (size_t i = 0; i < node.Bindings.size(); ++i) {
             if (i != 0) {
                 Separator(level + 2);
             }
-            Out << '(';
-            PrintIdentifier(node->Bindings[i].Name);
+            *Out << '(';
+            PrintIdentifier(node.Bindings[i].Name);
             Space();
-            PrintExpr(node->Bindings[i].Value, true, level + 2);
-            Out << ')';
+            PrintExpr(node.Bindings[i].Value, true, level + 2);
+            *Out << ')';
         }
-        Out << ')';
+        *Out << ')';
         Separator(level + 1);
-        PrintExpr(node->Body, true, level + 1);
-        Out << ')';
+        PrintExpr(node.Body, true, level + 1);
+        *Out << ')';
     }
 
-    void PrintWhile(const std::shared_ptr<TWhileStmtExpr>& node, int level) {
-        Out << "(while";
+    void PrintWhile(TWhileStmtExpr& node, int level) {
+        *Out << "(while";
         Separator(level + 1);
-        PrintExpr(node->Cond, true, level + 1);
+        PrintExpr(node.Cond, true, level + 1);
         Separator(level + 1);
-        PrintExpr(node->Body, true, level + 1);
-        Out << ')';
+        PrintExpr(node.Body, true, level + 1);
+        *Out << ')';
     }
 
-    void PrintRepeat(const std::shared_ptr<TRepeatStmtExpr>& node, int level) {
-        Out << "(repeat";
+    void PrintRepeat(TRepeatStmtExpr& node, int level) {
+        *Out << "(repeat";
         Separator(level + 1);
-        PrintExpr(node->Body, true, level + 1);
+        PrintExpr(node.Body, true, level + 1);
         Separator(level + 1);
-        PrintExpr(node->Cond, true, level + 1);
-        Out << ')';
+        PrintExpr(node.Cond, true, level + 1);
+        *Out << ')';
     }
 
-    void PrintFor(const std::shared_ptr<TForStmtExpr>& node, int level) {
-        Out << "(for ";
-        PrintIdentifier(node->VarName);
+    void PrintFor(TForStmtExpr& node, int level) {
+        *Out << "(for ";
+        PrintIdentifier(node.VarName);
         Separator(level + 1);
-        PrintExpr(node->From, true, level + 1);
+        PrintExpr(node.From, true, level + 1);
         Separator(level + 1);
-        PrintExpr(node->To, true, level + 1);
+        PrintExpr(node.To, true, level + 1);
         Separator(level + 1);
-        PrintExpr(node->Step, true, level + 1);
+        PrintExpr(node.Step, true, level + 1);
         Separator(level + 1);
-        PrintExpr(node->Body, true, level + 1);
-        Out << ')';
+        PrintExpr(node.Body, true, level + 1);
+        *Out << ')';
     }
 
-    void PrintTimes(const std::shared_ptr<TTimesStmtExpr>& node, int level) {
-        Out << "(times";
+    void PrintTimes(TTimesStmtExpr& node, int level) {
+        *Out << "(times";
         Separator(level + 1);
-        PrintExpr(node->Count, true, level + 1);
+        PrintExpr(node.Count, true, level + 1);
         Separator(level + 1);
-        PrintExpr(node->Body, true, level + 1);
-        Out << ')';
+        PrintExpr(node.Body, true, level + 1);
+        *Out << ')';
     }
 
-    void PrintVar(const std::shared_ptr<TVarStmt>& node, int level) {
-        Out << "(var ";
-        PrintIdentifier(node->Name);
+    void PrintVar(TVarStmt& node, int level) {
+        *Out << "(var ";
+        PrintIdentifier(node.Name);
         Space();
-        PrintType(node->Type, level);
-        for (const auto& [from, to] : node->Bounds) {
+        PrintType(node.Type, level);
+        for (const auto& [from, to] : node.Bounds) {
             Separator(level + 1);
-            Out << '[';
+            *Out << '[';
             PrintExpr(from, true, level + 1);
             Space();
             PrintExpr(to, true, level + 1);
-            Out << ']';
+            *Out << ']';
         }
-        Out << ')';
+        *Out << ')';
     }
 
-    void PrintFun(const std::shared_ptr<TFunDecl>& node, int level) {
-        Out << "(fun ";
-        PrintIdentifier(node->Name);
+    void PrintFun(TFunDecl& node, int level) {
+        *Out << "(fun ";
+        PrintIdentifier(node.Name);
         Space();
-        PrintType(node->RetType, level);
+        PrintType(node.RetType, level);
         Space();
-        Out << '(';
-        for (size_t i = 0; i < node->Params.size(); ++i) {
+        *Out << '(';
+        for (size_t i = 0; i < node.Params.size(); ++i) {
             if (i != 0) {
                 Separator(level + 2);
             }
-            PrintExpr(node->Params[i], true, level + 2);
+            PrintExpr(node.Params[i], true, level + 2);
         }
-        Out << ')';
+        *Out << ')';
         Space();
-        Out << '(';
-        if (node->LastAssert) {
-            Out << "(expect_after ";
-            PrintExpr(node->LastAssert, true, level + 2);
-            Out << ')';
+        *Out << '(';
+        if (node.LastAssert) {
+            *Out << "(expect_after ";
+            PrintExpr(node.LastAssert, true, level + 2);
+            *Out << ')';
         }
-        Out << ')';
+        *Out << ')';
         Separator(level + 1);
-        PrintExpr(node->Body, true, level + 1);
-        Out << ')';
+        PrintExpr(node.Body, true, level + 1);
+        *Out << ')';
     }
 
-    void PrintCall(const std::shared_ptr<TCallExpr>& node, int level) {
-        Out << "(call";
+    void PrintCall(TCallExpr& node, int level) {
+        *Out << "(call";
         Separator(level + 1);
-        PrintExpr(node->Callee, true, level + 1);
-        for (const auto& arg : node->Args) {
+        PrintExpr(node.Callee, true, level + 1);
+        for (const auto& arg : node.Args) {
             Separator(level + 1);
             PrintExpr(arg, true, level + 1);
         }
-        Out << ')';
+        *Out << ')';
     }
 
-    void PrintOutput(const std::shared_ptr<TOutputExpr>& node, int level) {
-        Out << "(output";
-        for (const auto& arg : node->Args) {
+    void PrintOutput(TOutputExpr& node, int level) {
+        *Out << "(output";
+        for (const auto& arg : node.Args) {
             Separator(level + 1);
             if (!arg.Width && !arg.Precision) {
                 PrintExpr(arg.Expr, true, level + 1);
             } else {
-                Out << "(fmt ";
+                *Out << "(fmt ";
                 PrintExpr(arg.Expr, true, level + 2);
                 Space();
                 PrintExpr(arg.Width, true, level + 2);
@@ -518,51 +390,51 @@ private:
                     Space();
                     PrintExpr(arg.Precision, true, level + 2);
                 }
-                Out << ')';
+                *Out << ')';
             }
         }
-        Out << ')';
+        *Out << ')';
     }
 
-    void PrintMultiIndex(const std::shared_ptr<TMultiIndexExpr>& node, int level) {
-        Out << "(index ";
-        PrintIndexVector(node->Indices, level + 1);
+    void PrintMultiIndex(TMultiIndexExpr& node, int level) {
+        *Out << "(index ";
+        PrintIndexVector(node.Indices, level + 1);
         Separator(level + 1);
-        PrintExpr(node->Collection, true, level + 1);
-        Out << ')';
+        PrintExpr(node.Collection, true, level + 1);
+        *Out << ')';
     }
 
-    void PrintSlice(const std::shared_ptr<TSliceExpr>& node, int level) {
-        Out << "(slice [";
-        PrintExpr(node->Start, true, level + 1);
-        if (node->End) {
+    void PrintSlice(TSliceExpr& node, int level) {
+        *Out << "(slice [";
+        PrintExpr(node.Start, true, level + 1);
+        if (node.End) {
             Space();
-            PrintExpr(node->End, true, level + 1);
+            PrintExpr(node.End, true, level + 1);
         }
-        Out << ']';
+        *Out << ']';
         Separator(level + 1);
-        PrintExpr(node->Collection, true, level + 1);
-        Out << ')';
+        PrintExpr(node.Collection, true, level + 1);
+        *Out << ')';
     }
 
-    void PrintStructConstruct(const std::shared_ptr<TStructConstructExpr>& node, int level) {
-        Out << "(struct (";
-        auto structType = GetStructType(node->Type);
-        for (size_t i = 0; i < node->Fields.size(); ++i) {
+    void PrintStructConstruct(TStructConstructExpr& node, int level) {
+        *Out << "(struct (";
+        auto structType = GetStructType(node.Type);
+        for (size_t i = 0; i < node.Fields.size(); ++i) {
             if (i != 0) {
                 Separator(level + 2);
             }
-            Out << '(';
+            *Out << '(';
             if (structType && i < structType->Fields.size()) {
                 PrintIdentifier(structType->Fields[i].first);
             } else {
                 PrintIdentifier("_" + std::to_string(i));
             }
             Space();
-            PrintExpr(node->Fields[i], true, level + 2);
-            Out << ')';
+            PrintExpr(node.Fields[i], true, level + 2);
+            *Out << ')';
         }
-        Out << "))";
+        *Out << "))";
     }
 
     std::shared_ptr<TStructType> GetStructType(TTypePtr type) {
@@ -573,33 +445,253 @@ private:
     }
 
     void PrintFunctionType(const std::shared_ptr<TFunctionType>& type, int level) {
-        Out << "<fun ";
+        *Out << "<fun ";
         PrintType(type->ReturnType, level);
-        Out << " (";
+        *Out << " (";
         for (size_t i = 0; i < type->ParamTypes.size(); ++i) {
             if (i != 0) {
                 Space();
             }
             PrintType(type->ParamTypes[i], level);
         }
-        Out << ")>";
+        *Out << ")>";
     }
 
     void PrintStructType(const std::shared_ptr<TStructType>& type, int level) {
-        Out << "<struct";
+        *Out << "<struct";
         for (const auto& [name, fieldType] : type->Fields) {
-            Out << " (";
+            *Out << " (";
             PrintIdentifier(name);
             Space();
             PrintType(fieldType, level);
-            Out << ')';
+            *Out << ')';
         }
-        Out << '>';
+        *Out << '>';
     }
 
-    std::ostream& Out;
+    std::ostream* Out;
     TPrintOptions Options;
 };
+
+struct TPrintExpr : public IVisitor {
+    TPrintExpr(std::ostream* out, TPrinter& printer, TPrintFrame frame)
+        : Out(out)
+        , Printer(printer)
+        , Frame(frame)
+    { }
+
+    void Visit(TIdentExpr& node) override {
+        Printer.PrintIdentifier(node.Name);
+    }
+
+    void Visit(TAssignExpr& node) override {
+        *Out << "(= ";
+        Printer.PrintIdentifier(node.Name);
+        Printer.Separator(Frame.Level + 1);
+        Printer.PrintExpr(node.Value, true, Frame.Level + 1);
+        *Out << ')';
+    }
+
+    void Visit(TArrayAssignExpr& node) override {
+        Printer.PrintArrayAssign(node, Frame.Level);
+    }
+
+    void Visit(TNumberExpr& node) override {
+        Printer.PrintNumber(node);
+    }
+
+    void Visit(TStringLiteralExpr& node) override {
+        Printer.PrintString(node.Value, '"');
+    }
+
+    void Visit(TUnaryExpr& node) override {
+        *Out << '(' << node.Operator.ToString() << ' ';
+        Printer.PrintExpr(node.Operand, true, Frame.Level + 1);
+        *Out << ')';
+    }
+
+    void Visit(TBinaryExpr& node) override {
+        *Out << '(' << node.Operator.ToString() << ' ';
+        Printer.PrintExpr(node.Left, true, Frame.Level + 1);
+        Printer.Separator(Frame.Level + 1);
+        Printer.PrintExpr(node.Right, true, Frame.Level + 1);
+        *Out << ')';
+    }
+
+    void Visit(TBlockExpr& node) override {
+        Printer.PrintExprList("block", node.Stmts, Frame.Level);
+    }
+
+    void Visit(TSeqExpr& node) override {
+        Printer.PrintExprList("seq", node.Stmts, Frame.Level);
+    }
+
+    void Visit(TIfStmt& node) override {
+        Printer.PrintIfLike("cond", node.Cond, node.Then, node.Else, Frame.Level);
+    }
+
+    void Visit(TIfExpr& node) override {
+        Printer.PrintIfLike("if", node.Cond, node.Then, node.Else, Frame.Level);
+    }
+
+    void Visit(TLetExpr& node) override {
+        Printer.PrintLet(node, Frame.Level);
+    }
+
+    void Visit(TWhileStmtExpr& node) override {
+        Printer.PrintWhile(node, Frame.Level);
+    }
+
+    void Visit(TRepeatStmtExpr& node) override {
+        Printer.PrintRepeat(node, Frame.Level);
+    }
+
+    void Visit(TForStmtExpr& node) override {
+        Printer.PrintFor(node, Frame.Level);
+    }
+
+    void Visit(TTimesStmtExpr& node) override {
+        Printer.PrintTimes(node, Frame.Level);
+    }
+
+    void Visit(TBreakStmt& /*node*/) override {
+        *Out << "break";
+    }
+
+    void Visit(TContinueStmt& /*node*/) override {
+        *Out << "continue";
+    }
+
+    void Visit(TVarStmt& node) override {
+        Printer.PrintVar(node, Frame.Level);
+    }
+
+    void Visit(TVarsBlockExpr& node) override {
+        Printer.PrintExprList("vars", node.Vars, Frame.Level);
+    }
+
+    void Visit(TFunDecl& node) override {
+        Printer.PrintFun(node, Frame.Level);
+    }
+
+    void Visit(TCallExpr& node) override {
+        Printer.PrintCall(node, Frame.Level);
+    }
+
+    void Visit(TAwaitExpr& node) override {
+        *Out << "(await";
+        Printer.Separator(Frame.Level + 1);
+        Printer.PrintExpr(node.Operand, true, Frame.Level + 1);
+        *Out << ')';
+    }
+
+    void Visit(TInputExpr& node) override {
+        Printer.PrintExprList("input", node.Args, Frame.Level);
+    }
+
+    void Visit(TOutputExpr& node) override {
+        Printer.PrintOutput(node, Frame.Level);
+    }
+
+    void Visit(TCastExpr& node) override {
+        *Out << "(cast";
+        Printer.Separator(Frame.Level + 1);
+        Printer.PrintExpr(node.Operand, true, Frame.Level + 1);
+        Printer.Separator(Frame.Level + 1);
+        Printer.PrintType(node.Type, Frame.Level + 1);
+        *Out << ')';
+    }
+
+    void Visit(TIndexExpr& node) override {
+        *Out << "(index";
+        Printer.Separator(Frame.Level + 1);
+        Printer.PrintExpr(node.Index, true, Frame.Level + 1);
+        Printer.Separator(Frame.Level + 1);
+        Printer.PrintExpr(node.Collection, true, Frame.Level + 1);
+        *Out << ')';
+    }
+
+    void Visit(TMultiIndexExpr& node) override {
+        Printer.PrintMultiIndex(node, Frame.Level);
+    }
+
+    void Visit(TSliceExpr& node) override {
+        Printer.PrintSlice(node, Frame.Level);
+    }
+
+    void Visit(TUseExpr& node) override {
+        *Out << "(use ";
+        Printer.PrintString(node.ModuleName, '"');
+        *Out << ')';
+    }
+
+    void Visit(TAssertStmt& node) override {
+        *Out << "(assert";
+        Printer.Separator(Frame.Level + 1);
+        Printer.PrintExpr(node.Expr, true, Frame.Level + 1);
+        *Out << ')';
+    }
+
+    void Visit(TFieldAccessExpr& node) override {
+        *Out << "(field ";
+        Printer.PrintIdentifier(node.FieldName);
+        Printer.Separator(Frame.Level + 1);
+        Printer.PrintExpr(node.Object, true, Frame.Level + 1);
+        *Out << ')';
+    }
+
+    void Visit(TStructConstructExpr& node) override {
+        Printer.PrintStructConstruct(node, Frame.Level);
+    }
+
+    void Visit(TFieldAssignExpr& node) override {
+        *Out << "(field_assign";
+        Printer.Separator(Frame.Level + 1);
+        Printer.PrintExpr(node.Object, true, Frame.Level + 1);
+        Printer.Separator(Frame.Level + 1);
+        Printer.PrintIdentifier(node.FieldName);
+        Printer.Separator(Frame.Level + 1);
+        Printer.PrintExpr(node.Value, true, Frame.Level + 1);
+        *Out << ')';
+    }
+
+    void VisitOtherwise(TExpr& node) override {
+        throw std::runtime_error("unsupported AST node for core print: " + std::string(node.NodeName()));
+    }
+
+    std::ostream* Out;
+    TPrinter& Printer;
+    TPrintFrame Frame;
+};
+
+void TPrinter::PrintExpr(TExprPtr expr, bool allowTypeWrap, int level) {
+    if (!expr) {
+        *Out << "nil";
+        return;
+    }
+
+    if (allowTypeWrap && ShouldWrapType(expr)) {
+        if (Options.Pretty && !ForceMultiline(expr) && FitsOneLine(expr, allowTypeWrap, level)) {
+            PrintCompact(std::move(expr), allowTypeWrap, level);
+            return;
+        }
+        *Out << "(: ";
+        PrintExpr(expr, /*allowTypeWrap=*/false, level + 1);
+        Separator(level + 1);
+        PrintType(expr->Type, level + 1);
+        *Out << ')';
+        return;
+    }
+
+    if (Options.Pretty && !ForceMultiline(expr) && FitsOneLine(expr, allowTypeWrap, level)) {
+        PrintCompact(std::move(expr), allowTypeWrap, level);
+        return;
+    }
+
+    TPrintExpr visitor(Out, *this, TPrintFrame{allowTypeWrap, level});
+    expr->Accept(visitor);
+}
+
 
 } // namespace
 
