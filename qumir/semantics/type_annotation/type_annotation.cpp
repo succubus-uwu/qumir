@@ -1,4 +1,5 @@
 #include "type_annotation.h"
+#include "coercions.h"
 
 #include <qumir/optional.h>
 #include <qumir/parser/ast.h>
@@ -711,7 +712,84 @@ TTask AnnotateIdent(std::shared_ptr<TIdentExpr> ident, NSemantics::TNameResolver
     co_return ident;
 }
 
+TTask AnnotateOverloadedCall(
+    std::shared_ptr<TCallExpr> call,
+    const std::vector<NSemantics::TSymbolId>& overloads,
+    NSemantics::TNameResolver& context,
+    NSemantics::TScopeId scopeId)
+{
+    for (auto& arg : call->Args) {
+        arg = co_await DoAnnotate(arg, context, scopeId);
+        if (!arg->Type) {
+            co_return TError(arg->Location, "argument has no type");
+        }
+    }
+
+    int bestCost = std::numeric_limits<int>::max();
+    std::shared_ptr<TFunDecl> bestDecl;
+    bool ambiguous = false;
+
+    for (const auto& symId : overloads) {
+        auto funDecl = TMaybeNode<TFunDecl>(context.GetSymbolNode(symId)).Cast();
+        if (!funDecl || funDecl->Params.size() != call->Args.size()) {
+            continue;
+        }
+        int totalCost = 0;
+        bool viable = true;
+        for (size_t i = 0; i < call->Args.size(); ++i) {
+            auto cost = ArgCost(call->Args[i]->Type, funDecl->Params[i]->Type, &context);
+            if (!cost) {
+                viable = false;
+                break;
+            }
+            totalCost += *cost;
+        }
+        if (!viable) {
+            continue;
+        }
+        if (totalCost < bestCost) {
+            bestCost = totalCost;
+            bestDecl = funDecl;
+            ambiguous = false;
+        } else if (totalCost == bestCost) {
+            ambiguous = true;
+        }
+    }
+
+    if (!bestDecl) {
+        co_return TError(call->Location, "no matching overload for '" + TMaybeNode<TIdentExpr>(call->Callee).Cast()->Name + "'");
+    }
+    if (ambiguous) {
+        co_return TError(call->Location, "ambiguous overload for '" + TMaybeNode<TIdentExpr>(call->Callee).Cast()->Name + "'");
+    }
+
+    for (size_t i = 0; i < call->Args.size(); ++i) {
+        call->Args[i] = InsertImplicitCastIfNeeded(call->Args[i], bestDecl->Params[i]->Type, &context);
+    }
+
+    auto callee = std::make_shared<TIdentExpr>(call->Callee->Location, bestDecl->Name);
+    callee->Type = bestDecl->Type;
+    call->Callee = callee;
+    call->Type = bestDecl->RetType;
+
+    if (bestDecl->InlineFactory) {
+        auto inlined = (*bestDecl->InlineFactory)(call->Args);
+        if (inlined) {
+            co_return co_await DoAnnotate(inlined, context, scopeId);
+        }
+    }
+
+    co_return call;
+}
+
 TTask AnnotateCall(std::shared_ptr<TCallExpr> call, NSemantics::TNameResolver& context, NSemantics::TScopeId scopeId) {
+    if (auto maybeIdent = TMaybeNode<TIdentExpr>(call->Callee)) {
+        auto overloads = context.LookupOverloads(maybeIdent.Cast()->Name, scopeId);
+        if (overloads.size() > 1) {
+            co_return co_await AnnotateOverloadedCall(call, overloads, context, scopeId);
+        }
+    }
+
     call->Callee = co_await DoAnnotate(call->Callee, context, scopeId);
     if (!call->Callee->Type) {
         co_return TError(call->Location, "Нельзя вызвать выражение без типа (функция или процедура не определена или не имеет типа).");

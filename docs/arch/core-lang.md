@@ -204,6 +204,42 @@ Calls and I/O:
 
 `fmt` is the output argument wrapper for width and optional precision.
 
+Overloaded functions:
+
+```core
+(block
+  (fun pick i64 ((var x i64)) ()
+    (block
+      (var $$return i64)
+      (= $$return (+ x (: 10 i64)))))
+
+  (fun pick f64 ((var x f64)) ()
+    (block
+      (var $$return f64)
+      (= $$return (+ x (: 0.5 f64)))))
+
+  (fun pick string ((var x string)) ()
+    (block
+      (var $$return string)
+      (= $$return x)))
+
+  (fun <main> void () ()
+    (block
+      (output (call pick (: 7 i32)) "\n")
+      (output (call pick (: 2.5 f64)) "\n")
+      (output (call pick "text") "\n"))))
+```
+
+Multiple `fun` forms with the same source name form an overload set when their
+parameter type lists differ. Return type alone is not enough to distinguish
+overloads.
+
+Overload resolution runs after argument type annotation. Exact matches are
+preferred over implicit conversions. Integer widening is preferred over
+integer-to-float conversion, so `(call pick (: 7 i32))` selects the `i64`
+overload in the example above. If two viable overloads have the same best cost,
+the call is rejected as ambiguous.
+
 Casts, indexing, and slicing:
 
 ```core

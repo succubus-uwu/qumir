@@ -196,6 +196,9 @@ TNameResolver::TTask TNameResolver::Resolve(TExprPtr node, TScopePtr scope, TSco
         auto ident = maybeIdent.Cast();
         auto found = Lookup(ident->Name, scope->Id);
         if (!found) {
+            if (!LookupOverloads(ident->Name, scope->Id).empty()) {
+                co_return {};
+            }
             auto suggestionMsg = suggestionMessage(ident->Name, scope->Id.Id, /*includeFunctions=*/ true);
             co_return TError(ident->Location, TErrorString::Get<EErrorId::UNDEFINED_IDENTIFIER>(ident->Name) + suggestionMsg);
         }
@@ -410,11 +413,21 @@ std::optional<TSuggestion> TNameResolver::Suggest(const std::string& name, TScop
 std::expected<TSymbolId, TError> TNameResolver::Declare(const std::string& name, TExprPtr node, TScopePtr scope, TScopePtr funcScope) {
     auto maybeSymbolId = scope->NameToSymbolId.find(name);
     TSymbolId symbolId{-1};
+    if (NAst::TMaybeNode<NAst::TFunDecl>(node)) {
+        auto ovIt = scope->OverloadSets.find(name);
+        if (ovIt != scope->OverloadSets.end()) {
+            return RegisterOverloadEntry(name, node, ovIt->second);
+        }
+    }
+
     if (maybeSymbolId != scope->NameToSymbolId.end()) {
         if (!scope->AllowsRedeclare) {
-            auto& symbol = Symbols[maybeSymbolId->second.Id];
+            auto& existingSymbol = Symbols[maybeSymbolId->second.Id];
+            if (NAst::TMaybeNode<NAst::TFunDecl>(existingSymbol.Node) && NAst::TMaybeNode<NAst::TFunDecl>(node)) {
+                return StartOverloadSet(name, maybeSymbolId->second, node, scope);
+            }
             std::ostringstream ss;
-            ss << "Переопределение `" << symbol.Name << "' уже объявлено в области видимости " << symbol.ScopeId.Id;
+            ss << "Переопределение `" << existingSymbol.Name << "' уже объявлено в области видимости " << existingSymbol.ScopeId.Id;
             return std::unexpected(TError(node->Location, ss.str()));
         }
         symbolId = maybeSymbolId->second;
@@ -476,6 +489,65 @@ std::vector<std::pair<int, std::shared_ptr<NAst::TFunDecl>>> TNameResolver::GetE
         }
     }
     return result;
+}
+
+bool TNameResolver::ParamTypesSame(const NAst::TFunDecl& a, const NAst::TFunDecl& b) {
+    if (a.Params.size() != b.Params.size()) {
+        return false;
+    }
+    for (size_t i = 0; i < a.Params.size(); ++i) {
+        if (TypeKey(a.Params[i]->Type) != TypeKey(b.Params[i]->Type)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+TSymbolId TNameResolver::RegisterOverloadEntry(
+    const std::string& canonicalName,
+    NAst::TExprPtr node,
+    std::vector<TSymbolId>& overloads)
+{
+    auto newDecl = NAst::TMaybeNode<NAst::TFunDecl>(node).Cast();
+    for (const auto& existingId : overloads) {
+        auto existingDecl = NAst::TMaybeNode<NAst::TFunDecl>(GetSymbolNode(existingId)).Cast();
+        if (existingDecl && ParamTypesSame(*newDecl, *existingDecl)) {
+            throw std::runtime_error("overload of '" + canonicalName + "' differs only in return type");
+        }
+    }
+    std::string synthName = "__overload_" + canonicalName + "_" + std::to_string(overloads.size());
+    newDecl->Name = synthName;
+    auto symId = DeclareFunction(synthName, node);
+    overloads.push_back(symId);
+    return symId;
+}
+
+TSymbolId TNameResolver::StartOverloadSet(
+    const std::string& name,
+    TSymbolId existingSymId,
+    NAst::TExprPtr newNode,
+    TScopePtr scope)
+{
+    auto& overloads = scope->OverloadSets[name];
+    scope->NameToSymbolId.erase(name);
+    RegisterOverloadEntry(name, Symbols[existingSymId.Id].Node, overloads);
+    return RegisterOverloadEntry(name, newNode, overloads);
+}
+
+std::vector<TSymbolId> TNameResolver::LookupOverloads(const std::string& name, TScopeId scopeId) const {
+    auto scope = Scopes[scopeId.Id];
+    while (scope) {
+        auto ovIt = scope->OverloadSets.find(name);
+        if (ovIt != scope->OverloadSets.end()) {
+            return ovIt->second;
+        }
+        auto nmIt = scope->NameToSymbolId.find(name);
+        if (nmIt != scope->NameToSymbolId.end()) {
+            return {nmIt->second};
+        }
+        scope = scope->Parent;
+    }
+    return {};
 }
 
 TScopePtr TNameResolver::NewScope(TScopePtr parent, TScopePtr funcScope) {

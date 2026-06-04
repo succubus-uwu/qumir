@@ -69,6 +69,8 @@ add_library(qumir
     semantics/name_resolution/name_resolver.cpp
     semantics/transform/transform.h
     semantics/transform/transform.cpp
+    semantics/type_annotation/coercions.h
+    semantics/type_annotation/coercions.cpp
     semantics/type_annotation/type_annotation.h
     semantics/type_annotation/type_annotation.cpp
     error.h

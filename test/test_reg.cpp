@@ -27,6 +27,7 @@
 
 #include <qumir/runtime/runtime.h>
 
+#include <qumir/codegen/llvm/llvm_initializer.h>
 #include <qumir/runner/runner_llvm.h>
 #include <qumir/runner/runner_ir.h>
 
@@ -173,7 +174,7 @@ std::string BuildIR(std::istream& input, bool coreInput = false) {
     auto expr = parsed.value();
     if (coreInput) {
         auto scope = resolver.GetOrCreateRootScope();
-        scope->AllowsRedeclare = true;
+        // scope->AllowsRedeclare = true;
         scope->RootLevel = false;
         if (auto resolveError = resolver.Resolve(expr)) {
             return "Error: " + resolveError->ToString() + "\n";
@@ -519,5 +520,6 @@ int main(int argc, char** argv) {
         }
     }
     ::testing::InitGoogleTest(&argc, argv);
+    NCodeGen::TLLVMInitializer llvmInit;
     return RUN_ALL_TESTS();
 }

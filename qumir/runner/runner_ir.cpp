@@ -69,7 +69,7 @@ std::expected<std::optional<std::string>, TError> TIRRunner::Run(std::istream& i
     }
     auto ast = std::move(parsed.value());
     auto scope = Resolver.GetOrCreateRootScope();
-    scope->AllowsRedeclare = true; // TODO: move to options?
+    // scope->AllowsRedeclare = true; // TODO: move to options?
     scope->RootLevel = false;
 
     if (Options.CoreInput && Options.ResolveCoreInput) {

@@ -87,7 +87,7 @@ std::expected<std::optional<std::string>, TError> TLLVMRunner::Run(std::istream&
 
     // Name resolution
     auto scope = Resolver.GetOrCreateRootScope();
-    scope->AllowsRedeclare = true; // TODO: move to options?
+    // scope->AllowsRedeclare = true; // TODO: move to options?
     scope->RootLevel = false;
 
     if (Options.CoreInput && Options.ResolveCoreInput) {
@@ -207,7 +207,7 @@ std::expected<std::optional<std::string>, TError> TLLVMRunner::Run(std::istream&
 
 void* TLLVMRunner::CompileKernelAst(NAst::TExprPtr ast, std::string* error) {
     auto scope = Resolver.GetOrCreateRootScope();
-    scope->AllowsRedeclare = true;
+    // scope->AllowsRedeclare = true;
     scope->RootLevel = false;
 
     if (auto err = Resolver.Resolve(ast)) {
@@ -282,7 +282,7 @@ void* TLLVMRunner::CompileKernel(const std::string& source, std::string* error) 
     }
 
     auto scope = Resolver.GetOrCreateRootScope();
-    scope->AllowsRedeclare = true;
+    // scope->AllowsRedeclare = true;
     scope->RootLevel = false;
 
     if (auto err = Resolver.Resolve(*parsed)) {

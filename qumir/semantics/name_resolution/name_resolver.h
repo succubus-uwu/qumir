@@ -82,6 +82,8 @@ struct TScope {
     std::unordered_set<int32_t> Symbols;
     std::unordered_set<int32_t> FuncSymbols; // if scope is function scope - all local symbols of function
     std::unordered_map<std::string, TSymbolId> NameToSymbolId;
+    // Functions with multiple overloads: canonical name -> list of symbol IDs (each under a synthName).
+    std::unordered_map<std::string, std::vector<TSymbolId>> OverloadSets;
     bool AllowsRedeclare{false};
     bool RootLevel{false};
 };
@@ -129,6 +131,8 @@ public:
     TScopePtr GetOrCreateRootScope();
 
     std::optional<TSymbolInfo> Lookup(const std::string& name, TScopeId scope) const;
+    // Returns all overloads for name. If non-overloaded single function, returns {id}. Empty if not found.
+    std::vector<TSymbolId> LookupOverloads(const std::string& name, TScopeId scope) const;
     std::optional<TSuggestion> Suggest(const std::string& name, TScopeId scope, bool includeFunctions);
 
     TSymbolId DeclareFunction(const std::string& name, NAst::TExprPtr node);
@@ -194,6 +198,24 @@ private:
     TTask ResolveTopFuncDecl(NAst::TExprPtr node, TScopePtr scope);
     std::expected<TSymbolId, TError> Declare(const std::string& name, NAst::TExprPtr node, TScopePtr scope, TScopePtr funcScope);
     TScopePtr NewScope(TScopePtr parent, TScopePtr funcScope);
+
+    // Returns true if two TFunDecl have identical parameter type signatures.
+    static bool ParamTypesSame(const NAst::TFunDecl& a, const NAst::TFunDecl& b);
+
+    // Registers one TFunDecl into an existing overload set under a generated synthName.
+    // Throws if param types match an already-registered overload (return-type-only diff).
+    TSymbolId RegisterOverloadEntry(
+        const std::string& canonicalName,
+        NAst::TExprPtr node,
+        std::vector<TSymbolId>& overloads);
+
+    // Called on the first name collision between two TFunDecl.
+    // Moves both into a new overload set, erases the canonical name from NameToSymbolId.
+    TSymbolId StartOverloadSet(
+        const std::string& name,
+        TSymbolId existingSymId,
+        NAst::TExprPtr newNode,
+        TScopePtr scope);
 
     TNameResolverOptions Options;
     std::vector<TSymbol> Symbols;
