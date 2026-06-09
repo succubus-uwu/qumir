@@ -16,6 +16,12 @@ let helpBtn = null;
 let currentDoc = 'index.md';
 let history = [];
 let docCache = {};
+let markedPromise = null;
+
+function loadMarked() {
+  markedPromise ||= import('https://cdn.jsdelivr.net/npm/marked@17.0.1/lib/marked.esm.js');
+  return markedPromise;
+}
 
 /**
  * Check if drawer is open
@@ -72,6 +78,7 @@ async function loadDoc(filename, addToHistory = true) {
   docsContent.innerHTML = '<div class="docs-loading">Загрузка...</div>';
 
   try {
+    const { marked } = await loadMarked();
     let markdown;
 
     // Check cache first
@@ -177,7 +184,7 @@ function escapeHtml(text) {
 /**
  * Initialize the help panel
  */
-export function initDocs() {
+export function initDocs({ bindOpenButtons = true } = {}) {
   docsDrawer = document.getElementById('docs-drawer');
   docsContent = document.getElementById('docs-content');
   docsNav = document.getElementById('docs-nav');
@@ -191,13 +198,13 @@ export function initDocs() {
   }
 
   // Help button in header
-  if (helpBtn) {
+  if (bindOpenButtons && helpBtn) {
     helpBtn.addEventListener('click', toggleDocs);
   }
 
   // Docs page button in footer - opens full docs page
   const docsPageBtn = document.getElementById('docs-page-btn');
-  if (docsPageBtn) {
+  if (bindOpenButtons && docsPageBtn) {
     docsPageBtn.addEventListener('click', () => {
       window.open('/docs.html', '_blank');
     });

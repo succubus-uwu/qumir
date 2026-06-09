@@ -1,8 +1,3 @@
-import { bindBrowserIO } from './io_wrapper.js';
-import * as resultEnv from './runtime/result.js';
-import * as stringEnv from './runtime/string.js';
-import { initDocs } from './docs.js';
-
 'use strict';
 
 const $ = sel => document.querySelector(sel);
@@ -32,7 +27,6 @@ let __painterRulerX = null;
 let __painterRulerY = null;
 let __painterStatus = null;
 let __painterCanvas = null;
-let __ioBound = false;
 const IO_PANE_COOKIE = 'q_io_pane';
 let __ioFiles = [];
 let __ioSelectEl = null;
@@ -2880,33 +2874,28 @@ async function runWasm() {
   let runAsCoroutine = false;
   try {
     const bytes = await api('/api/compile-wasm', { code, O }, true);
-    const mathEnv = await import('./runtime/math.js');
-    const ioEnv = await import('./runtime/io.js');
-    const resultEnv = await import('./runtime/result.js');
-    if (!__ioBound) {
-      bindBrowserIO(ioEnv);
-      __ioBound = true;
-    }
+    const { loadRuntime } = await import('./runtime/loader.js');
+    const runtime = await loadRuntime(bytes);
+    const {
+      module,
+      instance,
+      ioEnv,
+      resultEnv,
+      stringEnv,
+      arrayEnv,
+      complexEnv,
+      futureEnv,
+    } = runtime;
+    __turtleModule = runtime.turtleModule;
+    __robotModule = runtime.robotModule;
+    __drawerModule = runtime.drawerModule;
+    __painterModule = runtime.painterModule;
+    __colorsModule = runtime.colorsModule;
+    __keyboardModule = runtime.keyboardModule;
     ensureRuntimeFileManager(ioEnv);
-    const stringEnv = await import('./runtime/string.js');
-    const arrayEnv = await import('./runtime/array.js');
-    const complexEnv = await import('./runtime/complex.js');
-    const futureEnv = await import('./runtime/future.js');
-    if (!__turtleModule)  { try { __turtleModule  = await import('./runtime/turtle.js');  } catch {} }
-    if (!__robotModule)   { try { __robotModule   = await import('./runtime/robot.js');   } catch {} }
-    if (!__drawerModule)  { try { __drawerModule  = await import('./runtime/drawer.js');  } catch {} }
-    if (!__painterModule) { try { __painterModule = await import('./runtime/painter.js'); } catch {} }
-    if (!__colorsModule)  { try { __colorsModule  = await import('./runtime/colors.js');  } catch {} }
-    if (!__keyboardModule){ try { __keyboardModule = await import('./runtime/keyboard.js');} catch {} }
-    const env = { ...mathEnv, ...ioEnv, ...stringEnv, ...arrayEnv, ...complexEnv,
-                  ...futureEnv,
-                  ...(__turtleModule || {}), ...(__robotModule || {}), ...(__drawerModule || {}),
-                  ...(__painterModule || {}), ...(__colorsModule || {}), ...(__keyboardModule || {}) };
     if (__keyboardModule && typeof __keyboardModule.__resetKeyboard === 'function') {
       __keyboardModule.__resetKeyboard();
     }
-    const imports = { env };
-    const { instance, module } = await WebAssembly.instantiate(bytes, imports);
     const mem = instance.exports && instance.exports.memory;
     if (mem && typeof ioEnv.__bindMemory === 'function') {
       ioEnv.__bindMemory(mem);
@@ -4949,5 +4938,30 @@ if (btnShare) {
   }
 })();
 
-// Documentation panel
-initDocs();
+// Documentation is outside the critical path and initializes on first use.
+(function setupDocs() {
+  const helpBtn = document.getElementById('btn-help');
+  const docsPageBtn = document.getElementById('docs-page-btn');
+  let docsPromise = null;
+
+  if (docsPageBtn) {
+    docsPageBtn.addEventListener('click', () => {
+      window.open('/docs.html', '_blank');
+    });
+  }
+
+  if (!helpBtn) return;
+
+  helpBtn.addEventListener('click', async () => {
+    try {
+      docsPromise ||= import('./docs.js').then(docs => {
+        docs.initDocs({ bindOpenButtons: false });
+        return docs;
+      });
+      const docs = await docsPromise;
+      docs.openDocs();
+    } catch (e) {
+      console.warn('Documentation module not available:', e);
+    }
+  });
+})();
