@@ -16,12 +16,6 @@ let helpBtn = null;
 let currentDoc = 'index.md';
 let history = [];
 let docCache = {};
-let markedPromise = null;
-
-function loadMarked() {
-  markedPromise ||= import('https://cdn.jsdelivr.net/npm/marked@17.0.1/lib/marked.esm.js');
-  return markedPromise;
-}
 
 /**
  * Check if drawer is open
@@ -78,7 +72,8 @@ async function loadDoc(filename, addToHistory = true) {
   docsContent.innerHTML = '<div class="docs-loading">Загрузка...</div>';
 
   try {
-    const { marked } = await loadMarked();
+    const { loadMarked } = await import('./vendor.js');
+    const marked = await loadMarked();
     let markdown;
 
     // Check cache first
