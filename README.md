@@ -9,35 +9,6 @@ Qumir is a tiny experimental programming language and toolchain with Russian key
 
 The language is intentionally small and approachable, borrowing many ideas and surface syntax from Ershov-style teaching languages, while experimenting with a modern implementation.
 
-## From a Kumir compiler to an embeddable core
-
-Qumir started as a from-scratch implementation of the **KUMIR** educational
-language designed by Academician Andrei P. Ershov. The `.kum` frontend, its
-semantics, and the executor modules (Turtle, Robot, Painter, ...) are
-described in [docs/ru/about.md](docs/ru/about.md) (project story, in Russian)
-and [docs/arch/overview.md](docs/arch/overview.md) (compiler architecture).
-
-While building the compiler, the *internal* AST/IR — independent of the
-Cyrillic `.kum` syntax — turned out to be useful on its own: a small,
-statically-typed, S-expression-like language ("core lang") backed by the same
-IR interpreter, LLVM JIT/AOT backend, and WebAssembly output. That makes the
-project interesting beyond the Kumir frontend, e.g. for:
-
-- **Embedding** a tiny typed scripting/expression language in a C++ host,
-  bypassing `.kum` syntax entirely
-- **JIT-compiling small data-processing kernels**: write a function in core
-  lang, JIT it via LLVM, and call it from native code at near-C speed
-- **Generic functions** — `<named K (template)>` placeholders are
-  monomorphized per call site, so one definition can be specialized for
-  `i64`, `f64`, `string`, structs, etc.
-- **Coroutine-based pipelines** (see
-  [docs/arch/coroutine.md](docs/arch/coroutine.md)) for streaming/async
-  processing
-
-See [docs/arch/core-lang.md](docs/arch/core-lang.md) for the core lang syntax,
-AST forms, and type system — it is also exposed as a "core syntax" mode in the
-online playground.
-
 ## Features
 
 - Russian-keyword syntax: переменные и операторы как в классическом «КуМир»/языке Ершова
@@ -260,6 +231,207 @@ With explicit step (can be negative):
 ```text
 цел таб a[0:10], b[0:20], вещ таб l[-1:234], лог таб t[-10:10]
 ```
+
+## From a Kumir compiler to an embeddable core
+
+Qumir started as a from-scratch implementation of the **KUMIR** educational
+language designed by Academician Andrei P. Ershov. The `.kum` frontend, its
+semantics, and the executor modules (Turtle, Robot, Painter, ...) are
+described in [docs/ru/about.md](docs/ru/about.md) (project story, in Russian)
+and [docs/arch/overview.md](docs/arch/overview.md) (compiler architecture).
+
+While building the compiler, the *internal* AST/IR — independent of the
+Cyrillic `.kum` syntax — turned out to be useful on its own. In the codebase
+and tests it's called **core lang** (a.k.a. **oz-lang**, after the `.oz`
+extension of its test sources, e.g.
+[test/regtest/cases/corelang](test/regtest/cases/corelang)): a small,
+statically-typed, S-expression-like language backed by the same IR
+interpreter, LLVM JIT/AOT backend, and WebAssembly output, also exposed as a
+"core syntax" mode in the online playground. That makes the project
+interesting beyond the Kumir frontend, e.g. for embedding a tiny typed
+scripting/expression language in a C++ host, or JIT-compiling small
+data-processing kernels via LLVM.
+
+### Core lang (oz-lang) feature highlights
+
+- **Typed functions** with explicit (`(return expr)`) and implicit
+  (last-expression) returns: `(fun name (params) -> return_type body)`
+- **Function overloading** — multiple `(fun name ...)` forms with distinct
+  parameter types form an overload set, resolved by argument types
+- **Generic functions** — `<named K (template)>` placeholders are
+  monomorphized per call site, so one definition can be specialized for
+  `i64`, `f64`, `string`, structs, etc.
+- **References** — `<ref T>` parameters let a function mutate the caller's
+  variable, field, or array element in place
+- **Managed strings, arrays, and structs** — reference-counted, with
+  compiler-inserted destructor calls, including on early exit via
+  `break`/`continue`/`return`
+- **Coroutines** — `<future T>`/`await` (see
+  [docs/arch/coroutine.md](docs/arch/coroutine.md)) for streaming/async
+  pipelines
+
+See [docs/arch/core-lang.md](docs/arch/core-lang.md) for the full syntax, AST
+forms, and type system.
+
+### Embedding example
+
+A host application can register its own module — a set of *external
+functions* with C++ implementations — and then run oz-lang source against it.
+
+**1. A module with one external function** (`f64 -> f64`):
+
+```cpp
+#include <qumir/modules/module.h>
+#include <qumir/parser/ast.h>
+
+namespace NQumir::NRegistry {
+
+double Square(double x) { return x * x; }
+
+class MyModule : public IModule {
+public:
+    MyModule() {
+        auto f64 = std::make_shared<NAst::TFloatType>();
+        ExternalFunctions_ = {{
+            .Name = "square",
+            .MangledName = "my_square",
+            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(double)>(Square)),
+            .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
+                return std::bit_cast<uint64_t>(Square(std::bit_cast<double>(args[0])));
+            },
+            .ArgTypes = { f64 },
+            .ReturnType = f64,
+        }};
+    }
+
+    const std::string& Name() const override { static std::string n = "Square"; return n; }
+    const std::vector<TExternalFunction>& ExternalFunctions() const override { return ExternalFunctions_; }
+    const std::vector<TExternalType>& ExternalTypes() const override { return ExternalTypes_; }
+    const std::vector<TLiteralSuffix>& LiteralSuffixes() const override { return LiteralSuffixes_; }
+    const std::vector<std::string>& Dependencies() const override { return Dependencies_; }
+
+private:
+    std::vector<TExternalFunction> ExternalFunctions_;
+    std::vector<TExternalType> ExternalTypes_ = {};
+    std::vector<TLiteralSuffix> LiteralSuffixes_ = {};
+    std::vector<std::string> Dependencies_ = {};
+};
+
+} // namespace NQumir::NRegistry
+```
+
+`Ptr` is the native function pointer used by the LLVM JIT/AOT and WASM
+backends; `Packed` is the IR interpreter's calling convention — arguments and
+the return value travel as bit-cast `uint64_t`s. See
+`qumir/modules/module.h` and e.g. `qumir/modules/system/system.cpp` for more
+field combinations (string args, inline expansion, operators, ...).
+
+**2. Run oz-lang source against it**, mirroring the pipeline used by
+`TIRRunner` (`qumir/runner/runner_ir.cpp`): parse → resolve names → run
+semantic transforms → lower to IR → interpret.
+
+```cpp
+#include <qumir/parser/core/lexer.h>
+#include <qumir/parser/core/parser.h>
+#include <qumir/semantics/name_resolution/name_resolver.h>
+#include <qumir/semantics/transform/transform.h>
+#include <qumir/ir/builder.h>
+#include <qumir/ir/lowering/lower_ast.h>
+#include <qumir/ir/eval.h>
+
+const char* src = R"__(
+(block
+  (use "Square")
+  (fun <main> ()
+    (block
+      (output (call square 6.0) "\n"))))
+)__";
+
+NQumir::NSemantics::TNameResolver resolver;
+NQumir::NRegistry::MyModule mySquare;
+resolver.RegisterModule(&mySquare); // makes "Square" available to (use "Square")
+
+std::istringstream in(src);
+NQumir::NAst::NCore::TTokenStream ts(in);
+NQumir::NAst::NCore::TParser parser;
+auto ast = parser.Parse(ts).value();   // error handling omitted for brevity
+resolver.ApplyPragmas(parser.Pragmas);
+resolver.GetOrCreateRootScope()->RootLevel = false;
+resolver.Resolve(ast);
+NQumir::NTransform::Pipeline(ast, resolver);
+
+NQumir::NIR::TModule module;
+NQumir::NIR::TBuilder builder(module);
+NQumir::NIR::TAstLowerer(module, builder, resolver).LowerTop(ast);
+
+NQumir::NIR::TInterpreter interp(module, std::cout, std::cin);
+interp.Eval(*module.GetEntryPoint(), {}, {}); // prints square(6.0)
+```
+
+Swap the last block for the pipeline in `qumir/runner/runner_llvm.cpp` to
+JIT-compile and run the same program through LLVM instead of the IR
+interpreter.
+
+**3. Build (and modify) the AST directly — no oz-lang text at all.**
+
+AST nodes are plain `shared_ptr<TExpr>` trees with ordinary public fields, so
+a host program can construct or rewrite a program without going through the
+lexer/parser at all. The same `(block (use ...) (fun <main> () ...))` program
+from example 2 looks like this in C++:
+
+```cpp
+using namespace NQumir::NAst;
+TLocation loc{};
+
+// square(6.0)
+auto arg  = std::make_shared<TNumberExpr>(loc, 6.0);
+auto call = std::make_shared<TCallExpr>(loc,
+    std::make_shared<TIdentExpr>(loc, "square"), std::vector<TExprPtr>{ arg });
+
+// output(square(6.0), "\n")
+auto out = std::make_shared<TOutputExpr>(loc, std::vector<TOutputArg>{
+    { call, nullptr, nullptr },
+    { std::make_shared<TStringLiteralExpr>(loc, "\n"), nullptr, nullptr },
+});
+
+// (fun <main> () (block (output ...)))
+auto body = std::make_shared<TBlockExpr>(loc, std::vector<TExprPtr>{ out });
+auto mainFun = std::make_shared<TFunDecl>(
+    loc, "<main>", std::vector<TParam>{}, body, std::make_shared<TVoidType>());
+
+TExprPtr program = std::make_shared<TBlockExpr>(loc, std::vector<TExprPtr>{ mainFun });
+
+NQumir::NSemantics::TNameResolver resolver;
+NQumir::NRegistry::MyModule mySquare;
+resolver.RegisterModule(&mySquare);
+resolver.ImportModule(mySquare.Name()); // no (use "Square") node needed
+
+resolver.GetOrCreateRootScope()->RootLevel = false;
+resolver.Resolve(program);
+NQumir::NTransform::Pipeline(program, resolver);
+
+NQumir::NIR::TModule module;
+NQumir::NIR::TBuilder builder(module);
+NQumir::NIR::TAstLowerer(module, builder, resolver).LowerTop(program);
+NQumir::NIR::TInterpreter(module, std::cout, std::cin)
+    .Eval(*module.GetEntryPoint(), {}, {}); // prints square(6.0)
+
+// --- edit the AST in place and rebuild — no re-lexing/re-parsing ---
+arg->FloatValue = 7.0; // square(6.0) -> square(7.0)
+
+NQumir::NIR::TModule module2;
+NQumir::NIR::TBuilder builder2(module2);
+NQumir::NIR::TAstLowerer(module2, builder2, resolver).LowerTop(program);
+NQumir::NIR::TInterpreter(module2, std::cout, std::cin)
+    .Eval(*module2.GetEntryPoint(), {}, {}); // prints square(7.0)
+```
+
+Swapping `arg->FloatValue` is a one-line field assignment on a shared AST
+node — the same mechanism the compiler itself uses internally for
+AST-level rewrites: the `transform` pass, generic-function monomorphization,
+and the `Inline`/`InlineFactory` hooks that modules use to splice in
+hand-built subtrees (see `qumir/modules/colors/colors.cpp` for an extensive
+example of building expression trees programmatically).
 
 ## Repository layout
 
