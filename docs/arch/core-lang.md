@@ -118,15 +118,16 @@ Unary and binary operators:
 (op left right)
 ```
 
-Blocks and sequencing:
+Blocks:
 
 ```core
 (block stmt1 stmt2 ... stmtN)
-(seq stmt1 stmt2 ... stmtN)
 ```
 
-`block` introduces a nested lexical scope. `seq` evaluates items in order
-without introducing a nested scope.
+`block` introduces a nested lexical scope. Its value is the value of its last
+statement (or void if the block is empty or the last statement does not
+produce a value) — this is how function bodies return a value implicitly, see
+"Functions" below.
 
 The outermost `block` (depth 1) enforces a strict statement order:
 
@@ -168,25 +169,14 @@ Currently defined pragmas:
 Conditionals:
 
 ```core
-(cond condition then)
-(cond condition then else)
 (if condition then)
 (if condition then else)
 ```
 
-`cond` is the statement form (`TIfStmt`); `if` is the expression form
-(`TIfExpr`). The else branch is optional.
-
-Local bindings:
-
-```core
-(let
-  ((name1 value1)
-   (name2 value2))
-  body)
-```
-
-Bindings are visible in `body`; bindings are not visible to each other.
+`if` creates `TIfExpr`, used both as a statement and as a value-producing
+expression — its value is the value of the taken branch. The else branch is
+optional. The older `(cond ...)` spelling is rejected with an error pointing
+at `(if ...)`.
 
 Loops:
 
@@ -207,42 +197,75 @@ Variables and variable blocks:
 ```core
 (var name type)
 (var name type [from1 to1] ... [fromN toN])
+(var name = value)
 (vars var1 var2 ... varN)
 ```
 
 Array bounds are declaration metadata on `TVarStmt`, not part of the
-`TArrayType` identity.
+`TArrayType` identity. The `(var name = value)` form omits the type entirely —
+it is inferred from `value`'s type during type annotation.
 
 Functions:
 
 ```core
-(fun name return_type (param1 ... paramN) (attr1 ... attrM) body)
+(fun name (param1 ... paramN) body)
+(fun name (param1 ... paramN) -> return_type body)
+(fun name (param1 ... paramN) -> return_type (attrs (expect_after expr) (expect_before expr) ...) body)
 ```
 
-Each parameter is a `(var ...)` form. The body must be a `block`. Supported
-function attributes are:
+Each parameter is a `(var ...)` form; `(param1 ... paramN)` is required even
+when empty (`()`). The body must be a `block`. The return type defaults to
+`void` when `-> return_type` is omitted.
+
+`(attrs ...)` is an optional attribute list, placed after the return type (if
+any) and before the body. Recognized attributes:
 
 ```core
 (expect_after expr)
 (expect_before expr)
 ```
 
-The parser currently stores `expect_after` on `TFunDecl::LastAssert`.
-`expect_before` is parsed for forward compatibility.
+The parser stores `expect_after` on `TFunDecl::LastAssert`. `expect_before` is
+parsed for forward compatibility. Bare-identifier attributes (e.g. `inline`)
+are accepted and silently ignored for forward compatibility.
 
-Non-void functions return their result by assigning to a local variable named
-`$$return` (two dollar signs), declared with the function's return type:
+`<main>` is the program's entry point: `(fun <main> () body)`. It is always
+void.
+
+## Return
+
+A non-void function returns its result either via an explicit `(return expr)`
+or implicitly: if execution falls off the end of the body without hitting a
+`return`, the value of the body block's last statement becomes the return
+value. Falling off the end without producing a value is a compile error
+("Тело функции должно заканчиваться оператором `return` или выражением,
+возвращающим значение.").
 
 ```core
-(fun square i64 ((var x i64)) ()
-  (block
-    (var $$return i64)
-    (= $$return (* x x))))
+(return)
+(return expr)
 ```
 
-This convention applies to all return types including structs and named types.
-The function body must assign to `$$return` on every execution path; there is no
-`return` statement in core lang.
+`(return)` is only valid in `void` functions, `(return expr)` only in
+non-void ones. Both work for every return type, including structs and named
+types.
+
+```core
+(fun square ((var x i64)) -> i64
+  (block
+    (* x x)))            ; implicit return: value of the last statement
+
+(fun cube ((var x i64)) -> i64
+  (block
+    (var sq i64)
+    (= sq (* x x))
+    (return (* sq x))))  ; explicit return
+```
+
+`break`/`continue`/`return` release any in-scope locals with pending
+destructors (string/array) before transferring control: `break`/`continue`
+release locals declared since the start of the nearest enclosing loop body;
+`return` releases locals declared since the start of the function body.
 
 Type declarations:
 
@@ -258,11 +281,10 @@ type is the same as the underlying type. In type position the long form is
 ```core
 (block
   (type имя <struct (val i64)>)
-  (fun make_name <named имя> ((var v i64)) ()
+  (fun make_name ((var v i64)) -> <named имя>
     (block
-      (var $$return <named имя>)
-      (= $$return (: (struct ((val v))) <named имя>))))
-  (fun <main> void () ()
+      (return (: (struct ((val v))) <named имя>))))
+  (fun <main> ()
     (block
       (var n <named имя>)
       (= n (call make_name 42)))))
@@ -283,22 +305,19 @@ Overloaded functions:
 
 ```core
 (block
-  (fun pick i64 ((var x i64)) ()
+  (fun pick ((var x i64)) -> i64
     (block
-      (var $$return i64)
-      (= $$return (+ x (: 10 i64)))))
+      (+ x (: 10 i64))))
 
-  (fun pick f64 ((var x f64)) ()
+  (fun pick ((var x f64)) -> f64
     (block
-      (var $$return f64)
-      (= $$return (+ x (: 0.5 f64)))))
+      (+ x (: 0.5 f64))))
 
-  (fun pick string ((var x string)) ()
+  (fun pick ((var x string)) -> string
     (block
-      (var $$return string)
-      (= $$return x)))
+      x))
 
-  (fun <main> void () ()
+  (fun <main> ()
     (block
       (output (call pick (: 7 i32)) "\n")
       (output (call pick (: 2.5 f64)) "\n")
@@ -318,11 +337,9 @@ the call is rejected as ambiguous.
 Generic functions:
 
 ```core
-(fun identity <named K (template readable mutable)>
-     ((var x <named K (template readable mutable)>)) ()
+(fun identity ((var x <named K (template readable mutable)>)) -> <named K (template readable mutable)>
   (block
-    (var $$return <named K (template readable mutable)>)
-    (= $$return x)))
+    (return x)))
 ```
 
 A `TNamedType` marked `template` is a type placeholder, not a real declared
@@ -344,8 +361,8 @@ bind to two structurally different concrete types.
 
 When an overload set mixes concrete and generic `fun` forms for the same name,
 overload resolution prefers a concrete match over instantiating the generic
-fallback — see `(fun f i64 ((var x i64)) ())` vs. `(fun f i64 ((var x <named K
-(template)>)) ())`.
+fallback — see `(fun f ((var x i64)) -> i64 ...)` vs. `(fun f ((var x <named K
+(template)>)) -> i64 ...)`.
 
 Casts, indexing, and slicing:
 
@@ -365,7 +382,7 @@ Identifiers, field accesses, and array element accesses can be passed by
 reference. Indexed array arguments use the same syntax as normal reads:
 
 ```core
-(fun bump void ((var x <ref i64>)) ()
+(fun bump ((var x <ref i64>))
   (block (= x (+ x (: 1 i64)))))
 
 (var a <array i64 1> [0 2])
@@ -429,7 +446,11 @@ Composite types:
 <ref referenced_type>
 <named name underlying_type>
 <struct (field_name1 field_type1) ... (field_nameN field_typeN)>
+<future result_type>
 ```
+
+`<future result_type>` is `TFutureType`, the type of an awaitable produced by
+a coroutine; see `arch/coroutine.md`.
 
 Examples:
 
@@ -442,6 +463,7 @@ i64
 <named color i64>
 <struct (x i64) (values <array f64 1>)>
 <fun bool (i64 f64)>
+<future i64>
 ```
 
 Unknown bare type identifiers are parsed as short named types:
@@ -490,10 +512,10 @@ The core printer is the canonical form used by tests and AST goldens.
 ## Example
 
 ```core
-(fun sum i64
+(fun sum
   ((var n i64)
    (var a <array i64 1> [0 (- n 1)]))
-  ()
+  -> i64
   (block
     (vars
       (var i i64)

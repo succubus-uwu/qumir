@@ -9,6 +9,35 @@ Qumir is a tiny experimental programming language and toolchain with Russian key
 
 The language is intentionally small and approachable, borrowing many ideas and surface syntax from Ershov-style teaching languages, while experimenting with a modern implementation.
 
+## From a Kumir compiler to an embeddable core
+
+Qumir started as a from-scratch implementation of the **KUMIR** educational
+language designed by Academician Andrei P. Ershov. The `.kum` frontend, its
+semantics, and the executor modules (Turtle, Robot, Painter, ...) are
+described in [docs/ru/about.md](docs/ru/about.md) (project story, in Russian)
+and [docs/arch/overview.md](docs/arch/overview.md) (compiler architecture).
+
+While building the compiler, the *internal* AST/IR — independent of the
+Cyrillic `.kum` syntax — turned out to be useful on its own: a small,
+statically-typed, S-expression-like language ("core lang") backed by the same
+IR interpreter, LLVM JIT/AOT backend, and WebAssembly output. That makes the
+project interesting beyond the Kumir frontend, e.g. for:
+
+- **Embedding** a tiny typed scripting/expression language in a C++ host,
+  bypassing `.kum` syntax entirely
+- **JIT-compiling small data-processing kernels**: write a function in core
+  lang, JIT it via LLVM, and call it from native code at near-C speed
+- **Generic functions** — `<named K (template)>` placeholders are
+  monomorphized per call site, so one definition can be specialized for
+  `i64`, `f64`, `string`, structs, etc.
+- **Coroutine-based pipelines** (see
+  [docs/arch/coroutine.md](docs/arch/coroutine.md)) for streaming/async
+  processing
+
+See [docs/arch/core-lang.md](docs/arch/core-lang.md) for the core lang syntax,
+AST forms, and type system — it is also exposed as a "core syntax" mode in the
+online playground.
+
 ## Features
 
 - Russian-keyword syntax: переменные и операторы как в классическом «КуМир»/языке Ершова
@@ -242,6 +271,7 @@ With explicit step (can be negative):
   - `runner/` — IR and LLVM runners
 - `bin/` — CLI tools: `qumiri` (interpreter/JIT), `qumirc` (compiler)
 - `test/` — unit and regression tests; see `test/regtest/cases/*.kum`
+- `docs/arch/` — architecture notes: pipeline overview, [core lang](docs/arch/core-lang.md), coroutines, and IR/runtime data representation (arrays, strings, structs)
 
 ## License
 
