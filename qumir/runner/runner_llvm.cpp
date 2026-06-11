@@ -29,6 +29,10 @@ TLLVMRunner::TLLVMRunner(TLLVMRunnerOptions options)
     , Builder(Module)
     , Lowerer(Module, Builder, Resolver)
 {
+    if (Options.AllowOverloads) {
+        Resolver.ApplyPragmas({NAst::TPragma{"language", {"overloads"}, {}}});
+    }
+
     RegisterModule(std::make_shared<NRegistry::SystemModule>(), true);
     // TODO: register other modules
 

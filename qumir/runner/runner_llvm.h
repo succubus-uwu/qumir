@@ -27,6 +27,7 @@ struct TLLVMRunnerOptions {
     bool NativeCode = false;
     bool CoreInput = false;
     bool ResolveCoreInput = true;
+    bool AllowOverloads = false; // enable function overloads / generics (pragma language overloads)
     int OptLevel = 0; // 0-3
 };
 
