@@ -926,6 +926,13 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
         TOperand totalIndex;
         auto symbolNode = Context.GetSymbolNode(NSemantics::TSymbolId{arraySymbol->Id});
         auto symbolType = symbolNode ? NAst::UnwrapReferenceType(NAst::UnwrapNamedType(symbolNode->Type)) : nullptr;
+        NAst::TTypePtr elementAstType;
+        if (auto arrayAstType = NAst::TMaybeType<NAst::TArrayType>(symbolType)) {
+            elementAstType = NAst::UnwrapNamedType(arrayAstType.Cast()->ElementType);
+        } else if (auto pointerAstType = NAst::TMaybeType<NAst::TPointerType>(symbolType)) {
+            elementAstType = NAst::UnwrapNamedType(pointerAstType.Cast()->PointeeType);
+        }
+        const bool isStringElement = NAst::TMaybeType<NAst::TStringType>(elementAstType).Cast() != nullptr;
         if (NAst::TMaybeType<NAst::TPointerType>(symbolType)) {
             if (asg->Indices.size() != 1) {
                 co_return TError(asg->Location, TErrorString::Get<EErrorId::FAILED_LOWER_ARRAY_INDICES>());
@@ -952,7 +959,7 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
         if (!rhs.Value) co_return TError(asg->Value->Location, TErrorString::Get<EErrorId::RIGHT_HAND_SIDE_NOT_NUMBER>());
 
         // copy-paste
-        if (rhs.Value->Type == TOperand::EType::Imm) {
+        if (isStringElement && rhs.Value->Type == TOperand::EType::Imm) {
             // Materialize immediate string literals into a tmp
             if (rhs.Value->Imm.TypeId == lowStringTypeId) {
                 // TODO: create proper kind for string literal
@@ -966,14 +973,14 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
         }
 
         // copy-paste
-        if (arrayElemTypeId == lowStringTypeId && rhs.Ownership == EOwnership::Borrowed) {
+        if (isStringElement && rhs.Ownership == EOwnership::Borrowed) {
             auto retainId = co_await GlobalSymbolId("str_retain");
             Builder.Emit0("arg"_op, {*rhs.Value});
             Builder.Emit0("call"_op, { TImm{ retainId } });
         }
 
         // copy-paste
-        if (arrayElemTypeId == lowStringTypeId) {
+        if (isStringElement) {
             auto dtorId = co_await GlobalSymbolId("str_release");
             auto existingVal = Builder.Emit1("lde"_op, { destPtr });
             Builder.SetType(existingVal, arrayElemTypeId);
@@ -1083,7 +1090,7 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
             }
             offset += Module.Types.SizeInBytes(fieldTypeId >= 0 ? fieldTypeId : 8);
         }
-        co_return TValueWithBlock{ ptr, Builder.CurrentBlockLabel(), EOwnership::Owned };
+        co_return TValueWithBlock{ ptr, Builder.CurrentBlockLabel(), EOwnership::Unkwnown };
     } else if (NAst::TMaybeNode<NAst::TFieldAccessExpr>(expr) || NAst::TMaybeNode<NAst::TFieldAssignExpr>(expr)) {
         auto maybeRead  = NAst::TMaybeNode<NAst::TFieldAccessExpr>(expr);
         auto maybeWrite = NAst::TMaybeNode<NAst::TFieldAssignExpr>(expr);
@@ -1342,10 +1349,10 @@ TExpectedTask<TAstLowerer::TValueWithBlock, TError, TLocation> TAstLowerer::Lowe
             Builder.SetType(arrayPtr, arrayType);
 
             auto dtorId = co_await GlobalSymbolId("array_destroy");
-            bool arrayOfStrings = false;
-            if (Module.Types.UnderlyingType(arrayType) == lowStringTypeId) {
+            const auto elementAstType = NAst::UnwrapNamedType(maybeArrayType.Cast()->ElementType);
+            bool arrayOfStrings = NAst::TMaybeType<NAst::TStringType>(elementAstType).Cast() != nullptr;
+            if (arrayOfStrings) {
                 dtorId = co_await GlobalSymbolId("array_str_destroy");
-                arrayOfStrings = true;
             }
             TOperand arg = (sidOpt->FunctionLevelIdx >= 0)
                 ? TOperand { TLocal{ sidOpt->FunctionLevelIdx } }

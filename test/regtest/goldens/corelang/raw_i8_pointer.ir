@@ -1,0 +1,97 @@
+function <main> () { ; void
+  block {
+    label: label(0)
+    stre local(1,i64) imm(0,i64) 
+    - tmp(0,i64) = imm(1,i64) imm(0,i64) 
+    + tmp(1,i64) = tmp(0,i64) imm(1,i64) 
+    stre local(2,i64) tmp(1,i64) 
+    * tmp(2,i64) = imm(1,i64) tmp(1,i64) 
+    stre local(3,i64) tmp(2,i64) 
+    load tmp(3,i64) = local(3,i64) 
+    * tmp(4,i64) = tmp(3,i64) imm(8,i64) 
+    arg tmp(4,i64) 
+    call tmp(5,ptr to ptr to i8) = array_create 
+    stre local(0,ptr to ptr to i8) tmp(5,ptr to ptr to i8) 
+    load tmp(6,ptr to ptr to i8) = local(0,ptr to ptr to i8) 
+    load tmp(7,i64) = local(1,i64) 
+    - tmp(8,i64) = imm(0,i64) tmp(7,i64) 
+    * tmp(9,i64) = tmp(8,i64) imm(8,i64) 
+    + tmp(10,ptr to ptr to i8) = tmp(6,ptr to ptr to i8) tmp(9,i64) 
+    mov tmp(11,ptr to i8) = imm(17,i64) 
+    ste tmp(10,ptr to ptr to i8) tmp(11,ptr to i8) 
+    load tmp(12,ptr to ptr to i8) = local(0,ptr to ptr to i8) 
+    load tmp(13,i64) = local(1,i64) 
+    - tmp(14,i64) = imm(1,i64) tmp(13,i64) 
+    * tmp(15,i64) = tmp(14,i64) imm(8,i64) 
+    + tmp(16,ptr to ptr to i8) = tmp(12,ptr to ptr to i8) tmp(15,i64) 
+    mov tmp(17,ptr to i8) = imm(29,i64) 
+    ste tmp(16,ptr to ptr to i8) tmp(17,ptr to i8) 
+    load tmp(18,ptr to ptr to i8) = local(0,ptr to ptr to i8) 
+    load tmp(19,i64) = local(1,i64) 
+    - tmp(20,i64) = imm(0,i64) tmp(19,i64) 
+    * tmp(21,i64) = tmp(20,i64) imm(8,i64) 
+    + tmp(22,ptr to ptr to i8) = tmp(18,ptr to ptr to i8) tmp(21,i64) 
+    lde tmp(23,ptr to i8) = tmp(22,ptr to ptr to i8) 
+    mov tmp(24,i64) = tmp(23,ptr to i8) 
+    arg tmp(24,i64) 
+    arg imm(0,i64) 
+    call output_int64 
+    arg imm(1,ptr to i8) 
+    call output_string 
+    load tmp(25,ptr to ptr to i8) = local(0,ptr to ptr to i8) 
+    load tmp(26,i64) = local(1,i64) 
+    - tmp(27,i64) = imm(1,i64) tmp(26,i64) 
+    * tmp(28,i64) = tmp(27,i64) imm(8,i64) 
+    + tmp(29,ptr to ptr to i8) = tmp(25,ptr to ptr to i8) tmp(28,i64) 
+    lde tmp(30,ptr to i8) = tmp(29,ptr to ptr to i8) 
+    mov tmp(31,i64) = tmp(30,ptr to i8) 
+    arg tmp(31,i64) 
+    arg imm(0,i64) 
+    call output_int64 
+    arg imm(2,ptr to i8) 
+    call output_string 
+    salloc tmp(32,ptr to i64) = imm(16,i64) 
+    salloc tmp(33,ptr to i64) = imm(8,i64) 
+    + tmp(34,ptr to i64) = tmp(33,ptr to i64) imm(0,i64) 
+    ste tmp(34,ptr to i64) imm(40,i64) 
+    + tmp(35,ptr to i64) = tmp(32,ptr to i64) imm(0,i64) 
+    copy tmp(35,ptr to i64) tmp(33,ptr to i64) sin 
+    + tmp(36,ptr to i64) = tmp(32,ptr to i64) imm(8,i64) 
+    ste tmp(36,ptr to i64) imm(2,i64) 
+    arg tmp(32,ptr to i64) 
+    call tmp(37,i64) = sum_outer 
+    arg tmp(37,i64) 
+    arg imm(0,i64) 
+    call output_int64 
+    arg imm(2,ptr to i8) 
+    call output_string 
+    load tmp(38,ptr to ptr to i8) = local(0,ptr to ptr to i8) 
+    arg tmp(38,ptr to ptr to i8) 
+    call array_destroy 
+    jmp label(1) 
+  }
+  block {
+    label: label(1)
+    ret 
+  }
+}
+function sum_outer (local(0)) { ; i64
+  block {
+    label: label(0)
+    lea tmp(0,struct { struct { i64}; i64}) = local(0,struct { struct { i64}; i64}) 
+    + tmp(1,ptr to i8) = tmp(0,struct { struct { i64}; i64}) imm(0,i64) 
+    + tmp(2,ptr to i8) = tmp(1,ptr to i8) imm(0,i64) 
+    lde tmp(3,i64) = tmp(2,ptr to i8) 
+    lea tmp(4,struct { struct { i64}; i64}) = local(0,struct { struct { i64}; i64}) 
+    + tmp(5,ptr to i8) = tmp(4,struct { struct { i64}; i64}) imm(8,i64) 
+    lde tmp(6,i64) = tmp(5,ptr to i8) 
+    + tmp(7,i64) = tmp(3,i64) tmp(6,i64) 
+    stre local(1,i64) tmp(7,i64) 
+    jmp label(1) 
+  }
+  block {
+    label: label(1)
+    load tmp(8,i64) = local(1,i64) 
+    ret tmp(8,i64) 
+  }
+}

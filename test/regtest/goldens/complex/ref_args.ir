@@ -38,8 +38,6 @@ function main () { ; void
     arg tmp(6,ptr to struct { f64; f64}) 
     arg tmp(7,ptr to i64) 
     call add_in_place 
-    arg tmp(7,ptr to i64) 
-    call str_release 
     arg imm(4,ptr to i8) 
     call output_string 
     lea tmp(10,struct { f64; f64}) = local(0,struct { f64; f64}) 

@@ -34,8 +34,6 @@ function main () { ; void
     arg tmp(5,struct { f64; f64}) 
     arg tmp(6,ptr to i64) 
     call tmp(9,struct { f64; f64}) = add_twice 
-    arg tmp(6,ptr to i64) 
-    call str_release 
     stre local(1,struct { f64; f64}) tmp(9,struct { f64; f64}) 
     arg imm(4,ptr to i8) 
     call output_string 
