@@ -29,7 +29,6 @@ PainterModule::PainterModule() {
         {
             .Name = "высота листа",
             .MangledName = "painter_sheet_height",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(painter_sheet_height)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(painter_sheet_height());
             },
@@ -39,7 +38,6 @@ PainterModule::PainterModule() {
         {
             .Name = "ширина листа",
             .MangledName = "painter_sheet_width",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(painter_sheet_width)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(painter_sheet_width());
             },
@@ -49,7 +47,6 @@ PainterModule::PainterModule() {
         {
             .Name = "центр x",
             .MangledName = "painter_center_x",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(painter_center_x)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(painter_center_x());
             },
@@ -59,7 +56,6 @@ PainterModule::PainterModule() {
         {
             .Name = "центр y",
             .MangledName = "painter_center_y",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(painter_center_y)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(painter_center_y());
             },
@@ -69,7 +65,6 @@ PainterModule::PainterModule() {
         {
             .Name = "ширина текста",
             .MangledName = "painter_text_width",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(const char*)>(painter_text_width)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(painter_text_width(reinterpret_cast<const char*>(args[0])));
             },
@@ -80,7 +75,6 @@ PainterModule::PainterModule() {
         {
             .Name = "значение в точке",
             .MangledName = "painter_get_pixel",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(int64_t,int64_t)>(painter_get_pixel)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 return static_cast<uint64_t>(painter_get_pixel(args[0], args[1]));
             },
@@ -92,7 +86,6 @@ PainterModule::PainterModule() {
         {
             .Name = "перо",
             .MangledName = "painter_pen",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t,int64_t)>(painter_pen)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 painter_pen(args[0], args[1]);
                 return 0;
@@ -103,7 +96,6 @@ PainterModule::PainterModule() {
         {
             .Name = "кисть",
             .MangledName = "painter_brush",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t)>(painter_brush)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 painter_brush(args[0]);
                 return 0;
@@ -114,7 +106,6 @@ PainterModule::PainterModule() {
         {
             .Name = "убрать кисть",
             .MangledName = "painter_no_brush",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)()>(painter_no_brush)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 painter_no_brush();
                 return 0;
@@ -125,7 +116,6 @@ PainterModule::PainterModule() {
         {
             .Name = "плотность",
             .MangledName = "painter_density",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t)>(painter_density)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 painter_density(args[0]);
                 return 0;
@@ -136,7 +126,6 @@ PainterModule::PainterModule() {
         {
             .Name = "шрифт",
             .MangledName = "painter_font",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(const char*,int64_t,bool,bool)>(painter_font)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 painter_font(reinterpret_cast<const char*>(args[0]),
                              static_cast<int64_t>(args[1]),
@@ -153,7 +142,6 @@ PainterModule::PainterModule() {
         {
             .Name = "в точку",
             .MangledName = "painter_move_to",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t,int64_t)>(painter_move_to)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 painter_move_to(args[0], args[1]);
                 return 0;
@@ -164,7 +152,6 @@ PainterModule::PainterModule() {
         {
             .Name = "линия",
             .MangledName = "painter_line",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t,int64_t,int64_t,int64_t)>(painter_line)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 painter_line(args[0], args[1], args[2], args[3]);
                 return 0;
@@ -175,7 +162,6 @@ PainterModule::PainterModule() {
         {
             .Name = "линия в точку",
             .MangledName = "painter_line_to",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t,int64_t)>(painter_line_to)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 painter_line_to(args[0], args[1]);
                 return 0;
@@ -186,7 +172,6 @@ PainterModule::PainterModule() {
         {
             .Name = "многоугольник",
             .MangledName = "painter_polygon",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t,int64_t*,int64_t*)>(painter_polygon)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 painter_polygon(static_cast<int64_t>(args[0]),
                                 reinterpret_cast<int64_t*>(args[1]),
@@ -199,7 +184,6 @@ PainterModule::PainterModule() {
         {
             .Name = "пиксель",
             .MangledName = "painter_pixel",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t,int64_t,int64_t)>(painter_pixel)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 painter_pixel(args[0], args[1], args[2]);
                 return 0;
@@ -210,7 +194,6 @@ PainterModule::PainterModule() {
         {
             .Name = "прямоугольник",
             .MangledName = "painter_rect",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t,int64_t,int64_t,int64_t)>(painter_rect)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 painter_rect(args[0], args[1], args[2], args[3]);
                 return 0;
@@ -221,7 +204,6 @@ PainterModule::PainterModule() {
         {
             .Name = "эллипс",
             .MangledName = "painter_ellipse",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t,int64_t,int64_t,int64_t)>(painter_ellipse)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 painter_ellipse(args[0], args[1], args[2], args[3]);
                 return 0;
@@ -232,7 +214,6 @@ PainterModule::PainterModule() {
         {
             .Name = "окружность",
             .MangledName = "painter_circle",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t,int64_t,int64_t)>(painter_circle)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 painter_circle(args[0], args[1], args[2]);
                 return 0;
@@ -243,7 +224,6 @@ PainterModule::PainterModule() {
         {
             .Name = "надпись",
             .MangledName = "painter_text",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t,int64_t,const char*)>(painter_text)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 painter_text(args[0], args[1], reinterpret_cast<const char*>(args[2]));
                 return 0;
@@ -255,7 +235,6 @@ PainterModule::PainterModule() {
         {
             .Name = "залить",
             .MangledName = "painter_fill",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t,int64_t)>(painter_fill)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 painter_fill(args[0], args[1]);
                 return 0;
@@ -268,7 +247,6 @@ PainterModule::PainterModule() {
         {
             .Name = "новый лист",
             .MangledName = "painter_new_sheet",
-            .Ptr = reinterpret_cast<void*>(static_cast<ITypeErasedFuture*(*)(int64_t,int64_t,int64_t)>(painter_new_sheet)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 auto* future = painter_new_sheet(
                     static_cast<int64_t>(args[0]),
@@ -282,7 +260,6 @@ PainterModule::PainterModule() {
         {
             .Name = "загрузить лист",
             .MangledName = "painter_load_sheet",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(const char*)>(painter_load_sheet)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 painter_load_sheet(reinterpret_cast<const char*>(args[0]));
                 return 0;
@@ -294,7 +271,6 @@ PainterModule::PainterModule() {
         {
             .Name = "сохранить лист",
             .MangledName = "painter_save_sheet",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(const char*)>(painter_save_sheet)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 painter_save_sheet(reinterpret_cast<const char*>(args[0]));
                 return 0;

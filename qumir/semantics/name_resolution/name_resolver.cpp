@@ -792,7 +792,6 @@ std::expected<bool, std::string> TNameResolver::ImportModule(const std::string& 
         auto funDecl = std::make_shared<NAst::TFunDecl>(TLocation{}, fn.Name, params, nullptr, fn.ReturnType);
         funDecl->MangledName = fn.MangledName;
         funDecl->Type = funType;
-        funDecl->Ptr = fn.Ptr;
         funDecl->Packed = fn.Packed;
         funDecl->RequireArgsMaterialization = fn.RequireArgsMaterialization;
         funDecl->InlineFactory = fn.Inline;

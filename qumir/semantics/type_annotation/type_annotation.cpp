@@ -1499,7 +1499,6 @@ TFunDeclTask InstantiateGenericFunction(
         }
         auto cloned = std::make_shared<TFunDecl>(templateDecl->Location, mangledName, std::move(params), nullptr, retType);
         cloned->MangledName = templateDecl->MangledName;
-        cloned->Ptr = templateDecl->Ptr;
         cloned->Packed = templateDecl->Packed;
         cloned->RequireArgsMaterialization = templateDecl->RequireArgsMaterialization;
         cloned->InlineFactory = templateDecl->InlineFactory;

@@ -90,7 +90,6 @@ ComplexModule::ComplexModule() {
         {
             .Name = "мод",
             .MangledName = "complex_abs",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(komplex)>(complex_abs)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 double r = complex_abs(*reinterpret_cast<const komplex*>(args[0]));
                 return std::bit_cast<uint64_t>(r);
@@ -101,7 +100,6 @@ ComplexModule::ComplexModule() {
         {
             .Name = "аргумент",
             .MangledName = "complex_arg",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(komplex)>(complex_arg)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 double r = complex_arg(*reinterpret_cast<const komplex*>(args[0]));
                 return std::bit_cast<uint64_t>(r);
@@ -301,7 +299,6 @@ ComplexModule::ComplexModule() {
         {
             .Name = "print",
             .MangledName = "complex_print",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(komplex)>(complex_print)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 complex_print(*reinterpret_cast<const komplex*>(args[0]));
                 return 0;

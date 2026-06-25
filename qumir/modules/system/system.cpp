@@ -160,7 +160,6 @@ SystemModule::SystemModule() {
         {
             .Name = "sqrt",
             .MangledName = "sqrt",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(double)>(sqrt)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(sqrt(std::bit_cast<double>(args[0])));
             },
@@ -184,7 +183,6 @@ SystemModule::SystemModule() {
         {
             .Name = "sin",
             .MangledName = "sin",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(double)>(sin)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(sin(std::bit_cast<double>(args[0])));
             },
@@ -194,7 +192,6 @@ SystemModule::SystemModule() {
         {
             .Name = "cos",
             .MangledName = "cos",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(double)>(cos)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(cos(std::bit_cast<double>(args[0])));
             },
@@ -204,7 +201,6 @@ SystemModule::SystemModule() {
         {
             .Name = "tg",
             .MangledName = "tan",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(double)>(tan)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(tan(std::bit_cast<double>(args[0])));
             },
@@ -214,7 +210,6 @@ SystemModule::SystemModule() {
         {
             .Name = "ctg",
             .MangledName = "cotan",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(double)>(cotan)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(cotan(std::bit_cast<double>(args[0])));
             },
@@ -224,7 +219,6 @@ SystemModule::SystemModule() {
         {
             .Name = "arcsin",
             .MangledName = "asin",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(double)>(asin)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(asin(std::bit_cast<double>(args[0])));
             },
@@ -234,7 +228,6 @@ SystemModule::SystemModule() {
         {
             .Name = "arccos",
             .MangledName = "acos",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(double)>(acos)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(acos(std::bit_cast<double>(args[0])));
             },
@@ -244,7 +237,6 @@ SystemModule::SystemModule() {
         {
             .Name = "arctg",
             .MangledName = "atan",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(double)>(atan)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(atan(std::bit_cast<double>(args[0])));
             },
@@ -254,7 +246,6 @@ SystemModule::SystemModule() {
         {
             .Name = "ln",
             .MangledName = "log",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(double)>(log)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(log(std::bit_cast<double>(args[0])));
             },
@@ -264,7 +255,6 @@ SystemModule::SystemModule() {
         {
             .Name = "lg",
             .MangledName = "log10",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(double)>(log10)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(log10(std::bit_cast<double>(args[0])));
             },
@@ -274,7 +264,6 @@ SystemModule::SystemModule() {
         {
             .Name = "exp",
             .MangledName = "exp",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(double)>(exp)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(exp(std::bit_cast<double>(args[0])));
             },
@@ -284,7 +273,6 @@ SystemModule::SystemModule() {
         {
             .Name = "div",
             .MangledName = "div_qum",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(int64_t, int64_t)>(div_qum)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(div_qum(std::bit_cast<int64_t>(args[0]), std::bit_cast<int64_t>(args[1])));
             },
@@ -294,7 +282,6 @@ SystemModule::SystemModule() {
         {
             .Name = "mod",
             .MangledName = "mod_qum",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(int64_t, int64_t)>(mod_qum)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(mod_qum(std::bit_cast<int64_t>(args[0]), std::bit_cast<int64_t>(args[1])));
             },
@@ -304,7 +291,6 @@ SystemModule::SystemModule() {
         {
             .Name = "fpow",
             .MangledName = "fpow",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(double, int)>(fpow)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(fpow(std::bit_cast<double>(args[0]), static_cast<int>(std::bit_cast<int64_t>(args[1]))));
             },
@@ -314,7 +300,6 @@ SystemModule::SystemModule() {
         {
             .Name = "pow",
             .MangledName = "pow",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(double, double)>(pow)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(pow(std::bit_cast<double>(args[0]), std::bit_cast<double>(args[1])));
             },
@@ -324,7 +309,6 @@ SystemModule::SystemModule() {
         {
             .Name = "лит_в_вещ",
             .MangledName = "str_to_double",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(const char*, int8_t*)>(NRuntime::str_to_double)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 const void* addr = std::bit_cast<const void*>(args[1]);
                 double result = NRuntime::str_to_double(reinterpret_cast<const char*>(args[0]), reinterpret_cast<int8_t*>(const_cast<void*>(addr)));
@@ -336,7 +320,6 @@ SystemModule::SystemModule() {
         {
             .Name = "лит_в_цел",
             .MangledName = "str_to_int",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(const char*, int8_t*)>(NRuntime::str_to_int)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 const void* addr = std::bit_cast<const void*>(args[1]);
                 return std::bit_cast<uint64_t>(NRuntime::str_to_int(reinterpret_cast<const char*>(args[0]), reinterpret_cast<int8_t*>(const_cast<void*>(addr))));
@@ -347,7 +330,6 @@ SystemModule::SystemModule() {
         {
             .Name = "вещ_в_лит",
             .MangledName = "str_from_double",
-            .Ptr = reinterpret_cast<void*>(static_cast<char*(*)(double)>(NRuntime::str_from_double)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(NRuntime::str_from_double(std::bit_cast<double>(args[0])));
             },
@@ -357,7 +339,6 @@ SystemModule::SystemModule() {
         {
             .Name = "цел_в_лит",
             .MangledName = "str_from_int",
-            .Ptr = reinterpret_cast<void*>(static_cast<char*(*)(int64_t)>(NRuntime::str_from_int)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(NRuntime::str_from_int(std::bit_cast<int64_t>(args[0])));
             },
@@ -367,7 +348,6 @@ SystemModule::SystemModule() {
         {
             .Name = "str_input",
             .MangledName = "str_input",
-            .Ptr = reinterpret_cast<void*>(static_cast<char*(*)()>(NRuntime::str_input)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(NRuntime::str_input());
             },
@@ -377,7 +357,6 @@ SystemModule::SystemModule() {
         {
             .Name = "int",
             .MangledName = "trunc_double",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(double)>(trunc_double)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(trunc_double(std::bit_cast<double>(args[0])));
             },
@@ -387,7 +366,6 @@ SystemModule::SystemModule() {
         {
             .Name = "rnd",
             .MangledName = "rand_double",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(double)>(rand_double)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(rand_double(std::bit_cast<double>(args[0])));
             },
@@ -397,7 +375,6 @@ SystemModule::SystemModule() {
         {
             .Name = "rand",
             .MangledName = "rand_double_range",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)(double, double)>(rand_double_range)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(rand_double_range(std::bit_cast<double>(args[0]), std::bit_cast<double>(args[1])));
             },
@@ -407,7 +384,6 @@ SystemModule::SystemModule() {
         {
             .Name = "irnd",
             .MangledName = "rand_int64",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(int64_t)>(rand_int64)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(rand_int64(std::bit_cast<int64_t>(args[0])));
             },
@@ -417,7 +393,6 @@ SystemModule::SystemModule() {
         {
             .Name = "irand",
             .MangledName = "rand_int64_range",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(int64_t, int64_t)>(rand_int64_range)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(rand_int64_range(std::bit_cast<int64_t>(args[0]), std::bit_cast<int64_t>(args[1])));
             },
@@ -429,7 +404,6 @@ SystemModule::SystemModule() {
         {
             .Name = "input_double",
             .MangledName = "input_double",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)()>(NRuntime::input_double)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(NRuntime::input_double());
             },
@@ -439,7 +413,6 @@ SystemModule::SystemModule() {
         {
             .Name = "input_int64",
             .MangledName = "input_int64",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(NRuntime::input_int64)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(NRuntime::input_int64());
             },
@@ -449,7 +422,6 @@ SystemModule::SystemModule() {
         {
             .Name = "output_double",
             .MangledName = "output_double",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(double, int64_t, int64_t)>(NRuntime::output_double)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 NRuntime::output_double(std::bit_cast<double>(args[0]), static_cast<int>(std::bit_cast<int64_t>(args[1])), static_cast<int>(std::bit_cast<int64_t>(args[2])));
                 return 0;
@@ -460,7 +432,6 @@ SystemModule::SystemModule() {
         {
             .Name = "output_int64",
             .MangledName = "output_int64",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t, int64_t)>(NRuntime::output_int64)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 NRuntime::output_int64(std::bit_cast<int64_t>(args[0]), static_cast<int>(std::bit_cast<int64_t>(args[1])));
                 return 0;
@@ -471,7 +442,6 @@ SystemModule::SystemModule() {
         {
             .Name = "output_string",
             .MangledName = "output_string",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(const char*)>(NRuntime::output_string)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 NRuntime::output_string(reinterpret_cast<const char*>(args[0]));
                 return 0;
@@ -483,7 +453,6 @@ SystemModule::SystemModule() {
         {
             .Name = "output_bool",
             .MangledName = "output_bool",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t)>(NRuntime::output_bool)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 NRuntime::output_bool(std::bit_cast<int64_t>(args[0]));
                 return 0;
@@ -494,7 +463,6 @@ SystemModule::SystemModule() {
         {
             .Name = "output_symbol",
             .MangledName = "output_symbol",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int32_t)>(NRuntime::output_symbol)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 NRuntime::output_symbol(static_cast<int32_t>(std::bit_cast<int64_t>(args[0])));
                 return 0;
@@ -507,7 +475,6 @@ SystemModule::SystemModule() {
         {
             .Name = "str_from_lit",
             .MangledName = "str_from_lit",
-            .Ptr = reinterpret_cast<void*>(static_cast<char*(*)(const char*)>(NRuntime::str_from_lit)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 auto* str = NRuntime::str_from_lit(reinterpret_cast<const char*>(args[0]));
                 return std::bit_cast<uint64_t>(str);
@@ -518,7 +485,6 @@ SystemModule::SystemModule() {
         {
             .Name = "str_slice",
             .MangledName = "str_slice",
-            .Ptr = reinterpret_cast<void*>(static_cast<char*(*)(const char*, int, int)>(NRuntime::str_slice)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 auto* str = NRuntime::str_slice(reinterpret_cast<const char*>(args[0]), static_cast<int>(std::bit_cast<int64_t>(args[1])), static_cast<int>(std::bit_cast<int64_t>(args[2])));
                 return std::bit_cast<uint64_t>(str);
@@ -530,7 +496,6 @@ SystemModule::SystemModule() {
         {
             .Name = "str_symbol_at",
             .MangledName = "str_symbol_at",
-            .Ptr = reinterpret_cast<void*>(static_cast<int32_t(*)(const char*, int)>(NRuntime::str_symbol_at)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 auto ret = NRuntime::str_symbol_at(reinterpret_cast<const char*>(args[0]), static_cast<int>(std::bit_cast<int64_t>(args[1])));
                 return static_cast<uint64_t>(ret);
@@ -542,7 +507,6 @@ SystemModule::SystemModule() {
         {
             .Name = "str_replace_sym",
             .MangledName = "str_replace_sym",
-            .Ptr = reinterpret_cast<void*>(static_cast<char*(*)(char*, int32_t, int64_t)>(NRuntime::str_replace_sym)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 auto* str = NRuntime::str_replace_sym(reinterpret_cast<char*>(args[0]), static_cast<int32_t>(std::bit_cast<int64_t>(args[1])), std::bit_cast<int64_t>(args[2]));
                 return std::bit_cast<uint64_t>(str);
@@ -554,7 +518,6 @@ SystemModule::SystemModule() {
         {
             .Name = "str_retain",
             .MangledName = "str_retain",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(char*)>(NRuntime::str_retain)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 NRuntime::str_retain(reinterpret_cast<char*>(args[0]));
                 return 0;
@@ -565,7 +528,6 @@ SystemModule::SystemModule() {
         {
             .Name = "str_release",
             .MangledName = "str_release",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(char*)>(NRuntime::str_release)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 NRuntime::str_release(reinterpret_cast<char*>(args[0]));
                 return 0;
@@ -576,7 +538,6 @@ SystemModule::SystemModule() {
         {
             .Name = "str_concat",
             .MangledName = "str_concat",
-            .Ptr = reinterpret_cast<void*>(static_cast<char*(*)(const char*, const char*)>(NRuntime::str_concat)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 auto* str = NRuntime::str_concat(reinterpret_cast<const char*>(args[0]), reinterpret_cast<const char*>(args[1]));
                 return std::bit_cast<uint64_t>(str);
@@ -587,7 +548,6 @@ SystemModule::SystemModule() {
         {
             .Name = "str_compare",
             .MangledName = "str_compare",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(const char*, const char*)>(NRuntime::str_compare)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 auto ret = NRuntime::str_compare(reinterpret_cast<const char*>(args[0]), reinterpret_cast<const char*>(args[1]));
                 return std::bit_cast<uint64_t>(ret);
@@ -599,7 +559,6 @@ SystemModule::SystemModule() {
         {
             .Name = "длин",
             .MangledName = "str_len",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(const char*)>(NRuntime::str_len)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 auto ret = NRuntime::str_len(reinterpret_cast<const char*>(args[0]));
                 return std::bit_cast<uint64_t>(ret);
@@ -611,7 +570,6 @@ SystemModule::SystemModule() {
         {
             .Name = "str_from_unicode",
             .MangledName = "str_from_unicode",
-            .Ptr = reinterpret_cast<void*>(static_cast<char*(*)(int64_t)>(NRuntime::str_from_unicode)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 auto* str = NRuntime::str_from_unicode(std::bit_cast<int64_t>(args[0]));
                 return std::bit_cast<uint64_t>(str);
@@ -622,7 +580,6 @@ SystemModule::SystemModule() {
         { // string module
             .Name = "позиция",
             .MangledName = "str_str",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(const char*, const char*)>(NRuntime::str_str)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 auto ret = NRuntime::str_str(reinterpret_cast<const char*>(args[0]), reinterpret_cast<const char*>(args[1]));
                 return std::bit_cast<uint64_t>(ret);
@@ -633,7 +590,6 @@ SystemModule::SystemModule() {
         { // string module
             .Name = "поз", // alias for позиция
             .MangledName = "str_str",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(const char*, const char*)>(NRuntime::str_str)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 auto ret = NRuntime::str_str(reinterpret_cast<const char*>(args[0]), reinterpret_cast<const char*>(args[1]));
                 return std::bit_cast<uint64_t>(ret);
@@ -644,7 +600,6 @@ SystemModule::SystemModule() {
         { // string module
             .Name = "позиция после",
             .MangledName = "str_str_from",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(int64_t, const char*, const char*)>(NRuntime::str_str_from)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 auto ret = NRuntime::str_str_from(std::bit_cast<int64_t>(args[0]), reinterpret_cast<const char*>(args[1]), reinterpret_cast<const char*>(args[2]));
                 return std::bit_cast<uint64_t>(ret);
@@ -655,7 +610,6 @@ SystemModule::SystemModule() {
         { // string module
             .Name = "поз после", // alias for позиция после
             .MangledName = "str_str_from",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)(int64_t, const char*, const char*)>(NRuntime::str_str_from)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 auto ret = NRuntime::str_str_from(std::bit_cast<int64_t>(args[0]), reinterpret_cast<const char*>(args[1]), reinterpret_cast<const char*>(args[2]));
                 return std::bit_cast<uint64_t>(ret);
@@ -666,7 +620,6 @@ SystemModule::SystemModule() {
         { // string module
             .Name = "удалить",
             .MangledName = "str_delete_symbols",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(char**, int64_t, int64_t)>(NRuntime::str_delete_symbols)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 NRuntime::str_delete_symbols(reinterpret_cast<char**>(args[0]), std::bit_cast<int64_t>(args[1]), std::bit_cast<int64_t>(args[2]));
                 return 0;
@@ -677,7 +630,6 @@ SystemModule::SystemModule() {
         { // string module
             .Name = "вставить",
             .MangledName = "str_insert_symbols",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(const char*, char**, int64_t)>(NRuntime::str_insert_symbols)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 NRuntime::str_insert_symbols(reinterpret_cast<const char*>(args[0]), reinterpret_cast<char**>(args[1]), std::bit_cast<int64_t>(args[2]));
                 return 0;
@@ -690,7 +642,6 @@ SystemModule::SystemModule() {
         {
             .Name = "array_create",
             .MangledName = "array_create",
-            .Ptr = reinterpret_cast<void*>(static_cast<void*(*)(size_t)>(NRuntime::array_create)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 auto* arr = NRuntime::array_create(static_cast<size_t>(args[0]));
                 return std::bit_cast<uint64_t>(arr);
@@ -701,7 +652,6 @@ SystemModule::SystemModule() {
         {
             .Name = "array_destroy",
             .MangledName = "array_destroy",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(void*)>(NRuntime::array_destroy)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 NRuntime::array_destroy(reinterpret_cast<void*>(args[0]));
                 return 0;
@@ -712,7 +662,6 @@ SystemModule::SystemModule() {
         {
             .Name = "array_str_destroy",
             .MangledName = "array_str_destroy",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(void*, size_t)>(NRuntime::array_str_destroy)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 NRuntime::array_str_destroy(reinterpret_cast<void*>(args[0]), static_cast<size_t>(args[1]));
                 return 0;
@@ -725,7 +674,6 @@ SystemModule::SystemModule() {
         {
             .Name = "открыть на чтение",
             .MangledName = "file_open_for_read",
-            .Ptr = reinterpret_cast<void*>(static_cast<int32_t(*)(const char*)>(NRuntime::file_open_for_read)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return static_cast<uint64_t>(NRuntime::file_open_for_read(reinterpret_cast<const char*>(args[0])));
             },
@@ -735,7 +683,6 @@ SystemModule::SystemModule() {
         {
             .Name = "открыть на запись",
             .MangledName = "file_open_for_write",
-            .Ptr = reinterpret_cast<void*>(static_cast<int32_t(*)(const char*)>(NRuntime::file_open_for_write)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return static_cast<uint64_t>(NRuntime::file_open_for_write(reinterpret_cast<const char*>(args[0])));
             },
@@ -745,7 +692,6 @@ SystemModule::SystemModule() {
         {
             .Name = "открыть на добавление",
             .MangledName = "file_open_for_append",
-            .Ptr = reinterpret_cast<void*>(static_cast<int32_t(*)(const char*)>(NRuntime::file_open_for_append)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return static_cast<uint64_t>(NRuntime::file_open_for_append(reinterpret_cast<const char*>(args[0])));
             },
@@ -755,7 +701,6 @@ SystemModule::SystemModule() {
         {
             .Name = "закрыть",
             .MangledName = "file_close",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int32_t)>(NRuntime::file_close)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 NRuntime::file_close(static_cast<int32_t>(args[0]));
                 return 0;
@@ -766,7 +711,6 @@ SystemModule::SystemModule() {
         {
             .Name = "есть данные",
             .MangledName = "file_has_more_data",
-            .Ptr = reinterpret_cast<void*>(static_cast<bool(*)(int32_t)>(NRuntime::file_has_more_data)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 auto ret = NRuntime::file_has_more_data(static_cast<int32_t>(args[0]));
                 return static_cast<uint64_t>(ret);
@@ -777,7 +721,6 @@ SystemModule::SystemModule() {
         {
             .Name = "конец файла",
             .MangledName = "file_eof",
-            .Ptr = reinterpret_cast<void*>(static_cast<bool(*)(int32_t)>(NRuntime::file_eof)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 auto ret = NRuntime::file_eof(static_cast<int32_t>(args[0]));
                 return static_cast<uint64_t>(ret);
@@ -788,7 +731,6 @@ SystemModule::SystemModule() {
         {
             .Name = "__ensure",
             .MangledName = "__ensure",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(bool, const char*)>(__ensure)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 __ensure(static_cast<bool>(args[0]), reinterpret_cast<const char*>(args[1]));
                 return 0;
@@ -799,7 +741,6 @@ SystemModule::SystemModule() {
         {
             .Name = "input_set_file",
             .MangledName = "input_set_file",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int32_t)>(NRuntime::input_set_file)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 NRuntime::input_set_file(static_cast<int32_t>(args[0]));
                 return 0;
@@ -810,7 +751,6 @@ SystemModule::SystemModule() {
         {
             .Name = "output_set_file",
             .MangledName = "output_set_file",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int32_t)>(NRuntime::output_set_file)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 NRuntime::output_set_file(static_cast<int32_t>(args[0]));
                 return 0;
@@ -821,7 +761,6 @@ SystemModule::SystemModule() {
         {
             .Name = "input_reset_file",
             .MangledName = "input_reset_file",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)()>(NRuntime::input_reset_file)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 NRuntime::input_reset_file();
                 return 0;
@@ -832,7 +771,6 @@ SystemModule::SystemModule() {
         {
             .Name = "output_reset_file",
             .MangledName = "output_reset_file",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)()>(NRuntime::output_reset_file)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 NRuntime::output_reset_file();
                 return 0;
@@ -877,7 +815,6 @@ SystemModule::SystemModule() {
         {
             .Name = "ждать",
             .MangledName = "qumir_sleep",
-            .Ptr = reinterpret_cast<void*>(static_cast<ITypeErasedFuture*(*)(int64_t)>(NRuntime::qumir_sleep)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 auto* future = NRuntime::qumir_sleep(std::bit_cast<int64_t>(args[0]));
                 return reinterpret_cast<uint64_t>(future);
@@ -888,7 +825,6 @@ SystemModule::SystemModule() {
         {
             .Name = "время",
             .MangledName = "time_from_daystart_millis",
-            .Ptr = reinterpret_cast<void*>(static_cast<int64_t(*)()>(NRuntime::time_from_daystart_millis)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(NRuntime::time_from_daystart_millis());
             },

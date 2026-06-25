@@ -109,7 +109,6 @@ KeyboardModule::KeyboardModule() {
         {
             .Name = "сигнал клав",
             .MangledName = "keyboard_signal",
-            .Ptr = reinterpret_cast<void*>(static_cast<bool(*)()>(&keyboard_signal)),
             .Packed = +[](const uint64_t*, size_t) -> uint64_t {
                 return keyboard_signal() ? 1 : 0;
             },
@@ -119,7 +118,6 @@ KeyboardModule::KeyboardModule() {
         {
             .Name = "код клав",
             .MangledName = "keyboard_code",
-            .Ptr = reinterpret_cast<void*>(static_cast<NQumir::ITypeErasedFuture*(*)()>(&keyboard_code)),
             .Packed = +[](const uint64_t*, size_t) -> uint64_t {
                 return reinterpret_cast<uint64_t>(keyboard_code());
             },
@@ -129,7 +127,6 @@ KeyboardModule::KeyboardModule() {
         {
             .Name = "сброс клав",
             .MangledName = "keyboard_reset",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)()>(&keyboard_reset)),
             .Packed = +[](const uint64_t*, size_t) -> uint64_t {
                 keyboard_reset();
                 return 0;

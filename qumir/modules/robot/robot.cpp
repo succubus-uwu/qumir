@@ -18,7 +18,6 @@ RobotModule::RobotModule()
         {
             .Name = "влево",
             .MangledName = "robot_left",
-            .Ptr = reinterpret_cast<void*>(static_cast<ITypeErasedFuture*(*)()>(robot_left)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return reinterpret_cast<uint64_t>(robot_left());
             },
@@ -28,7 +27,6 @@ RobotModule::RobotModule()
         {
             .Name = "вправо",
             .MangledName = "robot_right",
-            .Ptr = reinterpret_cast<void*>(static_cast<ITypeErasedFuture*(*)()>(robot_right)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return reinterpret_cast<uint64_t>(robot_right());
             },
@@ -38,7 +36,6 @@ RobotModule::RobotModule()
         {
             .Name = "вверх",
             .MangledName = "robot_up",
-            .Ptr = reinterpret_cast<void*>(static_cast<ITypeErasedFuture*(*)()>(robot_up)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return reinterpret_cast<uint64_t>(robot_up());
             },
@@ -48,7 +45,6 @@ RobotModule::RobotModule()
         {
             .Name = "вниз",
             .MangledName = "robot_down",
-            .Ptr = reinterpret_cast<void*>(static_cast<ITypeErasedFuture*(*)()>(robot_down)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return reinterpret_cast<uint64_t>(robot_down());
             },
@@ -58,7 +54,6 @@ RobotModule::RobotModule()
         {
             .Name = "закрасить",
             .MangledName = "robot_paint",
-            .Ptr = reinterpret_cast<void*>(static_cast<ITypeErasedFuture*(*)()>(robot_paint)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return reinterpret_cast<uint64_t>(robot_paint());
             },
@@ -68,7 +63,6 @@ RobotModule::RobotModule()
         {
             .Name = "слева свободно",
             .MangledName = "robot_left_free",
-            .Ptr = reinterpret_cast<void*>(static_cast<bool(*)()>(robot_left_free)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return robot_left_free() ? 1 : 0;
             },
@@ -78,7 +72,6 @@ RobotModule::RobotModule()
         {
             .Name = "справа свободно",
             .MangledName = "robot_right_free",
-            .Ptr = reinterpret_cast<void*>(static_cast<bool(*)()>(robot_right_free)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return robot_right_free() ? 1 : 0;
             },
@@ -88,7 +81,6 @@ RobotModule::RobotModule()
         {
             .Name = "сверху свободно",
             .MangledName = "robot_top_free",
-            .Ptr = reinterpret_cast<void*>(static_cast<bool(*)()>(robot_top_free)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return robot_top_free() ? 1 : 0;
             },
@@ -98,7 +90,6 @@ RobotModule::RobotModule()
         {
             .Name = "снизу свободно",
             .MangledName = "robot_bottom_free",
-            .Ptr = reinterpret_cast<void*>(static_cast<bool(*)()>(robot_bottom_free)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return robot_bottom_free() ? 1 : 0;
             },
@@ -108,7 +99,6 @@ RobotModule::RobotModule()
         {
             .Name = "слева стена",
             .MangledName = "robot_left_wall",
-            .Ptr = reinterpret_cast<void*>(static_cast<bool(*)()>(robot_left_wall)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return robot_left_wall() ? 1 : 0;
             },
@@ -118,7 +108,6 @@ RobotModule::RobotModule()
         {
             .Name = "справа стена",
             .MangledName = "robot_right_wall",
-            .Ptr = reinterpret_cast<void*>(static_cast<bool(*)()>(robot_right_wall)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return robot_right_wall() ? 1 : 0;
             },
@@ -128,7 +117,6 @@ RobotModule::RobotModule()
         {
             .Name = "сверху стена",
             .MangledName = "robot_top_wall",
-            .Ptr = reinterpret_cast<void*>(static_cast<bool(*)()>(robot_top_wall)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return robot_top_wall() ? 1 : 0;
             },
@@ -138,7 +126,6 @@ RobotModule::RobotModule()
         {
             .Name = "снизу стена",
             .MangledName = "robot_bottom_wall",
-            .Ptr = reinterpret_cast<void*>(static_cast<bool(*)()>(robot_bottom_wall)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return robot_bottom_wall() ? 1 : 0;
             },
@@ -148,7 +135,6 @@ RobotModule::RobotModule()
         {
             .Name = "клетка закрашена",
             .MangledName = "robot_cell_painted",
-            .Ptr = reinterpret_cast<void*>(static_cast<bool(*)()>(robot_cell_painted)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return robot_cell_painted() ? 1 : 0;
             },
@@ -158,7 +144,6 @@ RobotModule::RobotModule()
         {
             .Name = "клетка чистая",
             .MangledName = "robot_cell_clean",
-            .Ptr = reinterpret_cast<void*>(static_cast<bool(*)()>(robot_cell_clean)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return robot_cell_clean() ? 1 : 0;
             },
@@ -168,7 +153,6 @@ RobotModule::RobotModule()
         {
             .Name = "радиация",
             .MangledName = "robot_radiation",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)()>(robot_radiation)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(robot_radiation());
             },
@@ -178,7 +162,6 @@ RobotModule::RobotModule()
         {
             .Name = "температура",
             .MangledName = "robot_temperature",
-            .Ptr = reinterpret_cast<void*>(static_cast<double(*)()>(robot_temperature)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return std::bit_cast<uint64_t>(robot_temperature());
             },

@@ -796,7 +796,6 @@ ColorsModule::ColorsModule() {
         {
             .Name = "print",
             .MangledName = "color_print",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t)>(color_print)),
             .Packed = +[](const uint64_t* args, size_t) -> uint64_t {
                 color_print(static_cast<int64_t>(args[0]));
                 return 0;

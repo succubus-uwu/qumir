@@ -62,6 +62,8 @@ add_library(qumir
     ir/builder.cpp
     ir/eval.h
     ir/eval.cpp
+    ir/ffi.h
+    ir/ffi.cpp
     ir/type.h
     ir/type.cpp
     ir/vmcompiler.h

@@ -1572,7 +1572,6 @@ void TAstLowerer::ImportExternalFunction(int symbolId, const NAst::TFunDecl& fun
         .MangledName = funcDecl.MangledName,
         .ArgTypes = std::move(argTypes),
         .ReturnTypeId = returnType,
-        .Addr = funcDecl.Ptr,
         .Packed = funcDecl.Packed,
         .SymId = symbolId
     };

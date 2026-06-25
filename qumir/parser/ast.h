@@ -613,7 +613,6 @@ struct TFunDecl : TExpr {
     std::vector<TParam> Params;
     std::shared_ptr<TBlockExpr> Body;
     std::shared_ptr<TExpr> LastAssert = nullptr; // last assert in function body, executed before return
-    void* Ptr = nullptr; // function pointer for built-in functions
     using TPacked = uint64_t(*)(const uint64_t* args, size_t argCount);
     TPacked Packed = nullptr; // packed thunk for built-in functions
     using TInlineFactory = std::function<TExprPtr(std::vector<TExprPtr>)>;

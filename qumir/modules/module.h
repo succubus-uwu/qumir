@@ -9,7 +9,6 @@ namespace NRegistry {
 struct TExternalFunction {
     std::string Name;
     std::string MangledName;
-    void* Ptr = nullptr;
     using TPacked = uint64_t(*)(const uint64_t* args, size_t argCount);
     TPacked Packed = nullptr; // packed thunk
     std::vector<NAst::TTypePtr> ArgTypes;
@@ -18,7 +17,7 @@ struct TExternalFunction {
     bool IsOp = false; // if true, Name is an operator symbol; no name conflict check on import
     // Optional inline factory: receives annotated argument ASTs, returns replacement AST.
     // If set, the IR interpreter replaces the call with the returned AST.
-    // Other backends (LLVM, WASM) continue using Ptr/Packed.
+    // Other backends (LLVM, WASM) use the packed thunk / mangled symbol.
     using TInlineFactory = std::function<NAst::TExprPtr(std::vector<NAst::TExprPtr>)>;
     std::optional<TInlineFactory> Inline;
 

@@ -20,7 +20,6 @@ DrawerModule::DrawerModule()
         {
             .Name = "поднять перо",
             .MangledName = "drawer_pen_up",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)()>(drawer_pen_up)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 drawer_pen_up();
                 return 0;
@@ -31,7 +30,6 @@ DrawerModule::DrawerModule()
         {
             .Name = "опустить перо",
             .MangledName = "drawer_pen_down",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)()>(drawer_pen_down)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 drawer_pen_down();
                 return 0;
@@ -42,7 +40,6 @@ DrawerModule::DrawerModule()
         {
             .Name = "выбрать чернила",
             .MangledName = "drawer_set_color",
-            .Ptr = reinterpret_cast<void*>(static_cast<void(*)(int64_t)>(drawer_set_color)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 drawer_set_color(static_cast<int64_t>(args[0]));
                 return 0;
@@ -53,7 +50,6 @@ DrawerModule::DrawerModule()
         {
             .Name = "сместиться в точку",
             .MangledName = "drawer_move_to",
-            .Ptr = reinterpret_cast<void*>(static_cast<ITypeErasedFuture*(*)(double, double)>(drawer_move_to)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return reinterpret_cast<uint64_t>(drawer_move_to(std::bit_cast<double>(args[0]), std::bit_cast<double>(args[1])));
             },
@@ -63,7 +59,6 @@ DrawerModule::DrawerModule()
         {
             .Name = "сместиться на вектор",
             .MangledName = "drawer_move_by",
-            .Ptr = reinterpret_cast<void*>(static_cast<ITypeErasedFuture*(*)(double, double)>(drawer_move_by)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return reinterpret_cast<uint64_t>(drawer_move_by(std::bit_cast<double>(args[0]), std::bit_cast<double>(args[1])));
             },
@@ -73,7 +68,6 @@ DrawerModule::DrawerModule()
         {
             .Name = "написать",
             .MangledName = "drawer_write_text",
-            .Ptr = reinterpret_cast<void*>(static_cast<ITypeErasedFuture*(*)(double, const char*)>(drawer_write_text)),
             .Packed = +[](const uint64_t* args, size_t argCount) -> uint64_t {
                 return reinterpret_cast<uint64_t>(drawer_write_text(std::bit_cast<double>(args[0]), reinterpret_cast<const char*>(args[1])));
             },
